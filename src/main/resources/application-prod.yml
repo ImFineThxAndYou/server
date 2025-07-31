@@ -1,0 +1,7 @@
+# 운영 환경에서만 필요한 설정만
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  main:
+    banner-mode: off

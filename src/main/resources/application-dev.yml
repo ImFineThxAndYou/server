@@ -1,0 +1,6 @@
+# 개발 환경 전용 설정 (거의 비워둬도 됨)
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
