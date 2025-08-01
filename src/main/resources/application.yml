@@ -37,3 +37,14 @@ spring:
             authorization-uri: https://accounts.google.com/o/oauth2/auth
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs            # ✏️ JSON 스펙 엔드포인트
+  swagger-ui:
+    path: /swagger-ui.html        # ✏️ UI 진입점
+    operations-sorter: method     # 메서드명 순 정렬(GET, POST…)
+    tags-sorter: alpha            # 태그 알파벳 정렬
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
