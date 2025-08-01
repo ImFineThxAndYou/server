@@ -1,6 +1,7 @@
 # 개발 환경 전용 설정 (거의 비워둬도 됨)
 spring:
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
     hibernate:
       ddl-auto: update
