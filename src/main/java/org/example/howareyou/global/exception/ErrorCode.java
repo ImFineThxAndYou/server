@@ -34,8 +34,27 @@ public enum ErrorCode {
 
     /* ───────────[유저]─────────── */
     USER_NOT_FOUND       (HttpStatus.NOT_FOUND,   "U001", "해당 사용자를 찾을 수 없습니다."),
-    DUPLICATE_EMAIL      (HttpStatus.CONFLICT,    "U002", "이미 가입된 이메일입니다.");
+    DUPLICATE_EMAIL      (HttpStatus.CONFLICT,    "U002", "이미 가입된 이메일입니다."),
 
+    /* ───────────[LiberTranslate 서버/번역]─────────── */
+    LT_CONNECTION_FAILURE(HttpStatus.BAD_GATEWAY, "LT001", "번역 서버와 연결할 수 없습니다."),
+    LT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "LT002", "번역 요청이 시간 내에 완료되지 않았습니다."),
+    LT_DNS_FAILURE(HttpStatus.BAD_GATEWAY, "LT003", "번역 서버의 DNS를 해석할 수 없습니다."),
+    LT_SSL_FAILURE(HttpStatus.BAD_GATEWAY, "LT004", "SSL/TLS 핸드셰이크 실패로 안전한 연결을 만들 수 없습니다."),
+    LT_BAD_REQUEST(HttpStatus.BAD_REQUEST, "LT005", "번역 서버에 잘못된 요청을 보냈습니다."),
+    LT_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "LT006", "번역 서버 인증에 실패했습니다."),
+    LT_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "LT007", "번역 서버 요청 한도를 초과했습니다."),
+    LT_UNEXPECTED_RESPONSE(HttpStatus.BAD_GATEWAY, "LT008", "번역 서버로부터 예상치 못한 응답을 받았습니다."),
+    LT_PARSE_FAILURE(HttpStatus.BAD_GATEWAY, "LT009", "번역 서버 응답 파싱에 실패했습니다."),
+    LT_INTERNAL_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "LT010", "번역 서버 내부 오류가 발생했습니다."),
+    LT_UNKNOWN_PROCESSING_ERROR(HttpStatus.BAD_GATEWAY, "LT011", "번역 처리 중 알 수 없는 오류가 발생했습니다."),
+    LT_INVALID_INPUT(HttpStatus.UNPROCESSABLE_ENTITY, "LT012", "번역할 텍스트가 비어 있거나 유효하지 않습니다."),
+    LT_EMPTY_TRANSLATION(HttpStatus.BAD_GATEWAY, "LT013", "번역 결과가 비어 있거나 예상된 형식이 아닙니다."),
+    LT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "LT014", "번역 서버가 일시적으로 사용 불가능합니다. 재시도 해주세요."),
+    LT_CONNECTION_INTERRUPTED(HttpStatus.BAD_GATEWAY, "LT015", "번역 서버와의 연결이 중간에 끊겼습니다."),
+    LT_CONFIG_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "LT016", "번역 서버 주소 구성값이 잘못되었습니다."),
+    LT_MISSING_PARAMETER(HttpStatus.INTERNAL_SERVER_ERROR, "LT017", "번역 서버 호출에 필요한 헤더/파라미터가 누락되었습니다."),
+    LT_FORBIDDEN(HttpStatus.FORBIDDEN, "LT018", "번역 서버 접근 권한이 없습니다.");
     /* 필드 정의 */
     private final HttpStatus status;  // HTTP 응답용 상태
     private final String     code;    // 서비스 고유 코드(문자/숫자 혼용 가능)

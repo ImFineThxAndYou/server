@@ -46,6 +46,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
 
+    // swagger
+
+
     // 🛠️ (선택) 개발 편의
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
