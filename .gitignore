@@ -36,5 +36,8 @@ out/
 ### VS Code ###
 .vscode/
 
-# secret 설정 파일
+# secret 설정 파일 (.env 가능하므로 나중에 삭제)
 /src/main/resources/application-secret.yml
+
+#환경변수
+.env
