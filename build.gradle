@@ -20,6 +20,7 @@ repositories {
 dependencies {
     // 🌐 Web (MVC 기반)
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     // 💾 SQL - PostgreSQL + JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
