@@ -5,3 +5,7 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
+
+springdoc:
+  cache:
+    disabled: true                # 개발 단계에선 캐시 끄면 리로드 편함
