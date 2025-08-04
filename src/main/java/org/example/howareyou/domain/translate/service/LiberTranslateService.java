@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class TranslateService {
+public class LiberTranslateService {
     @Value("${libretranslate.host}")
     private String host;
 
@@ -32,7 +32,7 @@ public class TranslateService {
                     "source",requestDto.getSource(),
                     "target",requestDto.getTarget(),
                     "format","text",
-                    "api_key",""
+                    "api_key","" //로컬에서 서버를 띄었기에 api키는 필요하지 않음
             );
         //header 설정
         HttpHeaders transHeaders = new HttpHeaders();

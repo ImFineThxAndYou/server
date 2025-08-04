@@ -3,7 +3,8 @@ package org.example.howareyou.domain.translate.controller;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.translate.dto.TranslateRequestDto;
 import org.example.howareyou.domain.translate.dto.TranslateResponseDto;
-import org.example.howareyou.domain.translate.service.TranslateService;
+import org.example.howareyou.domain.translate.service.GeminiTranslateService;
+import org.example.howareyou.domain.translate.service.LiberTranslateService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,10 +15,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("ap1/v1/translate")
 @RequiredArgsConstructor
 public class TranslateController {
-    private final TranslateService translateService;
-    @PostMapping("")
-    public ResponseEntity<?> translate(@RequestBody TranslateRequestDto requestDto){
-        TranslateResponseDto responseDto = translateService.translate(requestDto);
+    private final LiberTranslateService liberTranslateService;
+    private final GeminiTranslateService geminiTranslateService;
+
+    /*
+    번역의 기본값은 LiberTranslate을 이용합니다.
+     */
+    @PostMapping("/basic")
+    public ResponseEntity<TranslateResponseDto> translateBasic(@RequestBody TranslateRequestDto requestDto){
+        TranslateResponseDto responseDto = liberTranslateService.translate(requestDto);
         return ResponseEntity.ok(responseDto);
     }
+    @PostMapping("/specific")
+    public ResponseEntity<TranslateResponseDto> translateSpecific(@RequestBody TranslateRequestDto requestDto){
+        TranslateResponseDto responseDto = geminiTranslateService.translate(requestDto);
+        return ResponseEntity.ok(responseDto);
+    }
+
 }
