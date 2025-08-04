@@ -7,6 +7,7 @@ import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
+import org.example.howareyou.domain.member.entity.Category;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.example.howareyou.domain.member.redis.MemberCache;
@@ -17,6 +18,9 @@ import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 
 @Service
@@ -121,6 +125,27 @@ public class MemberServiceImpl implements MemberService {
         cacheSvc.delete(id);
     }
 
+    /* ---------- Related Users (같은 카테고리 사용자) ---------- */
+
+    @Override
+    public List<MemberProfile> findOthersWithSameCategories(Long requesterId) {
+        Member me = fetchMember(requesterId);
+        MemberProfile myProfile = me.getProfile();
+        if (myProfile == null) {
+            throw new CustomException(ErrorCode.MEMBER_NOT_FOUND); // 필요 시 정의
+        }
+
+        // 예: 관심사(카테고리)를 기준으로 다른 사용자 찾기
+        Set<Category> interests = myProfile.getInterests(); // List<String> 이라고 가정
+        List<Member> members =   memberRepo.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
+        return members.stream()
+                .map(Member::getProfile)
+                .filter(MemberProfile::isCompleted)
+                .toList();
+
+
+    }
+
     /* ---------- util ---------- */
 
     private Member fetchMember(Long id) {
@@ -132,4 +157,5 @@ public class MemberServiceImpl implements MemberService {
         return memberRepo.findByMembername(membername)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
     }
+
 }

@@ -5,7 +5,9 @@ import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
+import org.example.howareyou.domain.member.entity.MemberProfile;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface MemberService {
@@ -25,4 +27,6 @@ public interface MemberService {
 
     /* 계정 */
     void deleteAccount(Long id);
+
+    List<MemberProfile> findOthersWithSameCategories(Long requesterId);
 }

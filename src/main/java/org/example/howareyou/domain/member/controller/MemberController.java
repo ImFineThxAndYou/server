@@ -16,6 +16,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
 @Tag(name = "회원 관리", description = "사용자 계정 및 프로필 관련 API")
 @RestController
 @RequiredArgsConstructor
@@ -92,5 +95,14 @@ public class MemberController {
             @Valid @RequestBody MembernameRequest request) {
         return ResponseEntity.ok(memberService.setMembername(memberDetails.id(), request));
     }
+
+    @Operation(summary = "같은 카테고리를 가진 다른 유저 조회 ", description = "현재 사용자와 같은 카테고리를 가진 유저 목록을 반환합니다.")
+    @GetMapping("/me/peers")
+    public ResponseEntity<List<ProfileResponse>> getPeers(
+            @AuthenticationPrincipal CustomMemberDetails memberDetails){
+
+        return ResponseEntity.ok().build();
+    }
+
 
 }
