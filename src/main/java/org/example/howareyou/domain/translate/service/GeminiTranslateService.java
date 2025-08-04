@@ -6,7 +6,6 @@ import org.example.howareyou.domain.translate.dto.TranslateRequestDto;
 import org.example.howareyou.domain.translate.dto.TranslateResponseDto;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
-import org.example.howareyou.global.exception.GlobalExceptionHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class GeminiTranslateService {
 
-    private final GlobalExceptionHandler globalExceptionHandler;
     @Value("${gemini.base-url}")
     private String baseUrl; // 예: https://generativelanguage.googleapis.com/v1
 
@@ -69,14 +67,13 @@ public class GeminiTranslateService {
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
 
-        String translatedText = null;
+        String translatedText;
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
             translatedText = parseResponse(response);
         } catch (Exception e) {
             log.error("Gemini API 호출 실패", e);
-            translatedText = "번역 서비스를 사용할 수 없습니다.";
             throw new CustomException(ErrorCode.GM_SERVICE_UNAVAILABLE);
         }
         //불필요한 정보, 탈출 문자 제거
@@ -117,7 +114,7 @@ public class GeminiTranslateService {
         }
         Map<String, Object> body = response.getBody();
         Optional<String> extracted = extractTranslatedText(body);
-        return extracted.orElseGet(() -> {
+        return extracted.orElseThrow(() -> {
             throw new CustomException(ErrorCode.GM_PARSE_FAILURE);
         });
     }
@@ -174,8 +171,7 @@ public class GeminiTranslateService {
                 }
             }
         }
-
-        return Optional.empty();
+        throw new  CustomException(ErrorCode.GM_UNKNOWN);
     }
 
     /**
