@@ -46,6 +46,9 @@ public class SecurityConfig {
                         // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
 
+                        // ✅ CSV 업로드 API 허용
+                        .requestMatchers("/upload-csv").permitAll()
+
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
