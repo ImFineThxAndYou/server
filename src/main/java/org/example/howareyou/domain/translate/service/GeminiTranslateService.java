@@ -37,8 +37,8 @@ public class GeminiTranslateService {
     private final RestTemplate restTemplate;
 
     /**
-     * 번역 기능을 담당하는 메인 메소드 입니다.
-     * @param   requestDto  text,source_language,target_language가 포함되어입니다.
+     * Gemini Api를 사용한 번역 기능을 담당하는 메인 메소드 입니다.
+     * @param   requestDto  text,source_language,target_language가 포함되어있습니다.
      * @return  responseDto  번연된 text가 리턴됩니다.
      */
     public TranslateResponseDto translate(TranslateRequestDto requestDto) {

@@ -23,6 +23,11 @@ public class LiberTranslateService {
     private String port;
 
     private final RestTemplate restTemplate;
+    /**
+    * NLP Server(LiberTranslate)를 사용한 번역 메인 로직입니다.
+     * @param   requestDto  text,source_language,target_language가 포함되어있습니다.
+     * @return  responseDto  번역된 text가 리턴됩니다.
+     */
     public TranslateResponseDto translate(TranslateRequestDto requestDto){
         //request url 설정 (LiberTranslate endpoint)
         String url = "http://" + host + ":" + port+"/translate";
