@@ -14,15 +14,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Gemini API를 사용해 텍스트 번역(예: 영어 ↔ 한국어)을 수행하는 서비스.
- * <p>
- * 현재 기본 모델은 configuration 상의 {@code gemini.model}을 사용하며,
- * 그에 따라 적절한 suffix (:generateText 또는 :generateContent)를 자동 결정해 호출한다.
+ * 간소화된 Gemini 번역 서비스.
+ * - 강력한 context(prompt)만 넣고, 응답 튜닝 로직은 제거.
+ * - 가능한 가장 직접적인 번역 문자열을 그대로 반환하되, 앞뒤 공백/따옴표만 정리.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,10 +26,10 @@ import java.util.regex.Pattern;
 public class GeminiTranslateService {
 
     @Value("${gemini.base-url}")
-    private String baseUrl; // 예: https://generativelanguage.googleapis.com/v1
+    private String baseUrl;
 
     @Value("${gemini.model}")
-    private String model; // ex: "gemini-1.5" 또는 "gemini-2.5-flash"
+    private String model; // ex: "gemini-1.5" or "gemini-2.5-flash"
 
     @Value("${gemini.api-key}")
     private String apiKey;
@@ -41,112 +37,122 @@ public class GeminiTranslateService {
     private final RestTemplate restTemplate;
 
     /**
-     * Gemini API를 호출해 번역 결과를 반환한다.
-     *
-     * @param requestDto 원문, 소스/타겟 언어 정보
-     * @return 번역된 텍스트를 담은 DTO
+     * 번역 기능을 담당하는 메인 메소드 입니다.
+     * @param   requestDto  text,source_language,target_language가 포함되어입니다.
+     * @return  responseDto  번연된 text가 리턴됩니다.
      */
     public TranslateResponseDto translate(TranslateRequestDto requestDto) {
         String q = requestDto.getQ();
         String source = requestDto.getSource();
         String target = requestDto.getTarget();
 
-        // 모델이 무엇인지에 따라 적절한 액션 suffix 결정
-        String actionSuffix = model.contains("flash") ? ":generateContent" : ":generateText";
-        String endpoint = String.format("%s/models/%s%s", baseUrl, model, actionSuffix);
+        // 엔드포인트 결정 (flash 모델은 generateContent, 아니면 generateText)
+        String action = model.toLowerCase().contains("flash") ? ":generateContent" : ":generateText";
+        String endpoint = String.format("%s/models/%s%s", baseUrl, model, action);
         String url = UriComponentsBuilder.fromHttpUrl(endpoint).toUriString();
 
-        // 문맥을 모델에게 전달 (번역 의도 명시)
-        String context = String.format("Translate \"%s\" from %s to %s, en is english and ko is korean.", q, source, target);
+        // 강력한 프롬프트 생성
+        String prompt = buildPrompt(source, target, q);
 
-        log.info("Gemini API 호출 시작. model={}, url={}, context={}", model, url, context);
+        log.info("Gemini API 호출. model={}, url={}", model, url);
 
-        // 요청 페이로드 / 헤더 구성
-        Map<String, Object> payload = buildPayload(context);
-        HttpHeaders headers = buildHeaders();
-
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-
-        String translatedText;
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
-            translatedText = parseResponse(response);
-        } catch (Exception e) {
-            log.error("Gemini API 호출 실패", e);
-            throw new CustomException(ErrorCode.GM_SERVICE_UNAVAILABLE);
-        }
-        //불필요한 정보, 탈출 문자 제거
-        translatedText = cleanTranslation(translatedText);
-
-        log.info("Gemini API 호출 완료, translatedText={}", translatedText);
-        TranslateResponseDto responseDto = new TranslateResponseDto();
-        responseDto.setTranslatedText(translatedText);
-        return responseDto;
-    }
-
-    /**
-     * Gemini가 기대하는 구조로 요청 body를 만든다.
-     */
-    private Map<String, Object> buildPayload(String context) {
-        Map<String, Object> part = Map.of("text", context);
+        // 요청 구성
+        Map<String, Object> part = Map.of("text", prompt);
         Map<String, Object> content = Map.of("parts", List.of(part));
-        return Map.of("contents", List.of(content));
-    }
+        Map<String, Object> payload = Map.of("contents", List.of(content));
 
-    /**
-     * 요청 헤더를 구성. API 키는 헤더 방식으로 전달한다.
-     */
-    private HttpHeaders buildHeaders() {
+        //header 구성
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Goog-Api-Key", apiKey);
-        return headers;
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+
+        String translated;
+        try {
+            //restTemplate을 사용한 요청
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
+            translated = extractSimpleTranslation(response);
+        } catch (Exception e) {
+            log.error("Gemini 호출 실패", e);
+            throw new CustomException(ErrorCode.GM_SERVICE_UNAVAILABLE);
+        }
+
+        // 기본 정리: 따옴표 제거, 트림
+        translated = cleanBasic(translated);
+
+        TranslateResponseDto dto = new TranslateResponseDto();
+        dto.setTranslatedText(translated);
+        return dto;
     }
 
     /**
-     * Gemini 응답을 파싱하여 최종 번역 텍스트(가장 위의 후보)를 추출.
+    * 강력한 프롬포트를 생성합나다.
+    * @param sourceLang :   입력으로 들어온 text의 언어 입니다.
+    * @param targetLang     출력하고 하는 text의 언어 입니다.
+    * @param text           입력으로 들어오는 문자열입니다.
+    * @return prompt        강력한 프롬포트를 리턴합니다.
+    */
+    private String buildPrompt(String sourceLang, String targetLang, String text) {
+        return String.join("\n",
+                String.format("You are a translation assistant. Translate each line from %s to %s.", capitalize(sourceLang), capitalize(targetLang)),
+                "Output one translated line per input line, in the same order.",
+                "Do NOT add explanations, comments, examples, transliterations, or extra sentences.",
+                "Only output the translation text. Nothing else.",
+                String.format("Text:\n\"\"\"\n%s\n\"\"\"", escapeTripleQuotes(text))
+        );
+    }
+    /**
+     * 첫 글자만 대문자로 바꾸고 나머지는 소문자로 만들어서 깔끔한 형태로 정렬합니다.
+     * @param s 입력 string
+     * @return s 첫 글자만 대문자이고 나머지는 모두 소문자인 string으로 반환됩니다.
+     */
+    private String capitalize(String s) {
+        if (s == null || s.isBlank()) return s;
+        String lower = s.toLowerCase();
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+    /**
+     * 불 필요한 문자들을 제거 합니다. ex) / \ | ""...
+     * @param s 입력 문자열 입니다.
+     * @return s 불 필요한 문자들을 제거한 문자열이 반환됩니다.
+     */
+    private String escapeTripleQuotes(String s) {
+        if (s == null) return "";
+        return s.replace("\"\"\"", "\\\\\"\\\\\"\\\\\"");
+    }
+    /**
+     * Gemini Api 응답에서 필요한 text를 추출합니다.
+     * @param response Gemini Api Response
+     * @return target language로 변환된 text
      */
     @SuppressWarnings("unchecked")
-    private String parseResponse(ResponseEntity<Map> response) {
+    private String extractSimpleTranslation(ResponseEntity<Map> response) {
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             throw new CustomException(ErrorCode.GM_PARSE_FAILURE);
         }
         Map<String, Object> body = response.getBody();
-        Optional<String> extracted = extractTranslatedText(body);
-        return extracted.orElseThrow(() -> {
-            throw new CustomException(ErrorCode.GM_PARSE_FAILURE);
-        });
-    }
 
-    /**
-     * 가능한 응답 구조들 중에서 가장 상단의 번역 결과(우선순위: 리스트 첫 항목 강조된 문장 > 강조된 문장 > 첫 문장)를 추출.
-     */
-    private Optional<String> extractTranslatedText(Map<String, Object> body) {
-        // 1. candidates -> content.parts[0].text
+        // 1. candidates[0].content.parts[0].text
         if (body.get("candidates") instanceof List<?> candidatesList && !candidatesList.isEmpty()) {
             Object firstCandidate = candidatesList.get(0);
             if (firstCandidate instanceof Map<?, ?> candMap) {
-                // nested content.parts[0].text
-                Object contentObj = candMap.get("content");
-                if (contentObj instanceof Map<?, ?> contentMap) {
-                    Object partsObj = contentMap.get("parts");
-                    if (partsObj instanceof List<?> partsList && !partsList.isEmpty()) {
+                Object content = ((Map<?, ?>) candMap).get("content");
+                if (content instanceof Map<?, ?> contentMap) {
+                    Object parts = contentMap.get("parts");
+                    if (parts instanceof List<?> partsList && !partsList.isEmpty()) {
                         Object firstPart = partsList.get(0);
                         if (firstPart instanceof Map<?, ?> partMap) {
                             Object textObj = partMap.get("text");
-                            if (textObj instanceof String rawText) {
-                                return Optional.of(extractTopChoice(rawText));
+                            if (textObj instanceof String s) {
+                                return s;
                             }
                         }
                     }
                 }
-
-                // fallback: candidates[0].output
-                Object outputObj = candMap.get("output");
-                if (outputObj instanceof String out) {
-                    return Optional.of(out);
-                }
+                // fallback output
+                Object outputObj = ((Map<?, ?>) firstCandidate).get("output");
+                if (outputObj instanceof String s) return s;
             }
         }
 
@@ -154,10 +160,8 @@ public class GeminiTranslateService {
         if (body.get("outputs") instanceof List<?> outputsList && !outputsList.isEmpty()) {
             Object first = outputsList.get(0);
             if (first instanceof Map<?, ?> outMap) {
-                Object content = outMap.get("content");
-                if (content instanceof String s) {
-                    return Optional.of(s);
-                }
+                Object content = ((Map<?, ?>) outMap).get("content");
+                if (content instanceof String s) return s;
             }
         }
 
@@ -165,85 +169,23 @@ public class GeminiTranslateService {
         if (body.get("choices") instanceof List<?> choicesList && !choicesList.isEmpty()) {
             Object first = choicesList.get(0);
             if (first instanceof Map<?, ?> choiceMap) {
-                Object text = choiceMap.get("text");
-                if (text instanceof String s) {
-                    return Optional.of(s);
-                }
-            }
-        }
-        throw new  CustomException(ErrorCode.GM_UNKNOWN);
-    }
-
-    /**
-     * rawText에서 가장 위에 있는 번역 후보만 골라낸다.
-     * 우선순위:
-     * 1) 첫 번째 리스트 항목의 **강조된** 문장
-     * 2) 첫 번째 리스트 항목 전체 (마크다운 제거)
-     * 3) 전체에서 강조된 문장
-     * 4) 첫 문장
-     */
-    private String extractTopChoice(String rawText) {
-        if (rawText == null || rawText.isBlank()) return "";
-
-        // 1. 리스트 항목 줄 탐색 ('*' 또는 '-'로 시작)
-        String[] lines = rawText.split("\\r?\\n");
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.startsWith("*") || trimmed.startsWith("-")) {
-                // 강조된 부분 우선
-                Matcher boldMatcher = Pattern.compile("\\*\\*([^*]+)\\*\\*").matcher(trimmed);
-                if (boldMatcher.find()) {
-                    return boldMatcher.group(1).trim();
-                }
-                // 강조 없으면 리스트 텍스트 정제
-                String cleaned = trimmed.replaceAll("^\\*+\\s*", "")
-                        .replace("\\*\\*", "")
-                        .trim();
-                int parenIdx = cleaned.indexOf(" (");
-                if (parenIdx != -1) cleaned = cleaned.substring(0, parenIdx).trim();
-                return cleaned;
+                Object text = ((Map<?, ?>) choiceMap).get("text");
+                if (text instanceof String s) return s;
             }
         }
 
-        // 2. 전체 텍스트에서 강조된 부분
-        Matcher boldOnly = Pattern.compile("\\*\\*([^*]+)\\*\\*").matcher(rawText);
-        if (boldOnly.find()) {
-            return boldOnly.group(1).trim();
-        }
-
-        // 3. 첫 문장 (마침표 기준)
-        String[] sentences = rawText.split("\\.\\s+");
-        if (sentences.length > 0) {
-            String first = sentences[0].trim();
-            if (!first.endsWith(".")) first += ".";
-            return first;
-        }
-
-        // fallback
-        return rawText.trim();
+        // 마지막 fallback: 전체 body 문자열
+        return body.toString();
     }
-
-    /**
-     * Gemini 번역 결과에서:
-     * 1. 괄호와 그 안의 내용 제거 (예: "(annyeonghaseyo)")
-     * 2. 대시 이후 설명 제거 (예: " - ..." 또는 "— ...")
-     * 3. 중복 공백 정리, 끝의 마침표/줄임표 정리
+    /*
+    * 받은 문자열의 앞뒤 공백을 제거하고, 양끝에 감싸진 따옴표 (" 또는 “ ”)를 제거합니다.
      */
-    private String cleanTranslation(String raw) {
+    private String cleanBasic(String raw) {
         if (raw == null) return "";
-
-        // 1. 괄호 안 내용 제거
-        String s = raw.replaceAll("\\s*\\([^)]*\\)", "");
-
-        // 2. 대시 이후 설명 제거
-        s = s.split("\\s+[-–—]\\s+")[0];
-
-        // 3. 줄임표나 끝에 있는 마침표 제거 (필요하면)
-        s = s.replaceAll("[.。…]+$", "").trim();
-
-        // 4. 여러 공백 하나로
-        s = s.replaceAll("\\s{2,}", " ");
-
+        String s = raw.trim();
+        if ((s.startsWith("\"") && s.endsWith("\"")) || (s.startsWith("“") && s.endsWith("”"))) {
+            s = s.substring(1, s.length() - 1).trim();
+        }
         return s;
     }
 }
