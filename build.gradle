@@ -30,12 +30,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 
     // 🚀 Redis (동기식 Pub/Sub + 세션)
-//    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-//    implementation 'org.springframework.session:spring-session-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.session:spring-session-data-redis'
 
-//     🔐 Security + OAuth2//      implementation 'org.springframework.boot:spring-boot-starter-security'
-//      implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-//      implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+     //🔐 Security + OAuth2
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
     // 🧰 Lombok
     compileOnly 'org.projectlombok:lombok'
