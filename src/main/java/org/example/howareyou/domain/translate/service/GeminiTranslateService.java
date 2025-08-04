@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.translate.dto.TranslateRequestDto;
 import org.example.howareyou.domain.translate.dto.TranslateResponseDto;
+import org.example.howareyou.global.exception.CustomException;
+import org.example.howareyou.global.exception.ErrorCode;
+import org.example.howareyou.global.exception.GlobalExceptionHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class GeminiTranslateService {
 
+    private final GlobalExceptionHandler globalExceptionHandler;
     @Value("${gemini.base-url}")
     private String baseUrl; // 예: https://generativelanguage.googleapis.com/v1
 
@@ -65,7 +69,7 @@ public class GeminiTranslateService {
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
 
-        String translatedText;
+        String translatedText = null;
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
@@ -73,9 +77,10 @@ public class GeminiTranslateService {
         } catch (Exception e) {
             log.error("Gemini API 호출 실패", e);
             translatedText = "번역 서비스를 사용할 수 없습니다.";
+            throw new CustomException(ErrorCode.GM_SERVICE_UNAVAILABLE);
         }
-        //불필요한 escape 문자 처리
-        translatedText = stripEscapedQuotes(translatedText);
+        //불필요한 정보, 탈출 문자 제거
+        translatedText = cleanTranslation(translatedText);
 
         log.info("Gemini API 호출 완료, translatedText={}", translatedText);
         TranslateResponseDto responseDto = new TranslateResponseDto();
@@ -108,16 +113,12 @@ public class GeminiTranslateService {
     @SuppressWarnings("unchecked")
     private String parseResponse(ResponseEntity<Map> response) {
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            log.error("Gemini 호출 비정상 상태: status={}, body={}",
-                    response.getStatusCode(), response.getBody());
-            return "번역 서비스를 사용할 수 없습니다.";
+            throw new CustomException(ErrorCode.GM_PARSE_FAILURE);
         }
-
         Map<String, Object> body = response.getBody();
         Optional<String> extracted = extractTranslatedText(body);
         return extracted.orElseGet(() -> {
-            log.warn("Gemini 응답에서 기대한 필드 없음, 전체 응답: {}", body);
-            return "번역 결과를 파싱할 수 없습니다.";
+            throw new CustomException(ErrorCode.GM_PARSE_FAILURE);
         });
     }
 
@@ -180,10 +181,10 @@ public class GeminiTranslateService {
     /**
      * rawText에서 가장 위에 있는 번역 후보만 골라낸다.
      * 우선순위:
-     *  1) 첫 번째 리스트 항목의 **강조된** 문장
-     *  2) 첫 번째 리스트 항목 전체 (마크다운 제거)
-     *  3) 전체에서 강조된 문장
-     *  4) 첫 문장
+     * 1) 첫 번째 리스트 항목의 **강조된** 문장
+     * 2) 첫 번째 리스트 항목 전체 (마크다운 제거)
+     * 3) 전체에서 강조된 문장
+     * 4) 첫 문장
      */
     private String extractTopChoice(String rawText) {
         if (rawText == null || rawText.isBlank()) return "";
@@ -225,23 +226,28 @@ public class GeminiTranslateService {
         // fallback
         return rawText.trim();
     }
+
     /**
-     * 앞뒤에 붙은 이스케이프된 큰따옴표 \" 를 제거하고,
-     * 필요하면 일반 큰따옴표도 같이 제거한다.
+     * Gemini 번역 결과에서:
+     * 1. 괄호와 그 안의 내용 제거 (예: "(annyeonghaseyo)")
+     * 2. 대시 이후 설명 제거 (예: " - ..." 또는 "— ...")
+     * 3. 중복 공백 정리, 끝의 마침표/줄임표 정리
      */
-    private String stripEscapedQuotes(String raw) {
+    private String cleanTranslation(String raw) {
         if (raw == null) return "";
 
-        // 1. 이스케이프된 따옴표 \" 을 그냥 따옴표로 바꾸거나 제거
-        String s = raw.replace("\\\\\\\"", "\""); // \" -> "
+        // 1. 괄호 안 내용 제거
+        String s = raw.replaceAll("\\s*\\([^)]*\\)", "");
 
-        // 2. 남은 큰따옴표는 다 제거
-        s = s.replace("\"", "");
+        // 2. 대시 이후 설명 제거
+        s = s.split("\\s+[-–—]\\s+")[0];
 
-        // 3. 슬래시 앞뒤 공백 정리 (일관되게 " / ")
-        s = s.replaceAll("\\s*/\\s*", " / ");
+        // 3. 줄임표나 끝에 있는 마침표 제거 (필요하면)
+        s = s.replaceAll("[.。…]+$", "").trim();
 
-        // 4. 트림
-        return s.trim();
+        // 4. 여러 공백 하나로
+        s = s.replaceAll("\\s{2,}", " ");
+
+        return s;
     }
 }
