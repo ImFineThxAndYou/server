@@ -38,6 +38,15 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
 
+libretranslate:
+  host: ${LIBER_HOST}
+  port: ${LIBER_PORT}
+
+gemini:
+  base-url: https://generativelanguage.googleapis.com/v1
+  model: gemini-2.0-flash  # 무료/기본 모델, 필요에 따라 변경
+  api-key: ${GEMINI_API_KEY}  # .env나 환경변수로 실제 키 주입
+  timeout-seconds: 10
 
 springdoc:
   api-docs:
