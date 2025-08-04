@@ -24,7 +24,7 @@ public class LiberTranslateService {
 
     private final RestTemplate restTemplate;
     /**
-    * NLP Server(LiberTranslate)를 사용한 번역 메인 로직입니다.
+    * NLP Server(LiberTranslate)를 사용한 번역 메인 메소드입니다.
      * @param   requestDto  text,source_language,target_language가 포함되어있습니다.
      * @return  responseDto  번역된 text가 리턴됩니다.
      */
