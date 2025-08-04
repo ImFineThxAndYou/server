@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -19,12 +20,12 @@ public class JwtTokenProvider {
     private String secret;
 
     // 액세스 토큰: 10분, 리프레시 토큰: 14일
-    private static final long ACCESS_EXP = 1_000 * 60 * 10; //10분
-    private static final long REFRESH_EXP = 1_000L * 60 * 60 * 24 * 14; //14일
+    private static final long ACCESS_EXP_MS = 1_000 * 60 * 10; // 10분
+    private static final long REFRESH_EXP_MS = 1_000L * 60 * 60 * 24 * 14; // 14일
 
 
-    public String access (String sub){return build(sub,ACCESS_EXP);}
-    public String refresh(String sub){return build(sub,REFRESH_EXP);}
+    public String access(String sub) { return build(sub, ACCESS_EXP_MS); }
+    public String refresh(String sub) { return build(sub, REFRESH_EXP_MS); }
     /**
      * 시크릿 문자열을 기반으로 서명 검증에 사용할 HMAC SHA256 키를 생성합니다.
      */
@@ -32,12 +33,13 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String build(String sub,long exp){
+    private String build(String sub, long expMs) {
         return Jwts.builder()
                 .setSubject(sub)
                 .setId(UUID.randomUUID().toString())
-                .setExpiration(new Date(System.currentTimeMillis()+exp))
-                .signWith(key(),SignatureAlgorithm.HS256).compact();
+                .setExpiration(Date.from(Instant.now().plusMillis(expMs)))
+                .signWith(key(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     /**
@@ -72,7 +74,7 @@ public class JwtTokenProvider {
      * @return 생성된 Access Token
      */
     public String createAccessToken(String userId) {
-        return build(userId, ACCESS_EXP);
+        return build(userId, ACCESS_EXP_MS);
     }
 
     /**
@@ -80,7 +82,7 @@ public class JwtTokenProvider {
      * @return 생성된 Refresh Token
      */
     public String createRefreshToken() {
-        return build(UUID.randomUUID().toString(), REFRESH_EXP);
+        return build(UUID.randomUUID().toString(), REFRESH_EXP_MS);
     }
 
     /**
@@ -96,6 +98,6 @@ public class JwtTokenProvider {
     }
 
     public long getRefreshTokenExpirationTime() {
-        return REFRESH_EXP;
+        return REFRESH_EXP_MS;
     }
 }

@@ -3,7 +3,7 @@ package org.example.howareyou.global.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -21,14 +21,14 @@ public abstract class BaseEntity {
     private Long id;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;       // 최초 생성 시각
+    private Instant createdAt;       // 최초 생성 시각 (UTC)
 
-    private LocalDateTime updatedAt;       // 마지막 수정 시각
+    private Instant updatedAt;       // 마지막 수정 시각 (UTC)
 
     /** INSERT 직전에 호출 */
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -36,6 +36,6 @@ public abstract class BaseEntity {
     /** UPDATE 직전에 호출 */
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

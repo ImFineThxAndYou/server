@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -57,7 +58,7 @@ public class AuthService {
         String refreshToken = jwtTokenProvider.createRefreshToken();
         
         // 4. 리프레시 토큰 저장
-        LocalDateTime refreshTokenExpiry = LocalDateTime.now()
+        Instant refreshTokenExpiry = Instant.now()
                 .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
         auth.setRefreshToken(refreshToken, refreshTokenExpiry);
         
@@ -83,7 +84,7 @@ public class AuthService {
         String refreshToken = jwtTokenProvider.createRefreshToken();
         
         // 3. 리프레시 토큰 갱신
-        LocalDateTime refreshTokenExpiry = LocalDateTime.now()
+        Instant refreshTokenExpiry = Instant.now()
                 .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
         auth.setRefreshToken(refreshToken, refreshTokenExpiry);
         

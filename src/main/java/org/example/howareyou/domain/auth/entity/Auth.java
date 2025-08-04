@@ -5,7 +5,7 @@ import lombok.*;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.global.entity.BaseEntity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 인증 정보를 저장하는 엔티티
@@ -46,11 +46,11 @@ public class Auth extends BaseEntity {
 
     // 리프레시 토큰 만료 시간
     @Column(name = "refresh_token_expiry")
-    private LocalDateTime refreshTokenExpiry;
+    private Instant refreshTokenExpiry;
 
-    // 마지막 로그인 시간
+    // 마지막 로그인 시간 (UTC)
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    private Instant lastLoginAt;
 
     // 연관된 회원
     @OneToOne(fetch = FetchType.LAZY)
@@ -80,10 +80,10 @@ public class Auth extends BaseEntity {
     /**
      * 리프레시 토큰을 설정합니다.
      */
-    public void setRefreshToken(String refreshToken, LocalDateTime expiry) {
+    public void setRefreshToken(String refreshToken, Instant expiry) {
         this.refreshToken = refreshToken;
         this.refreshTokenExpiry = expiry;
-        this.lastLoginAt = LocalDateTime.now();
+        this.lastLoginAt = Instant.now();
     }
 
     /**
@@ -101,7 +101,7 @@ public class Auth extends BaseEntity {
         return this.refreshToken != null && 
                this.refreshToken.equals(token) && 
                this.refreshTokenExpiry != null && 
-               this.refreshTokenExpiry.isAfter(LocalDateTime.now());
+               this.refreshTokenExpiry.isAfter(Instant.now());
     }
 
     // == 연관관계 편의 메서드 == //
@@ -110,6 +110,6 @@ public class Auth extends BaseEntity {
     }
 
     public void updateLastLoginInfo(String loginIp) {
-        this.lastLoginAt = LocalDateTime.now();
+        this.lastLoginAt = Instant.now();
     }
 }

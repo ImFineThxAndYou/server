@@ -5,7 +5,7 @@ import lombok.Getter;
 import org.example.howareyou.domain.member.entity.Member;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -18,7 +18,7 @@ public class MemberCache implements Serializable {
     private String        nickname;
     private String        avatarUrl;
     private boolean       online;
-    private LocalDateTime lastActiveAt;
+    private Instant lastActiveAt;
     private boolean       profileCompleted;
 
     /* ---------- Factory ---------- */
@@ -31,7 +31,7 @@ public class MemberCache implements Serializable {
                 .nickname(m.getProfile() != null ? m.getProfile().getNickname() : null)
                 .avatarUrl(m.getProfile() != null ? m.getProfile().getAvatarUrl() : null)
                 .online(true)
-                .lastActiveAt(LocalDateTime.now())
+                .lastActiveAt(Instant.now())
                 .profileCompleted(m.isProfileCompleted())
                 .build();
     }
@@ -41,7 +41,7 @@ public class MemberCache implements Serializable {
     public MemberCache updateAsActive() {
         return this.toBuilder()
                 .online(true)
-                .lastActiveAt(LocalDateTime.now())
+                .lastActiveAt(Instant.now())
                 .build();
     }
 

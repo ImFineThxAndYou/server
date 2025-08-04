@@ -7,8 +7,8 @@ import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Set;
 
@@ -45,7 +45,7 @@ public class Member extends BaseEntity {
 
 
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;   // 마지막 로그인 시간
+    private Instant lastLoginAt;   // 마지막 로그인 시간 (UTC)
 
     /* ==================== 프로필 연관 ==================== */
 
@@ -129,8 +129,8 @@ public class Member extends BaseEntity {
         if (this.profile != null) this.profile.clearPersonalInfo();
     }
 
-    /** 마지막 로그인 시각 갱신 */
-    public void updateLastLogin() { this.lastLoginAt = LocalDateTime.now(); }
+    /** 마지막 로그인 시각 갱신 (UTC) */
+    public void updateLastLogin() { this.lastLoginAt = Instant.now(); }
 
     /* ==================== equals & hashCode ==================== */
 
