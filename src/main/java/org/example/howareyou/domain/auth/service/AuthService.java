@@ -1,0 +1,225 @@
+package org.example.howareyou.domain.auth.service;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.auth.dto.TokenBundle;
+import org.example.howareyou.domain.auth.entity.Auth;
+import org.example.howareyou.domain.auth.entity.Provider;
+import org.example.howareyou.domain.auth.repository.AuthRepository;
+import org.example.howareyou.domain.member.redis.MemberCache;
+import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.domain.member.redis.MemberCacheService;
+import org.example.howareyou.global.exception.CustomException;
+import org.example.howareyou.global.exception.ErrorCode;
+import org.example.howareyou.global.security.jwt.JwtTokenProvider;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+
+/**
+ * 인증 관련 서비스
+ * - 로그인/로그아웃 처리
+ * - 토큰 재발급
+ * - 인증 정보 관리
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AuthService {
+
+    private final AuthRepository authRepository;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final MemberCacheService memberCacheService;
+    private final PasswordEncoder passwordEncoder;
+
+    /**
+     * 이메일/비밀번호 로그인 처리
+     */
+    @Transactional
+    public TokenBundle login(String email, String password, HttpServletRequest request) {
+        // 1. 사용자 인증
+        Auth auth = authRepository.findByEmailAndProvider(email, Provider.LOCAL)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_BAD_CREDENTIAL));
+        
+        // 2. 비밀번호 검증
+        if (!passwordEncoder.matches(password, auth.getPasswordHash())) {
+            throw new CustomException(ErrorCode.AUTH_BAD_CREDENTIAL);
+        }
+
+        // 3. 토큰 생성 및 사용자 캐싱
+        String userId = auth.getMember().getId().toString();
+        String accessToken = jwtTokenProvider.createAccessToken(userId);
+        String refreshToken = jwtTokenProvider.createRefreshToken();
+        
+        // 4. 리프레시 토큰 저장
+        Instant refreshTokenExpiry = Instant.now()
+                .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
+        auth.setRefreshToken(refreshToken, refreshTokenExpiry);
+        
+        // 5. 사용자 정보 캐싱 (온라인 상태 관리)
+        cacheUserInfo(auth);
+        
+        log.info("User logged in: {}", email);
+        return new TokenBundle(accessToken, refreshToken, auth.getMember().isProfileCompleted());
+    }
+    
+    /**
+     * 소셜 로그인 처리
+     */
+    @Transactional
+    public TokenBundle socialLogin(Provider provider, String email, String providerUserId, HttpServletRequest request) {
+        // 1. 소셜 계정으로 인증 정보 조회
+        Auth auth = authRepository.findByProviderAndProviderUserId(provider, providerUserId)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_SOCIAL_ACCOUNT_NOT_FOUND));
+        
+        // 2. 토큰 생성
+        String userId = auth.getMember().getId().toString();
+        String accessToken = jwtTokenProvider.createAccessToken(userId);
+        String refreshToken = jwtTokenProvider.createRefreshToken();
+        
+        // 3. 리프레시 토큰 갱신
+        Instant refreshTokenExpiry = Instant.now()
+                .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
+        auth.setRefreshToken(refreshToken, refreshTokenExpiry);
+        
+        // 4. 사용자 정보 캐싱 (온라인 상태 관리)
+        cacheUserInfo(auth);
+        
+        log.info("Social login successful: {} - {}", provider, email);
+        return new TokenBundle(accessToken, refreshToken, auth.getMember().isProfileCompleted());
+    }
+    
+    /**
+     * 로그아웃 처리
+     */
+    @Transactional
+    public void logout(Long memberId) {
+        // 1. 인증 정보에서 리프레시 토큰 제거
+        authRepository.findByMemberId(memberId).ifPresent(auth -> {
+            auth.invalidateRefreshToken();
+            // 2. Redis에서 사용자 캐시 제거 (오프라인 상태로 변경)
+            memberCacheService.delete(memberId);
+            log.info("User logged out: {}", memberId);
+        });
+    }
+    
+    /**
+     * 액세스 토큰 재발급
+     */
+    @Transactional
+    public TokenBundle refreshToken(String refreshToken) {
+        // 1. 리프레시 토큰으로 인증 정보 조회
+        Auth auth = authRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN));
+        
+        // 2. 리프레시 토큰 유효성 검사
+        if (!auth.isRefreshTokenValid(refreshToken)) {
+            throw new CustomException(ErrorCode.AUTH_EXPIRED_REFRESH_TOKEN);
+        }
+        
+        // 3. 새로운 액세스 토큰 발급
+        String userId = auth.getMember().getId().toString();
+        String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+        
+        log.info("Access token refreshed for user: {}", userId);
+        return new TokenBundle(newAccessToken, refreshToken, auth.getMember().isProfileCompleted());
+    }
+    
+    /**
+     * 사용자 정보를 Redis에 캐싱 (온라인 상태 관리)
+     */
+    private void cacheUserInfo(Auth auth) {
+        MemberCache memberCache = MemberCache.builder()
+                .id(auth.getMember().getId().toString())
+                .email(auth.getEmail())
+                .nickname(auth.getMember().getProfile().getNickname())
+                .avatarUrl(auth.getMember().getProfile().getAvatarUrl())
+                .build();
+        
+        memberCacheService.cacheMember(memberCache);
+    }
+
+    /**
+     * Access Token 갱신
+     * @param refreshToken 클라이언트가 보낸 Refresh Token
+     * @return 새로운 Access Token
+     */
+    public String refresh(String refreshToken) {
+        // 1. Refresh Token 유효성 검증
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+        }
+
+        // 2. Refresh Token에서 사용자 ID 추출
+        String userId;
+
+        try {
+            userId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+        }
+
+        // 3. 사용자 조회 및 Refresh Token 검증
+        Auth auth = authRepository.findByMemberId(Long.parseLong(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (!auth.isRefreshTokenValid(refreshToken)) {
+            // 유효하지 않은 토큰이면 무효화
+            auth.invalidateRefreshToken();
+            authRepository.save(auth);
+            throw new CustomException(ErrorCode.AUTH_EXPIRED_REFRESH_TOKEN);
+        }
+
+        // 4. 새로운 Access Token 발급
+        return jwtTokenProvider.createAccessToken(userId);
+    }
+
+    /**
+     * 로그아웃 처리
+     * @param refreshToken 클라이언트의 Refresh Token
+     */
+    /**
+     * Refresh Token을 사용한 로그아웃 처리
+     * @param refreshToken 클라이언트의 Refresh Token
+     */
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            log.warn("Logout attempt with empty refresh token");
+            return;
+        }
+
+        try {
+            // 1. Refresh Token에서 사용자 ID 추출
+            String userId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
+            
+            // 2. 사용자 조회 및 Refresh Token 무효화
+            authRepository.findByMemberId(Long.parseLong(userId)).ifPresent(auth -> {
+                // 3. 저장된 Refresh Token과 일치하는지 확인
+                if (refreshToken.equals(auth.getRefreshToken())) {
+                    // 4. Refresh Token 무효화
+                    auth.invalidateRefreshToken();
+                    authRepository.save(auth);
+                    
+                    // 5. 사용자 캐시에서 제거 (오프라인 상태로 변경)
+                    Member member = auth.getMember();
+                    if (member != null) {
+                        memberCacheService.delete(member.getId());
+                        log.info("User logged out successfully: {}", member.getId());
+                    }
+                } else {
+                    log.warn("Invalid refresh token provided for user: {}", userId);
+                }
+            });
+        } catch (Exception e) {
+            // 토큰 파싱 실패 시 로깅만 하고 종료 (이미 무효화된 토큰)
+            log.warn("Error during logout: {}", e.getMessage());
+        }
+    }
+}

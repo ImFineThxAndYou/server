@@ -53,7 +53,18 @@ springdoc:
     path: /v3/api-docs            # ✏️ JSON 스펙 엔드포인트
   swagger-ui:
     path: /swagger-ui.html        # ✏️ UI 진입점
-    operations-sorter: method     # 메서드명 순 정렬(GET, POST…)
-    tags-sorter: alpha            # 태그 알파벳 정렬
+    operations-sorter: method
+    tags-sorter: alpha
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
+
+
+jwt:
+  secret: ${JWT_SECRET}
+
+front:
+  url: ${FRONT_URL}
+
+logging:
+  level:
+    org.springframework.boot.context.config: DEBUG
