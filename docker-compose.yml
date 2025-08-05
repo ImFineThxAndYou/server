@@ -56,6 +56,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  spacy-api:
+    build:
+      context: ./spacy-api
+    container_name: spacy-api
+    restart: unless-stopped
+    volumes:
+      - ./spacy-api:/app
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
   mongodata:
