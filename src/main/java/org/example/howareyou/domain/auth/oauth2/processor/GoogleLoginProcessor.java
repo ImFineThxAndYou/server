@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -62,7 +63,7 @@ public class GoogleLoginProcessor implements OAuth2LoginProcessor {
         String userId = auth.getMember().getId().toString();
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String refreshToken = jwtTokenProvider.createRefreshToken();
-        LocalDateTime refreshTokenExpiry = LocalDateTime.now().plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
+        Instant refreshTokenExpiry = Instant.now().plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
 
         // 4. 리프레시 토큰 저장
         auth.setRefreshToken(refreshToken, refreshTokenExpiry);
@@ -106,7 +107,7 @@ public class GoogleLoginProcessor implements OAuth2LoginProcessor {
                 .providerUserId(providerUserId)
                 .email(email)
                 .member(savedMember)
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(Instant.now())
                 .build();
 
         return authRepository.save(auth);

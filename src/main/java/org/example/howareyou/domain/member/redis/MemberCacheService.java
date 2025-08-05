@@ -7,7 +7,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -52,7 +52,7 @@ public class MemberCacheService {
         return getCached(id).map(MemberCache::isOnline).orElse(false);
     }
 
-    public LocalDateTime getLastActiveAt(Long id) {
+    public Instant getLastActiveAt(Long id) {
         return getCached(id).map(MemberCache::getLastActiveAt).orElse(null);
     }
 
