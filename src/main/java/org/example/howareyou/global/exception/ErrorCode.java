@@ -1,7 +1,9 @@
 package org.example.howareyou.global.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public enum ErrorCode {
 
     /*──────────────────────── ErrorCode 작성 요령 ────────────────────────
@@ -53,11 +55,12 @@ public enum ErrorCode {
     /* ───────────[소셜 로그인]──────── */
     SOCIAL_AUTH_FAILED    (HttpStatus.UNAUTHORIZED,  "S001", "소셜 인증에 실패했습니다."),
     SOCIAL_EMAIL_REQUIRED (HttpStatus.BAD_REQUEST,   "S002", "이메일 제공에 동의해주세요."),
-    UNSUPPORTED_PROVIDER  (HttpStatus.BAD_REQUEST,   "S003", "지원하지 않는 OAuth2 공급자입니다.");
+    UNSUPPORTED_PROVIDER  (HttpStatus.BAD_REQUEST,   "S003", "지원하지 않는 OAuth2 공급자입니다."),
 
-    /* ───────────[유저]─────────── */
-    USER_NOT_FOUND       (HttpStatus.NOT_FOUND,   "U001", "해당 사용자를 찾을 수 없습니다."),
-    DUPLICATE_EMAIL      (HttpStatus.CONFLICT,    "U002", "이미 가입된 이메일입니다."),
+    /* ───────────[chat room]─────────── */
+    CHAT_ROOM_NOT_FOUND (HttpStatus.NOT_FOUND, "CR001", "채팅방을 찾을 수 없습니다."),
+    FORBIDDEN_CHAT_ROOM_ACCESS (HttpStatus.UNAUTHORIZED, "CR002", "채팅방 접근 권한이 없습니다."),
+    INVALID_CHAT_ROOM_UUID (HttpStatus.NOT_FOUND, "CR003", "기존 채팅방의 UUID가 유효하지 않습니다."),
 
     /* ───────────[LiberTranslate 서버/번역]─────────── */
     LT_CONNECTION_FAILURE(HttpStatus.BAD_GATEWAY, "LT001", "번역 서버와 연결할 수 없습니다."),
@@ -97,9 +100,10 @@ public enum ErrorCode {
     GM_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "GM016", "Gemini 사용량 쿼터를 초과했습니다."),
     GM_AUTH_HEADER_MISSING(HttpStatus.BAD_REQUEST, "GM017", "필수 인증 헤더가 누락되었습니다."),
     GM_UNKNOWN(HttpStatus.BAD_GATEWAY, "GM018", "알 수 없는 Gemini 처리 오류가 발생했습니다.");
-  
 
-    /* 필드 정의 */
+
+  /* Getter ― 럼북을 안 쓴 예시 */
+  /* 필드 정의 */
     private final HttpStatus status;  // HTTP 응답용 상태
     private final String     code;    // 서비스 고유 코드(문자/숫자 혼용 가능)
     private final String     message; // 기본 메시지(한국어 or 영어)
@@ -111,8 +115,4 @@ public enum ErrorCode {
         this.message = message;
     }
 
-    /* Getter ― 럼북을 안 쓴 예시 */
-    public HttpStatus getStatus() { return status; }
-    public String     getCode()   { return code;   }
-    public String     getMessage(){ return message;}
 }
