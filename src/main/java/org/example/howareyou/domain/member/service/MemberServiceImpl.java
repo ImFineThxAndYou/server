@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 
@@ -136,7 +135,7 @@ public class MemberServiceImpl implements MemberService {
         }
 
         // 예: 관심사(카테고리)를 기준으로 다른 사용자 찾기
-        Set<Category> interests = myProfile.getInterests(); // List<String> 이라고 가정
+        Set<Category> interests = myProfile.getInterests(); //
         List<Member> members =   memberRepo.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
         return members.stream()
                 .map(Member::getProfile)
