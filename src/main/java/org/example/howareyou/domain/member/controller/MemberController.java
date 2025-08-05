@@ -10,6 +10,7 @@ import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
+import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.http.MediaType;
@@ -98,10 +99,10 @@ public class MemberController {
 
     @Operation(summary = "같은 카테고리를 가진 다른 유저 조회 ", description = "현재 사용자와 같은 카테고리를 가진 유저 목록을 반환합니다.")
     @GetMapping("/me/peers")
-    public ResponseEntity<List<ProfileResponse>> getPeers(
+    public ResponseEntity<List<MemberProfile>> getPeers(
             @AuthenticationPrincipal CustomMemberDetails memberDetails){
-
-        return ResponseEntity.ok().build();
+        List<MemberProfile> users = memberService.findOthersWithSameCategories(1L);
+        return ResponseEntity.ok().body(users);
     }
 
 
