@@ -107,8 +107,8 @@ public class MemberController {
             description = """
             로그인한 사용자가 설정한 관심사와 동일한 카테고리를 가진
             다른 활성화된 사용자들의 프로필 목록을 반환합니다.
-            """,
-            tags = { "Member" }
+            """
+
     )
     @ApiResponses({
             @ApiResponse(
