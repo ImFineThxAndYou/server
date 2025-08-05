@@ -2,6 +2,11 @@ package org.example.howareyou.domain.member.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +21,7 @@ import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -96,12 +102,51 @@ public class MemberController {
             @Valid @RequestBody MembernameRequest request) {
         return ResponseEntity.ok(memberService.setMembername(memberDetails.id(), request));
     }
-
-    @Operation(summary = "같은 카테고리를 가진 다른 유저 조회 ", description = "현재 사용자와 같은 카테고리를 가진 유저 목록을 반환합니다.")
+    @Operation(
+            summary     = "같은 관심사를 가진 다른 유저 조회",
+            description = """
+            로그인한 사용자가 설정한 관심사와 동일한 카테고리를 가진
+            다른 활성화된 사용자들의 프로필 목록을 반환합니다.
+            """,
+            tags = { "Member" }
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description  = "조회 성공",
+                    content      = @Content(
+                            mediaType    = "application/json",
+                            array        = @ArraySchema(
+                                    schema = @Schema(implementation = MemberProfile.class)
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description  = "인증되지 않음",
+                    content      = @Content(
+                            mediaType = "application/json",
+                            schema    = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description  = "서버 에러",
+                    content      = @Content(
+                            mediaType = "application/json",
+                            schema    = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
     @GetMapping("/me/peers")
     public ResponseEntity<List<MemberProfile>> getPeers(
+            @Parameter(
+                    name        = "memberDetails",
+                    description = "인증된 사용자 정보 (스프링 시큐리티가 주입)",
+                    hidden      = true
+            )
             @AuthenticationPrincipal CustomMemberDetails memberDetails){
-        List<MemberProfile> users = memberService.findOthersWithSameCategories(1L);
+        List<MemberProfile> users = memberService.findOthersWithSameCategories(memberDetails.getId());
         return ResponseEntity.ok().body(users);
     }
 
