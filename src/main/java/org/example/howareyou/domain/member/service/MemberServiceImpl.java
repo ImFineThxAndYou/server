@@ -127,6 +127,7 @@ public class MemberServiceImpl implements MemberService {
     /* ---------- Related Users (같은 카테고리 사용자) ---------- */
 
     @Override
+    @Transactional(readOnly = true)
     public List<MemberProfile> findOthersWithSameCategories(Long requesterId) {
         Member me = fetchMember(requesterId);
         MemberProfile myProfile = me.getProfile();
