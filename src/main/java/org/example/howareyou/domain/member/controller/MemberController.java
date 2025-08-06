@@ -155,7 +155,6 @@ public class MemberController {
     @Operation(
             summary = "관심사 필터 기반 다른 유저 조회",
             description = """
-        로그인한 사용자의 관심사를 기준으로,
         필터에 지정된 모든 카테고리를 포함하는 다른 활성화된 유저 프로필 목록을 반환합니다.
       """
     )
