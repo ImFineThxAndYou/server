@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.member.service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -165,7 +166,7 @@ public class MemberServiceImpl implements MemberService {
 
         // 예: 관심사(카테고리)를 기준으로 다른 사용자 찾기
         Set<Category> interests = myProfile.getInterests(); //
-        List<Member> members =   memberRepo.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
+        List<Member> members =   memberRepository.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
         return members.stream()
                 .map(Member::getProfile)
                 //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌
@@ -179,15 +180,14 @@ public class MemberServiceImpl implements MemberService {
         Set<String> interests = interestsEnums.stream()
                 .map(Enum::name)
                 .collect(Collectors.toSet());
-        log.info("메소드 진입;");
         if (interests.isEmpty()) {
             // 관심사 필터가 비어있으면, requester만 제외하고 전부 리턴
-            return memberRepo.findAll().stream()
+            return memberRepository.findAll().stream()
                     .map(Member::getProfile)
                     .filter(mp -> !mp.getId().equals(requesterId))
                     .toList();
         }
-        List<Member> members =  memberRepo.findByInterestsContainingAll(interests, requesterId, interests.size());
+        List<Member> members =  memberRepository.findByInterestsContainingAll(interests, requesterId, interests.size());
         return members.stream()
                 .map(Member::getProfile)
                 //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌

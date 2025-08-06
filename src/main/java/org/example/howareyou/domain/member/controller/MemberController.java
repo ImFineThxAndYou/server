@@ -142,7 +142,7 @@ public class MemberController {
                     )
             )
     })
-    @GetMapping("/me/peers")
+    @GetMapping("/search/peers")
     public ResponseEntity<List<MemberProfile>> getPeers(
             @Parameter(
                     name        = "memberDetails",
@@ -177,7 +177,7 @@ public class MemberController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    @PostMapping("/me/filter")
+    @PostMapping("/search/filter")
     public ResponseEntity<List<MemberProfile>> getFilter(
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
             @RequestBody @io.swagger.v3.oas.annotations.parameters.RequestBody(
