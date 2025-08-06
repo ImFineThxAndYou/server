@@ -8,6 +8,7 @@ import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -46,6 +47,7 @@ public class MemberCacheService {
      * 멤버 캐싱 (로그인/회원가입 시)
      * 캐시에 없으면 새로 캐싱하고, 있으면 touch로 TTL 연장
      */
+    @Transactional
     public void cache(Member member) {
         if (member == null) return;
         
@@ -78,6 +80,7 @@ public class MemberCacheService {
     /**
      * 멤버 ID로 캐싱 (JWT 인증 필터에서 사용)
      */
+    @Transactional
     public void cache(Long memberId) {
         if (memberId == null) return;
         
@@ -96,6 +99,7 @@ public class MemberCacheService {
      * 캐시 touch (TTL 연장)
      * 60초 이내에 이미 touch했다면 skip
      */
+    @Transactional
     public void touch(Long memberId) {
         if (memberId == null) return;
         
