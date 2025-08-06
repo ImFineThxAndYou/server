@@ -2,12 +2,12 @@ package org.example.howareyou.domain.auth.oauth2.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.auth.dto.TokenBundle;
 import org.example.howareyou.domain.auth.entity.Provider;
+import org.example.howareyou.domain.auth.oauth2.processor.OAuth2LoginProcessor;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
-import org.example.howareyou.domain.auth.oauth2.processor.OAuth2LoginProcessor;
 import org.example.howareyou.global.util.CookieUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
  * <p><b>리다이렉트 주소</b>는 <code>application.yml</code> 의
  * <code>front.url</code> 프로퍼티(@Value 주입)로 외부 설정 가능.</p>
  */
+@Slf4j
 @Component
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
@@ -38,6 +39,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     /** front.url → 없으면 FRONT_URL env → 없으면 기본 */
     @Value("${front.url:${FRONT_URL:http://localhost:3000}}")
     private String frontUrl;
+    
+    /** 개발 환경 여부 */
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
 
 
     public OAuth2SuccessHandler(List<OAuth2LoginProcessor> list) {
@@ -64,19 +69,41 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 2) 프로세서 실행
         TokenBundle t = proc.process((OAuth2User)auth.getPrincipal(), req);
 
-// 3-1) 토큰 전달 (같음)
+        // 3-1) 토큰 전달 (같음)
         res.setHeader("Authorization", "Bearer "+t.access());
         res.addCookie(CookieUtils.refresh(t.refresh(), false));
 
-// 3-2) 목적지 결정
-        String path = t.completed() ? "/login/success"
-                : "/signup/membername";
+        // 3-2) 목적지 결정 (환경에 따라 다름)
+        String redirectUrl;
+        
+        if ("dev".equals(activeProfile)) {
+            // 개발 환경: 내부 테스트 페이지로 리다이렉트 (Access Token을 URL 파라미터로 전달)
+            String baseUrl = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort();
+            String path = t.completed() ? "/test-login.html" : "/test-signup.html";
+            
+            redirectUrl = UriComponentsBuilder
+                    .fromUriString(baseUrl)
+                    .path(path)
+                    .queryParam("oauth_success", "true")
+                    .queryParam("provider", provider.name().toLowerCase())
+                    .queryParam("profile_completed", String.valueOf(t.completed()))
+                    .queryParam("access_token", t.access()) // Access Token을 URL 파라미터로 전달
+                    .build().toUriString();
+            
+            log.info("🔧 개발 환경 OAuth2 리다이렉트: {}", redirectUrl);
+        } else {
+            // 프로덕션 환경: 프론트엔드로 리다이렉트
+            String path = t.completed() ? "/login/success" : "/signup/membername";
+            
+            redirectUrl = UriComponentsBuilder
+                    .fromUriString(frontUrl)
+                    .path(path)
+                    .build().toUriString();
+            
+            log.info("🚀 프로덕션 환경 OAuth2 리다이렉트: {}", redirectUrl);
+        }
 
-        getRedirectStrategy().sendRedirect(
-                req, res, UriComponentsBuilder
-                        .fromUriString(frontUrl)
-                        .path(path)      // 바로 분기
-                        .build().toUriString());
+        getRedirectStrategy().sendRedirect(req, res, redirectUrl);
 
     }
 }

@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HowAreYou - 로그인 테스트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading-spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .token-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .success-badge {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .error-badge {
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .warning-badge {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- 헤더 -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 text-center mb-2">🔐 HowAreYou 로그인 테스트</h1>
+            <p class="text-gray-600 text-center">React 스타일의 로그인 테스트 페이지</p>
+        </header>
+
+        <!-- 로딩 상태 -->
+        <div id="loading" class="hidden flex items-center justify-center py-12">
+            <div class="loading-spinner"></div>
+            <span class="ml-3 text-gray-600">로딩 중...</span>
+        </div>
+
+        <!-- 로그인 페이지 -->
+        <div id="loginPage" class="max-w-md mx-auto">
+            <div class="bg-white shadow-lg rounded-lg p-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">로그인</h2>
+                    <p class="text-gray-600">테스트 계정으로 로그인하세요</p>
+                </div>
+
+                <!-- 이메일/비밀번호 로그인 -->
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                        <input type="email" id="email" value="test@example.com" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                        <input type="password" id="password" value="password123!" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button onclick="login()" 
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        로그인
+                    </button>
+                </div>
+
+                <!-- 소셜 로그인 -->
+                <div class="space-y-3">
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-white text-gray-500">또는</span>
+                        </div>
+                    </div>
+                    
+                    <button onclick="socialLogin('google')" 
+                            class="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Google로 로그인
+                    </button>
+                    
+                    <!-- OAuth2 상태 표시 -->
+                    <div id="oauthStatus" class="hidden p-3 bg-blue-50 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                            <span class="text-sm text-blue-700">OAuth2 로그인 처리 중...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 테스트 계정 정보 -->
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="text-sm font-medium text-blue-900 mb-2">테스트 계정</h3>
+                    <div class="text-xs text-blue-700 space-y-1">
+                        <div>test@example.com / password123!</div>
+                        <div>admin@example.com / admin123!</div>
+                        <div>user1@example.com / user123!</div>
+                    </div>
+                    <div class="mt-3">
+                        <button onclick="createDefaultAccounts()" 
+                                class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-sm">
+                            테스트 계정 생성
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 홈 페이지 (로그인 후) -->
+        <div id="homePage" class="hidden max-w-4xl mx-auto">
+            <!-- 헤더 -->
+            <header class="bg-white shadow mb-6">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center py-6">
+                        <h1 class="text-3xl font-bold text-gray-900">홈</h1>
+                        <div class="flex space-x-3">
+                            <button onclick="refreshToken()" 
+                                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                토큰 갱신
+                            </button>
+                            <button onclick="logout()" 
+                                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                로그아웃
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 메인 콘텐츠 -->
+            <main class="space-y-6">
+                <!-- 사용자 정보 카드 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div id="userAvatar" class="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span id="userInitial" class="text-gray-600 text-xl font-bold">U</span>
+                        </div>
+                        <div>
+                            <h2 id="userName" class="text-2xl font-bold text-gray-900">사용자</h2>
+                            <p id="userEmail" class="text-gray-600">이메일</p>
+                            <div id="profileStatus" class="mt-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- 사용자 상세 정보 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">기본 정보</h3>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">유저네임</dt>
+                                    <dd id="userMembername" class="text-sm text-gray-900">-</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">닉네임</dt>
+                                    <dd id="userNickname" class="text-sm text-gray-900">-</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">역할</dt>
+                                    <dd id="userRole" class="text-sm text-gray-900">-</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">인증 정보</h3>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">인증 상태</dt>
+                                    <dd id="authStatus" class="text-sm text-gray-900">-</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">마지막 로그인</dt>
+                                    <dd id="lastLogin" class="text-sm text-gray-900">-</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 토큰 정보 카드 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">토큰 정보</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Access Token</label>
+                            <div id="accessToken" class="token-display">토큰이 없습니다.</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Refresh Token</label>
+                            <div id="refreshToken" class="token-display">토큰이 없습니다.</div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="copyAccessToken()" 
+                                    class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                                Access Token 복사
+                            </button>
+                            <button onclick="copyRefreshToken()" 
+                                    class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                                Refresh Token 복사
+                            </button>
+                            <button onclick="decodeToken()" 
+                                    class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                                토큰 디코딩
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 테스트 카드 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">API 테스트</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="testMyProfile()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            내 프로필 조회
+                        </button>
+                        <button onclick="testMemberStatus()" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            회원 상태 조회
+                        </button>
+                        <button onclick="testMemberProfile()" 
+                                class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                            공개 프로필 조회
+                        </button>
+                        <button onclick="testProtectedEndpoint()" 
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                            보호된 엔드포인트
+                        </button>
+                        <button onclick="testTokenValidation()" 
+                                class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700">
+                            토큰 유효성 검사
+                        </button>
+                    </div>
+                    <div id="apiResult" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                        <pre id="apiResultContent" class="text-sm text-gray-700"></pre>
+                    </div>
+                </div>
+
+                <!-- 쿠키 디버깅 카드 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">🔍 쿠키 디버깅</h3>
+                    <div class="space-y-4">
+                        <button onclick="debugCookies()" 
+                                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                            쿠키 정보 확인
+                        </button>
+                        <button onclick="clearAllCookies()" 
+                                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                            모든 쿠키 삭제
+                        </button>
+                        <div id="cookieDebug" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                            <pre id="cookieDebugContent" class="text-sm text-gray-700"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 캐시 관리 카드 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">🗄️ 캐시 관리</h3>
+                    <div class="space-y-4">
+                        <button onclick="checkCacheHealth()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            캐시 상태 확인
+                        </button>
+                        <button onclick="migrateCache()" 
+                                class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+                            캐시 마이그레이션
+                        </button>
+                        <button onclick="clearAllCache()" 
+                                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                            모든 캐시 삭제
+                        </button>
+                        <div id="cacheDebug" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                            <pre id="cacheDebugContent" class="text-sm text-gray-700"></pre>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 토큰 디코딩 모달 -->
+        <div id="tokenModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">JWT 토큰 디코딩</h3>
+                    <div id="tokenDecodeResult" class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                        <pre class="text-sm text-gray-700"></pre>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="closeTokenModal()" 
+                                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 상태
+        let currentUser = null;
+        let currentAccessToken = '';
+        let currentRefreshToken = '';
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            debugCookieReading(); // 쿠키 읽기 디버깅
+            checkAuthStatus();
+            checkDatabaseStatus(); // 데이터베이스 상태 확인
+            handleOAuthSuccess(); // OAuth2 로그인 성공 처리
+        };
+
+        // 인증 상태 확인
+        async function checkAuthStatus() {
+            showLoading(true);
+            
+            try {
+                // 쿠키에서 Refresh Token 확인
+                currentRefreshToken = getCookie('Refresh') || '';
+                
+                if (currentRefreshToken) {
+                    // 토큰 갱신 시도
+                    await refreshToken();
+                } else {
+                    showLoginPage();
+                }
+            } catch (error) {
+                console.error('인증 상태 확인 실패:', error);
+                showLoginPage();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 로그인 함수
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include', // 쿠키 포함
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 토큰 저장
+                    currentAccessToken = response.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                    
+                    // HttpOnly 쿠키는 JavaScript에서 읽을 수 없으므로 서버에서 전달받은 값 사용
+                    currentRefreshToken = result.refresh || getCookie('Refresh') || '';
+                    
+                    // 쿠키 디버깅
+                    console.log('로그인 후 모든 쿠키:', document.cookie);
+                    console.log('로그인 후 Refresh 토큰 (응답에서):', result.refresh);
+                    console.log('로그인 후 Refresh 토큰 (쿠키에서):', currentRefreshToken);
+                    
+                    // 사용자 정보 로드
+                    await loadUserInfo();
+                    
+                    showHomePage();
+                    showNotification('로그인 성공!', 'success');
+                } else {
+                    showNotification(`로그인 실패: ${result.message || '알 수 없는 오류'}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`네트워크 오류: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 소셜 로그인
+        function socialLogin(provider) {
+            // OAuth2 상태 표시
+            document.getElementById('oauthStatus').classList.remove('hidden');
+            
+            // OAuth2 리다이렉트
+            window.location.href = `/oauth2/authorization/${provider}`;
+        }
+
+        // 토큰 갱신
+        async function refreshToken() {
+            try {
+                console.log('토큰 갱신 요청 시작...');
+                console.log('현재 쿠키 상태:', document.cookie);
+                
+                // HttpOnly 쿠키는 자동으로 전송되므로 별도 헤더 설정 불필요
+                const response = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    credentials: 'include' // 쿠키 포함
+                });
+
+                console.log('토큰 갱신 응답 상태:', response.status);
+                console.log('토큰 갱신 응답 헤더:', response.headers);
+
+                if (response.ok) {
+                    currentAccessToken = response.headers.get('Authorization')?.replace('Bearer ', '') || '';
+                    console.log('새로운 Access Token:', currentAccessToken ? currentAccessToken.substring(0, 50) + '...' : '없음');
+                    updateTokenDisplay();
+                    showNotification('토큰 갱신 성공!', 'success');
+                    return true;
+                } else {
+                    const result = await response.json();
+                    console.error('토큰 갱신 실패 응답:', result);
+                    throw new Error(result.message || '토큰 갱신 실패');
+                }
+            } catch (error) {
+                console.error('토큰 갱신 중 오류:', error);
+                showNotification(`토큰 갱신 실패: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 사용자 정보 로드
+        async function loadUserInfo() {
+            if (!currentAccessToken) {
+                throw new Error('Access Token이 없습니다.');
+            }
+
+            try {
+                const response = await fetch('/api/v1/members/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentAccessToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    updateUserDisplay();
+                } else {
+                    console.warn('사용자 정보 로드 실패:', response.status);
+                }
+            } catch (error) {
+                console.error('사용자 정보 로드 오류:', error);
+            }
+        }
+
+        // 로그아웃
+        async function logout() {
+            if (!currentRefreshToken) {
+                showLoginPage();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Cookie': `Refresh=${currentRefreshToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    clearTokens();
+                    showLoginPage();
+                    showNotification('로그아웃 성공!', 'success');
+                } else {
+                    const result = await response.json();
+                    showNotification(`로그아웃 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`네트워크 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // API 테스트 함수들
+        async function testMemberStatus() {
+            // 현재 사용자의 membername을 사용하거나 기본값 사용
+            const membername = currentUser?.membername || 'test';
+            await testAPI(`/api/v1/members/${membername}/status`, '회원 상태 조회');
+        }
+
+        async function testMemberProfile() {
+            // 현재 사용자의 membername을 사용하거나 기본값 사용
+            const membername = currentUser?.membername || 'test';
+            await testAPI(`/api/v1/members/${membername}`, '공개 프로필 조회');
+        }
+
+        async function testMyProfile() {
+            await testAPI('/api/v1/members/me', '내 프로필 조회');
+        }
+
+        async function testProtectedEndpoint() {
+            await testAPI('/api/test/protected', '보호된 엔드포인트');
+        }
+
+        async function testTokenValidation() {
+            await testAPI('/api/test/token/validate', '토큰 유효성 검사');
+        }
+
+        // 공통 API 테스트 함수
+        async function testAPI(endpoint, description) {
+            if (!currentAccessToken) {
+                showNotification('Access Token이 없습니다. 먼저 로그인해주세요.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentAccessToken}`
+                    },
+                    credentials: 'include' // 쿠키 포함
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showApiResult(`${description} 성공!`, result, 'success');
+                } else {
+                    showApiResult(`${description} 실패`, result, 'error');
+                }
+            } catch (error) {
+                showApiResult(`${description} 오류`, { error: error.message }, 'error');
+            }
+        }
+
+        // 토큰 복사 함수들
+        function copyAccessToken() {
+            if (currentAccessToken) {
+                navigator.clipboard.writeText(currentAccessToken);
+                showNotification('Access Token이 클립보드에 복사되었습니다.', 'success');
+            }
+        }
+
+        function copyRefreshToken() {
+            if (currentRefreshToken) {
+                navigator.clipboard.writeText(currentRefreshToken);
+                showNotification('Refresh Token이 클립보드에 복사되었습니다.', 'success');
+            }
+        }
+
+        // 토큰 디코딩
+        function decodeToken() {
+            if (!currentAccessToken) {
+                showNotification('Access Token이 없습니다.', 'error');
+                return;
+            }
+
+            try {
+                const parts = currentAccessToken.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('유효하지 않은 JWT 형식');
+                }
+
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+
+                const decodeResult = {
+                    header: header,
+                    payload: payload,
+                    token: currentAccessToken
+                };
+
+                document.getElementById('tokenDecodeResult').innerHTML = 
+                    `<pre class="text-sm text-gray-700">${JSON.stringify(decodeResult, null, 2)}</pre>`;
+                document.getElementById('tokenModal').classList.remove('hidden');
+            } catch (error) {
+                showNotification(`토큰 디코딩 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // UI 업데이트 함수들
+        function updateUserDisplay() {
+            if (!currentUser) return;
+
+            // 사용자 기본 정보
+            document.getElementById('userName').textContent = currentUser.nickname || currentUser.membername || '사용자';
+            document.getElementById('userEmail').textContent = currentUser.email || '-';
+            document.getElementById('userMembername').textContent = currentUser.membername || '-';
+            document.getElementById('userNickname').textContent = currentUser.nickname || '-';
+            document.getElementById('userRole').textContent = currentUser.role || '-';
+
+            // 사용자 이니셜
+            const initial = (currentUser.nickname || currentUser.membername || 'U')[0].toUpperCase();
+            document.getElementById('userInitial').textContent = initial;
+
+            // 프로필 상태
+            const statusElement = document.getElementById('profileStatus');
+            if (currentUser.isProfileComplete) {
+                statusElement.innerHTML = '<span class="success-badge">프로필 완성</span>';
+            } else {
+                statusElement.innerHTML = '<span class="warning-badge">프로필 미완성</span>';
+            }
+
+            // 인증 상태
+            document.getElementById('authStatus').innerHTML = '<span class="success-badge">인증됨</span>';
+            document.getElementById('lastLogin').textContent = new Date().toLocaleString();
+        }
+
+        function updateTokenDisplay() {
+            document.getElementById('accessToken').textContent = currentAccessToken || '토큰이 없습니다.';
+            document.getElementById('refreshToken').textContent = currentRefreshToken || '토큰이 없습니다.';
+        }
+
+        function clearTokens() {
+            currentAccessToken = '';
+            currentRefreshToken = '';
+            currentUser = null;
+            updateTokenDisplay();
+        }
+
+        // 페이지 표시 함수들
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('homePage').classList.add('hidden');
+        }
+
+        function showHomePage() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('homePage').classList.remove('hidden');
+            updateTokenDisplay();
+        }
+
+        function showApiResult(title, data, type) {
+            const resultElement = document.getElementById('apiResult');
+            const contentElement = document.getElementById('apiResultContent');
+            
+            const typeClass = type === 'success' ? 'text-green-700' : 'text-red-700';
+            contentElement.className = `text-sm ${typeClass}`;
+            contentElement.textContent = `${title}\n\n${JSON.stringify(data, null, 2)}`;
+            
+            resultElement.classList.remove('hidden');
+        }
+
+        function showNotification(message, type) {
+            // 간단한 알림 (실제로는 더 정교한 알림 시스템 사용)
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        function closeTokenModal() {
+            document.getElementById('tokenModal').classList.add('hidden');
+        }
+
+        // 테스트 계정 생성
+        async function createDefaultAccounts() {
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/test/create-default-accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('✅ 테스트 계정 생성 성공!', 'success');
+                    console.log('테스트 계정 생성 결과:', result);
+                } else {
+                    showNotification(`❌ 테스트 계정 생성 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`❌ 네트워크 오류: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // OAuth2 로그인 성공 처리
+        async function handleOAuthSuccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const oauthSuccess = urlParams.get('oauth_success');
+            const provider = urlParams.get('provider');
+            const profileCompleted = urlParams.get('profile_completed');
+            const accessToken = urlParams.get('access_token');
+            
+            if (oauthSuccess === 'true') {
+                showNotification(`✅ ${provider} OAuth2 로그인 성공!`, 'success');
+                
+                // URL 파라미터 정리
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                
+                // 쿠키 디버깅
+                console.log('=== OAuth2 로그인 후 쿠키 상태 ===');
+                console.log('모든 쿠키:', document.cookie);
+                console.log('Refresh 쿠키 (HttpOnly이므로 읽을 수 없음):', getCookie('Refresh'));
+                console.log('URL에서 받은 Access Token:', accessToken ? accessToken.substring(0, 50) + '...' : '없음');
+                
+                // OAuth2 로그인 후 처리
+                try {
+                    console.log('OAuth2 로그인 후 처리 시작...');
+                    
+                    // URL에서 받은 Access Token이 있으면 사용
+                    if (accessToken) {
+                        console.log('URL에서 받은 Access Token 사용');
+                        currentAccessToken = accessToken;
+                        await loadUserInfo();
+                        showHomePage();
+                    } else {
+                        console.log('Access Token이 없으므로 토큰 갱신 시도...');
+                        // 잠시 대기 (쿠키 설정 완료 대기)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        // 토큰 갱신 시도
+                        await refreshToken();
+                        await loadUserInfo();
+                        showHomePage();
+                    }
+                } catch (error) {
+                    console.error('OAuth2 로그인 후 처리 실패:', error);
+                    showNotification('OAuth2 로그인 성공! 토큰 갱신은 수동으로 시도해주세요.', 'warning');
+                }
+            }
+        }
+
+        // 데이터베이스 상태 확인
+        async function checkDatabaseStatus() {
+            try {
+                const response = await fetch('/api/test/db-status');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    console.log('데이터베이스 상태:', result);
+                } else {
+                    console.error('데이터베이스 상태 확인 실패:', result);
+                }
+            } catch (error) {
+                console.error('데이터베이스 상태 확인 오류:', error);
+            }
+        }
+
+        // 쿠키 디버깅 함수들
+        function debugCookies() {
+            const allCookies = document.cookie;
+            const refreshCookie = getCookie('Refresh');
+            
+            const debugInfo = {
+                allCookies: allCookies,
+                refreshCookie: refreshCookie,
+                refreshCookieLength: refreshCookie ? refreshCookie.length : 0,
+                currentRefreshToken: currentRefreshToken,
+                currentAccessToken: currentAccessToken ? currentAccessToken.substring(0, 50) + '...' : '없음',
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            };
+            
+            const debugElement = document.getElementById('cookieDebug');
+            const contentElement = document.getElementById('cookieDebugContent');
+            
+            contentElement.textContent = JSON.stringify(debugInfo, null, 2);
+            debugElement.classList.remove('hidden');
+            
+            console.log('쿠키 디버깅 정보:', debugInfo);
+        }
+
+        function clearAllCookies() {
+            const cookies = document.cookie.split(";");
+            
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+            }
+            
+            currentAccessToken = '';
+            currentRefreshToken = '';
+            updateTokenDisplay();
+            
+            showNotification('모든 쿠키가 삭제되었습니다.', 'success');
+            console.log('모든 쿠키 삭제 완료');
+        }
+
+        // 유틸리티 함수들
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        // 쿠키 읽기 디버깅
+        function debugCookieReading() {
+            console.log('=== 쿠키 읽기 디버깅 ===');
+            console.log('전체 쿠키:', document.cookie);
+            console.log('Refresh 쿠키 직접 읽기:', getCookie('Refresh'));
+            
+            // 쿠키를 하나씩 파싱해서 확인
+            const cookies = document.cookie.split(';');
+            cookies.forEach(cookie => {
+                const trimmed = cookie.trim();
+                console.log('쿠키:', trimmed);
+                if (trimmed.startsWith('Refresh=')) {
+                    console.log('Refresh 토큰 발견:', trimmed.substring(8));
+                }
+            });
+        }
+
+        // 캐시 관리 함수들
+        async function checkCacheHealth() {
+            try {
+                const response = await fetch('/api/test/cache-health', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                
+                const debugElement = document.getElementById('cacheDebug');
+                const contentElement = document.getElementById('cacheDebugContent');
+                
+                contentElement.textContent = JSON.stringify(result, null, 2);
+                debugElement.classList.remove('hidden');
+                
+                if (result.success) {
+                    showNotification(result.message, result.cacheHealthy ? 'success' : 'warning');
+                } else {
+                    showNotification('캐시 상태 확인 실패: ' + result.message, 'error');
+                }
+                
+                console.log('캐시 상태 확인 결과:', result);
+            } catch (error) {
+                console.error('캐시 상태 확인 오류:', error);
+                showNotification('캐시 상태 확인 중 오류 발생', 'error');
+            }
+        }
+
+        async function clearAllCache() {
+            if (!confirm('정말로 모든 캐시를 삭제하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/test/clear-cache', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                
+                const debugElement = document.getElementById('cacheDebug');
+                const contentElement = document.getElementById('cacheDebugContent');
+                
+                contentElement.textContent = JSON.stringify(result, null, 2);
+                debugElement.classList.remove('hidden');
+                
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification('캐시 삭제 실패: ' + result.message, 'error');
+                }
+                
+                console.log('캐시 삭제 결과:', result);
+            } catch (error) {
+                console.error('캐시 삭제 오류:', error);
+                showNotification('캐시 삭제 중 오류 발생', 'error');
+            }
+        }
+
+        async function migrateCache() {
+            if (!confirm('캐시 마이그레이션을 실행하시겠습니까?\n기존 LinkedHashMap 캐시가 새로운 형식으로 변환됩니다.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/test/migrate-cache', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                
+                const debugElement = document.getElementById('cacheDebug');
+                const contentElement = document.getElementById('cacheDebugContent');
+                
+                contentElement.textContent = JSON.stringify(result, null, 2);
+                debugElement.classList.remove('hidden');
+                
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification('캐시 마이그레이션 실패: ' + result.message, 'error');
+                }
+                
+                console.log('캐시 마이그레이션 결과:', result);
+            } catch (error) {
+                console.error('캐시 마이그레이션 오류:', error);
+                showNotification('캐시 마이그레이션 중 오류 발생', 'error');
+            }
+        }
+    </script>
+</body>
+</html> 

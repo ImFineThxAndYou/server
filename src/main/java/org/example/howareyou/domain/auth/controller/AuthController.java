@@ -25,6 +25,7 @@ public class AuthController {
         response.setHeader("Authorization", "Bearer " + tokenBundle.access());
         response.addCookie(CookieUtils.refresh(tokenBundle.refresh(), false));
         
+        // 개발 환경에서는 응답 본문에도 Refresh Token 포함 (HttpOnly 쿠키 읽기 문제 해결)
         return ResponseEntity.ok(tokenBundle);
     }
     @PostMapping("/refresh")

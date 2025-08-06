@@ -1,10 +1,9 @@
 package org.example.howareyou.domain.auth.oauth2.processor;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.example.howareyou.domain.auth.dto.TokenBundle;
 import org.example.howareyou.domain.auth.entity.Provider;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * OAuth2 로그인 처리를 위한 프로세서 인터페이스

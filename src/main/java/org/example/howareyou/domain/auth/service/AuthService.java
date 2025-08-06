@@ -7,7 +7,6 @@ import org.example.howareyou.domain.auth.dto.TokenBundle;
 import org.example.howareyou.domain.auth.entity.Auth;
 import org.example.howareyou.domain.auth.entity.Provider;
 import org.example.howareyou.domain.auth.repository.AuthRepository;
-import org.example.howareyou.domain.member.redis.MemberCache;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.global.exception.CustomException;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 /**
  * 인증 관련 서비스
@@ -135,14 +133,8 @@ public class AuthService {
      * 사용자 정보를 Redis에 캐싱 (온라인 상태 관리)
      */
     private void cacheUserInfo(Auth auth) {
-        MemberCache memberCache = MemberCache.builder()
-                .id(auth.getMember().getId().toString())
-                .email(auth.getEmail())
-                .nickname(auth.getMember().getProfile().getNickname())
-                .avatarUrl(auth.getMember().getProfile().getAvatarUrl())
-                .build();
-        
-        memberCacheService.cacheMember(memberCache);
+        Member member = auth.getMember();
+        memberCacheService.cache(member);
     }
 
     /**
@@ -150,33 +142,24 @@ public class AuthService {
      * @param refreshToken 클라이언트가 보낸 Refresh Token
      * @return 새로운 Access Token
      */
+    @Transactional
     public String refresh(String refreshToken) {
-        // 1. Refresh Token 유효성 검증
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
         }
 
-        // 2. Refresh Token에서 사용자 ID 추출
-        String userId;
+        // 1. 토큰으로 Auth 찾기
+        Auth auth = authRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN));
 
-        try {
-            userId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
-        } catch (Exception e) {
-            throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
-        }
-
-        // 3. 사용자 조회 및 Refresh Token 검증
-        Auth auth = authRepository.findByMemberId(Long.parseLong(userId))
-                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-
+        // 2. 만료 확인
         if (!auth.isRefreshTokenValid(refreshToken)) {
-            // 유효하지 않은 토큰이면 무효화
             auth.invalidateRefreshToken();
-            authRepository.save(auth);
             throw new CustomException(ErrorCode.AUTH_EXPIRED_REFRESH_TOKEN);
         }
 
-        // 4. 새로운 Access Token 발급
+        // 3. 새 AccessToken 발급
+        String userId = auth.getMember().getId().toString();
         return jwtTokenProvider.createAccessToken(userId);
     }
 
@@ -196,25 +179,17 @@ public class AuthService {
         }
 
         try {
-            // 1. Refresh Token에서 사용자 ID 추출
-            String userId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
-            
-            // 2. 사용자 조회 및 Refresh Token 무효화
-            authRepository.findByMemberId(Long.parseLong(userId)).ifPresent(auth -> {
-                // 3. 저장된 Refresh Token과 일치하는지 확인
-                if (refreshToken.equals(auth.getRefreshToken())) {
-                    // 4. Refresh Token 무효화
-                    auth.invalidateRefreshToken();
-                    authRepository.save(auth);
-                    
-                    // 5. 사용자 캐시에서 제거 (오프라인 상태로 변경)
-                    Member member = auth.getMember();
-                    if (member != null) {
-                        memberCacheService.delete(member.getId());
-                        log.info("User logged out successfully: {}", member.getId());
-                    }
-                } else {
-                    log.warn("Invalid refresh token provided for user: {}", userId);
+            // 1. Refresh Token으로 직접 Auth 조회 (더 안전한 방법)
+            authRepository.findByRefreshToken(refreshToken).ifPresent(auth -> {
+                // 2. Refresh Token 무효화
+                auth.invalidateRefreshToken();
+                authRepository.save(auth);
+                
+                // 3. 사용자 캐시에서 제거 (오프라인 상태로 변경)
+                Member member = auth.getMember();
+                if (member != null) {
+                    memberCacheService.delete(member.getId());
+                    log.info("User logged out successfully: {}", member.getId());
                 }
             });
         } catch (Exception e) {

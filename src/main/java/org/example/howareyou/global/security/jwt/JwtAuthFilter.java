@@ -1,51 +1,97 @@
 package org.example.howareyou.global.security.jwt;
 
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import lombok.RequiredArgsConstructor;
-
-import org.example.howareyou.global.exception.CustomException;
-import org.example.howareyou.global.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.member.redis.MemberCacheService;
+import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider jwt;       // JWT 토큰 유틸 클래스 (파싱, 생성 등)
-    private final UserDetailsService uds;     // 사용자 정보를 로드하기 위한 서비스
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsService userDetailsService;
+    private final MemberCacheService memberCacheService;
+
+    /** JWT 형식인지 간단히 확인 (header.payload.signature) */
+    private boolean looksLikeJwt(String token) {
+        return token != null && token.chars().filter(ch -> ch == '.').count() == 2;
+    }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res,
+    protected void doFilterInternal(HttpServletRequest req,
+                                    HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
-        String bearer = req.getHeader("Authorization"); // Authorization 헤더에서 토큰 추출
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            String token = bearer.substring(7); // "Bearer " 이후의 실제 토큰만 추출
-            try {
-                Claims c = jwt.parse(token); // 토큰을 파싱해서 Claims (payload) 추출
-                UserDetails u = uds.loadUserByUsername(c.getSubject()); // 토큰의 subject로 사용자 조회 (이거 username으로 가져오는거 일단 mail로 할지 확인해봐야함)
 
-                // 인증 객체를 생성해서 SecurityContext에 설정
-                SecurityContextHolder.getContext().setAuthentication(
-                        new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities())
-                );
-            } catch(ExpiredJwtException e){ throw new CustomException(ErrorCode.AUTH_TOKEN_EXPIRED);}
+        String bearer = req.getHeader("Authorization");
+        if (!StringUtils.hasText(bearer) || !bearer.startsWith("Bearer ")) {
+            chain.doFilter(req, res);      // 토큰 없으면 다음 필터로
+            return;
         }
 
-        chain.doFilter(req, res); // 다음 필터 또는 서블릿으로 요청 전달
+        String token = bearer.substring(7).trim();       // 앞·뒤 공백 제거
+
+        // 1️⃣ 형식 안 맞으면 바로 패스
+        if (!looksLikeJwt(token)) {
+            log.debug("Skip non-JWT token: {}", token);
+            chain.doFilter(req, res);
+            return;
+        }
+
+        // 2️⃣ 이미 인증된 상태라면 중복 세팅 방지
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        try {
+            // validate() 내부에서 서명·만료 체크만 하고 subject 반환
+            String userId = jwtTokenProvider.validateAndGetSubject(token);
+
+            UserDetails user = userDetailsService.loadUserByUsername(userId); // ← userId=email or memberId
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+
+            /* ④ Presence / TTL 관리 ---------------------------- */
+            Long id = ((CustomMemberDetails) user).getId();
+            try {
+                // 캐시에서 멤버 확인
+                if (memberCacheService.get(id).isPresent()) {
+                    memberCacheService.touch(id);           // 캐시 hit → TTL 연장 + lastActiveAt 갱신
+                } else {
+                    memberCacheService.cache(id);           // 캐시 miss → 새로 캐싱
+                }
+            } catch (Exception e) {
+                log.error("멤버 캐싱 처리 중 오류 발생: {}", id, e);
+                // 캐싱 오류가 있어도 인증은 계속 진행
+            }
+            /* -------------------------------------------------- */
+
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+        catch (ExpiredJwtException e) {
+            log.debug("JWT expired: {}", e.getMessage());
+        }
+        catch (JwtException | IllegalArgumentException e) {
+            log.debug("Invalid JWT: {}", e.getMessage());
+        }
+
+        chain.doFilter(req, res);
     }
 }
