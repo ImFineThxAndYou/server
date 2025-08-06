@@ -3,7 +3,6 @@ package org.example.howareyou.domain.member.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
-
 import org.example.howareyou.domain.member.entity.Category;
 
 import java.time.LocalDate;
