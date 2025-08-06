@@ -3,9 +3,11 @@ package org.example.howareyou.global.test;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.auth.entity.Auth;
+import org.example.howareyou.domain.auth.entity.Provider;
 import org.example.howareyou.domain.auth.repository.AuthRepository;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
+import org.example.howareyou.domain.member.entity.Role;
 import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.springframework.http.ResponseEntity;
@@ -62,7 +64,7 @@ public class TestController {
             Member member = Member.builder()
                     .email(email)
                     .membername(membername)
-                    .role("USER")
+                    .role(Role.USER)
                     .active(true)
                     .build();
             
@@ -86,7 +88,7 @@ public class TestController {
                     .member(member)
                     .email(email)
                     .passwordHash(passwordEncoder.encode(password))
-                    .provider("LOCAL")
+                    .provider(Provider.LOCAL)
                     .build();
             
             authRepository.save(auth);
