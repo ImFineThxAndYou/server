@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.howareyou.domain.member.dto.request.FilterRequest;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
@@ -102,6 +103,7 @@ public class MemberController {
             @Valid @RequestBody MembernameRequest request) {
         return ResponseEntity.ok(memberService.setMembername(memberDetails.id(), request));
     }
+
     @Operation(
             summary     = "같은 관심사를 가진 다른 유저 조회",
             description = """
@@ -150,5 +152,41 @@ public class MemberController {
         return ResponseEntity.ok().body(users);
     }
 
-
+    @Operation(
+            summary = "관심사 필터 기반 다른 유저 조회",
+            description = """
+        로그인한 사용자의 관심사를 기준으로,
+        필터에 지정된 모든 카테고리를 포함하는 다른 활성화된 유저 프로필 목록을 반환합니다.
+      """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = MemberProfile.class))
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(responseCode = "401", description = "인증되지 않음",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(responseCode = "500", description = "서버 오류",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @GetMapping("/me/filter")
+    public ResponseEntity<List<MemberProfile>> getFilter(
+            @AuthenticationPrincipal CustomMemberDetails memberDetails,
+            @RequestBody @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "관심사 필터 요청",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = FilterRequest.class))
+            )
+            @Valid FilterRequest filterRequest
+    ) {
+        List<MemberProfile> users = memberService.findOthersWithFilter(filterRequest, memberDetails.getId());
+        return ResponseEntity.ok(users);
+    }
 }

@@ -1,6 +1,5 @@
 package org.example.howareyou.global.config;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.auth.oauth2.handler.OAuth2SuccessHandler;

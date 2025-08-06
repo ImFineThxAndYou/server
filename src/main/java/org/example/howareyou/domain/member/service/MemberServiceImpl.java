@@ -2,6 +2,8 @@ package org.example.howareyou.domain.member.service;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.member.dto.request.FilterRequest;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
@@ -15,9 +17,11 @@ import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -25,6 +29,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository   memberRepo;
@@ -127,7 +132,7 @@ public class MemberServiceImpl implements MemberService {
     /* ---------- Related Users (같은 카테고리 사용자) ---------- */
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<MemberProfile> findOthersWithSameCategories(Long requesterId) {
         Member me = fetchMember(requesterId);
         MemberProfile myProfile = me.getProfile();
@@ -142,8 +147,25 @@ public class MemberServiceImpl implements MemberService {
                 .map(Member::getProfile)
                 .filter(MemberProfile::isCompleted)
                 .toList();
-
-
+    }
+    /* ---------- Filter로 사용자 찾기 ---------- */
+    @Override
+    @Transactional
+    public List<MemberProfile> findOthersWithFilter(FilterRequest filter,Long requesterId){
+        Set<Category> interests = new HashSet<>(filter.getInterests());
+        log.info("메소드 진입;");
+        if (interests.isEmpty()) {
+            // 관심사 필터가 비어있으면, requester만 제외하고 전부 리턴
+            return memberRepo.findAll().stream()
+                    .map(Member::getProfile)
+                    .filter(mp -> !mp.getId().equals(requesterId))
+                    .toList();
+        }
+        List<Member> members =  memberRepo.findByInterestsContainingAll(interests, requesterId);
+        return members.stream()
+                .map(Member::getProfile)
+                .filter(MemberProfile::isCompleted)
+                .toList();
     }
 
     /* ---------- util ---------- */

@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.member.service;
 
+import org.example.howareyou.domain.member.dto.request.FilterRequest;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
@@ -29,4 +30,5 @@ public interface MemberService {
     void deleteAccount(Long id);
 
     List<MemberProfile> findOthersWithSameCategories(Long requesterId);
+    List<MemberProfile> findOthersWithFilter(FilterRequest filterRequest,Long requesterId);
 }
