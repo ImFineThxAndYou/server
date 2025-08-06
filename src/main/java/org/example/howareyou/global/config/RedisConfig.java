@@ -1,5 +1,6 @@
 package org.example.howareyou.global.config;
 
+import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

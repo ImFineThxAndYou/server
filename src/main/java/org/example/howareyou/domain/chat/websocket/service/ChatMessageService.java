@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class ChatMessageService {
   private final ChatMessageDocumentRepository mongoRepository;
-  private final RedisTemplate<String, ChatMessageDocument> redisTemplate;
+  private final ChatRedisService chatRedisService;
 
   public void saveChatMessage(ChatMessageDocument chatMessage) {
     // 1. MongoDB 저장
@@ -31,20 +31,9 @@ public class ChatMessageService {
             .build()
     );
 
-    // 2. Redis 저장 - 최근 메시지 리스트
-    String redisKey = "chat:recent:" + chatMessage.getChatRoomUuid();
+    // 2. Redis에 최근 메시지 캐싱
+    chatRedisService.addRecentMessage(chatMessage.getChatRoomUuid(), saved);
 
-    try {
-      // push to List (rightPush 기준이면 오래된 게 먼저 나옴)
-      redisTemplate.opsForList().rightPush(redisKey, saved);
-
-      // TTL 설정
-      redisTemplate.expire(redisKey, Duration.ofMinutes(10));
-
-      log.debug("메시지를 Redis에 캐싱했습니다. key={}, msg={}", redisKey, saved.getContent());
-    } catch (Exception e) {
-      log.warn("Redis 캐싱 실패 - {}", e.getMessage());
-    }
+    log.debug("채팅 메시지 저장 완료 - Mongo + Redis");
   }
-
 }
