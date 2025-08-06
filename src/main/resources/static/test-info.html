@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HowAreYou - 테스트 환경 정보</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 text-center mb-2">🧪 HowAreYou 테스트 환경</h1>
+                <p class="text-gray-600 text-center">개발 및 테스트를 위한 도구들</p>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 로그인 테스트 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">🔐 로그인 테스트</h2>
+                    <p class="text-gray-600 mb-4">JWT 기반 로그인 시스템을 테스트할 수 있습니다.</p>
+                    <a href="/test-login.html" 
+                       class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        로그인 테스트 페이지
+                    </a>
+                </div>
+
+                <!-- API 문서 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">📚 API 문서</h2>
+                    <p class="text-gray-600 mb-4">Swagger UI를 통해 API를 확인하고 테스트할 수 있습니다.</p>
+                    <a href="/swagger-ui.html" 
+                       class="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                        Swagger UI
+                    </a>
+                </div>
+
+                <!-- H2 콘솔 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">🗄️ 데이터베이스</h2>
+                    <p class="text-gray-600 mb-4">H2 데이터베이스 콘솔에 접근할 수 있습니다.</p>
+                    <a href="/h2-console" 
+                       class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">
+                        H2 콘솔
+                    </a>
+                </div>
+
+                <!-- Actuator -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">📊 모니터링</h2>
+                    <p class="text-gray-600 mb-4">Spring Actuator를 통해 애플리케이션 상태를 확인할 수 있습니다.</p>
+                    <a href="/actuator" 
+                       class="inline-block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700">
+                        Actuator
+                    </a>
+                </div>
+
+                <!-- OAuth2 테스트 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">🔐 OAuth2 테스트</h2>
+                    <p class="text-gray-600 mb-4">Google OAuth2 로그인을 테스트할 수 있습니다.</p>
+                    <a href="/test-login.html" 
+                       class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">
+                        OAuth2 로그인 테스트
+                    </a>
+                </div>
+            </div>
+
+            <!-- 테스트 계정 정보 -->
+            <div class="mt-8 bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">👥 테스트 계정</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-blue-900 mb-2">기본 테스트 계정</h3>
+                        <div class="text-sm text-blue-700 space-y-1">
+                            <div><strong>이메일:</strong> test@example.com</div>
+                            <div><strong>비밀번호:</strong> password123!</div>
+                            <div><strong>역할:</strong> USER</div>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-green-900 mb-2">관리자 계정</h3>
+                        <div class="text-sm text-green-700 space-y-1">
+                            <div><strong>이메일:</strong> admin@example.com</div>
+                            <div><strong>비밀번호:</strong> admin123!</div>
+                            <div><strong>역할:</strong> ADMIN</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API 엔드포인트 정보 -->
+            <div class="mt-8 bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">🔗 주요 API 엔드포인트</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">POST</span>
+                        <span class="font-mono text-gray-700">/api/auth/login</span>
+                        <span class="text-gray-500">이메일/비밀번호 로그인</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded">
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-mono">POST</span>
+                        <span class="font-mono text-gray-700">/api/auth/refresh</span>
+                        <span class="text-gray-500">토큰 갱신</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded">
+                        <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-mono">POST</span>
+                        <span class="font-mono text-gray-700">/api/auth/logout</span>
+                        <span class="text-gray-500">로그아웃</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded">
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-mono">GET</span>
+                        <span class="font-mono text-gray-700">/api/v1/members/me</span>
+                        <span class="text-gray-500">현재 사용자 정보</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded">
+                        <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm font-mono">GET</span>
+                        <span class="font-mono text-gray-700">/api/test/**</span>
+                        <span class="text-gray-500">테스트용 API (개발 환경만)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 환경 정보 -->
+            <div class="mt-8 bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">⚙️ 환경 정보</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">개발 환경</h3>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <div><strong>프로필:</strong> dev</div>
+                            <div><strong>데이터베이스:</strong> PostgreSQL</div>
+                            <div><strong>캐시:</strong> Redis</div>
+                            <div><strong>인증:</strong> JWT + OAuth2</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">보안 설정</h3>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <div><strong>CSRF:</strong> 비활성화</div>
+                            <div><strong>CORS:</strong> 활성화</div>
+                            <div><strong>세션:</strong> Stateless</div>
+                            <div><strong>테스트 경로:</strong> 개발 환경에서만 허용</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

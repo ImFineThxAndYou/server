@@ -2,8 +2,11 @@ package org.example.howareyou.domain.member.dto.response;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 
 import java.time.LocalDate;
@@ -15,10 +18,10 @@ import java.util.Set;
 public class ProfileResponse {
 
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long            memberId;
+    private String          membername;
     private String          nickname;
     private String          avatarUrl;
-    private String          statusMessage;
+    private String          bio;
     private Set<Category>   interests;
 
     /* 로케일 · 사용자 정보 */
@@ -32,10 +35,10 @@ public class ProfileResponse {
 
     public static ProfileResponse from(MemberProfile p) {
         return ProfileResponse.builder()
-                .memberId(p.getId())
+                .membername(p.getMember().getMembername())
                 .nickname(p.getNickname())
                 .avatarUrl(p.getAvatarUrl())
-                .statusMessage(p.getStatusMessage())
+                .bio(p.getBio())
                 .interests(p.getInterests())
                 .completed(p.isCompleted())
                 .language(p.getLanguage())
@@ -44,6 +47,23 @@ public class ProfileResponse {
                 .age(p.getAge())
                 .country(p.getCountry())
                 .region(p.getRegion())
+                .build();
+    }
+
+    public static ProfileResponse from(Member m) {
+        return ProfileResponse.builder()
+                .membername(m.getMembername())
+                .nickname(m.getProfile().getNickname())
+                .avatarUrl(m.getProfile().getAvatarUrl())
+                .bio(m.getProfile().getBio())
+                .interests(m.getProfile().getInterests())
+                .completed(m.getProfile().isCompleted())
+                .language(m.getProfile().getLanguage())
+                .timezone(m.getProfile().getTimezone())
+                .birthDate(m.getProfile().getBirthDate())
+                .age(m.getProfile().getAge())
+                .country(m.getProfile().getCountry())
+                .region(m.getProfile().getRegion())
                 .build();
     }
 }
