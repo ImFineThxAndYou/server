@@ -18,11 +18,11 @@ public interface MemberService {
     ProfileResponse updateMyProfile(Long id, ProfileCreateRequest request);
     ProfileResponse getPublicProfile(String membername);
 
-    MembernameResponse setMembername(Long memberId, MembernameRequest req);
+    MembernameResponse setMembername(Long memberId, MembernameRequest req, HttpServletResponse res);
     boolean isMembernameDuplicated(String username);
 
-    /* Presence */
-    void updatePresence(Long id, boolean online);
+//    /* Presence */
+//    void updatePresence(Long id, boolean online);
     MemberStatusResponse getMemberStatus(Long id);
     MemberStatusResponse getMemberStatus(String membername);
 

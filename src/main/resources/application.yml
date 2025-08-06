@@ -5,7 +5,6 @@ spring:
   profiles:
     active: dev
 
-
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
@@ -64,6 +63,9 @@ jwt:
 
 front:
   url: ${FRONT_URL}
+  cors:
+    allowed-origins:
+      - ${FRONT_URL}
 
 logging:
   level:

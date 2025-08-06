@@ -17,7 +17,6 @@ import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +32,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MemberServiceImpl implements MemberService {
 
-    private final MemberRepository   memberRepo;
-    private final MemberCacheService cacheSvc;
+    private final MemberRepository memberRepository;
+    private final MemberCacheService memberCacheService;
 
     /* ---------- 프로필 ---------- */
 
     @Override
     public ProfileResponse getMyProfile(Long id) {
-        return ProfileResponse.from(fetchMember(id).getProfile());
+        return ProfileResponse.from(fetchMember(id));
     }
 
     @Override
@@ -63,22 +62,28 @@ public class MemberServiceImpl implements MemberService {
         }
 
         if (!p.isCompleted()) p.completeProfile();
-        cacheSvc.cacheMember(MemberCache.from(m));       // 캐시 동기화
+        memberCacheService.cache(m);       // 캐시 동기화
 
         return ProfileResponse.from(p);
     }
 
     @Override
-    public ProfileResponse getPublicProfile(String membername) {
-        return ProfileResponse.from(fetchMember(membername).getProfile());
+    public ProfileResponse getPublicProfile(String membername){
+        Member m = fetchMember(membername);
+        return memberCacheService.get(m.getId())
+                .map(this::fromCache)        // hit
+                .orElseGet(() -> {           // miss → DB + 캐시
+                    memberCacheService.cache(m);
+                    return ProfileResponse.from(m.getProfile());
+                });
     }
 
     @Override @Transactional
-    public MembernameResponse setMembername(Long id, MembernameRequest req){
+    public MembernameResponse setMembername(Long id, MembernameRequest req, HttpServletResponse res) {
         if (isMembernameDuplicated(req.membername()))
             throw new CustomException(ErrorCode.DUPLICATED_MEMBERNAME);
 
-        Member m = memberRepo.findById(id)
+        Member m = memberRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         m.setMembername(req.membername());
         return MembernameResponse.from(m);            // dirty-checking flush
@@ -86,38 +91,55 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public boolean isMembernameDuplicated(String Membername){
-        return memberRepo.existsByMembername(Membername.trim().toLowerCase());
+        return memberRepository.existsByMembername(Membername.trim().toLowerCase());
     }
 
     /* ---------- Presence ---------- */
 
-    @Override
-    @Transactional
-    public void updatePresence(Long id, boolean online) {
-        cacheSvc.updateMemberState(id, online);
-    }
+//    @Override
+//    @Transactional
+//    public void updatePresence(Long id, boolean online) {
+//        cacheSvc.updateMemberState(id, online);
+//    }
 
     @Override
-    public MemberStatusResponse getMemberStatus(Long id) {
-        Member m = fetchMember(id);
-        return MemberStatusResponse.builder()
-                .memberId(id)
-                .online(cacheSvc.isMemberOnline(id))
-                .lastActiveAt(cacheSvc.getLastActiveAt(id))
-                .profileCompleted(m.isProfileCompleted())
-                .build();
-    }
+        public MemberStatusResponse getMemberStatus(Long id){
+            Member m = fetchMember(id);
+            String membername = m.getMembername();
+
+            return memberCacheService.get(id)
+                    .map(mc -> MemberStatusResponse.builder()
+                            .membername(membername)
+                            .online(true)
+                            .lastActiveAt(mc.getLastActiveAt())
+                            .profileCompleted(mc.isCompleted())
+                            .build())
+                    .orElse( MemberStatusResponse.builder()
+                            .membername(membername)
+                            .online(false)
+                            .lastActiveAt(m.getLastActiveAt()) // DB fallback
+                            .profileCompleted(m.isProfileCompleted())
+                            .build());
+        }
 
     @Override
-    public MemberStatusResponse getMemberStatus(String membername) {
+    public MemberStatusResponse getMemberStatus(String membername){
         Member m = fetchMember(membername);
-        Long id = m.getId();
-        return MemberStatusResponse.builder()
-                .memberId(id)
-                .online(cacheSvc.isMemberOnline(id))
-                .lastActiveAt(cacheSvc.getLastActiveAt(id))
-                .profileCompleted(m.isProfileCompleted())
-                .build();
+        Long id  = m.getId();
+
+        return memberCacheService.get(id)
+                .map(mc -> MemberStatusResponse.builder()
+                        .membername(membername)
+                        .online(true)
+                        .lastActiveAt(mc.getLastActiveAt())
+                        .profileCompleted(mc.isCompleted())
+                        .build())
+                .orElse( MemberStatusResponse.builder()
+                        .membername(membername)
+                        .online(false)
+                        .lastActiveAt(m.getLastActiveAt()) // DB fallback
+                        .profileCompleted(m.isProfileCompleted())
+                        .build());
     }
 
     /* ---------- 계정 ---------- */
@@ -127,7 +149,7 @@ public class MemberServiceImpl implements MemberService {
     public void deleteAccount(Long id) {
         Member m = fetchMember(id);
         m.deleteAccount();
-        cacheSvc.delete(id);
+        memberCacheService.delete(id);
     }
 
     /* ---------- Related Users (같은 카테고리 사용자) ---------- */
@@ -175,13 +197,29 @@ public class MemberServiceImpl implements MemberService {
     /* ---------- util ---------- */
 
     private Member fetchMember(Long id) {
-        return memberRepo.findById(id)
+        return memberRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
     private Member fetchMember(String membername) {
-        return memberRepo.findByMembername(membername)
+        return memberRepository.findByMembername(membername)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
+    private ProfileResponse fromCache(MemberCache c) {
+        return ProfileResponse.builder()
+                .membername(c.getMembername())
+                .nickname(c.getNickname())
+                .avatarUrl(c.getAvatarUrl())
+                .bio(c.getBio())
+                .interests(c.getInterests())
+                .completed(c.isCompleted())
+                .language(c.getLanguage())
+                .timezone(c.getTimezone())
+                .birthDate(c.getBirthDate())
+                .age(c.getAge())
+                .country(c.getCountry())
+                .region(c.getRegion())
+                .build();
+    }
 }

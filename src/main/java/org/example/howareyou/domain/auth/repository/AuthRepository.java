@@ -2,7 +2,6 @@ package org.example.howareyou.domain.auth.repository;
 
 import org.example.howareyou.domain.auth.entity.Auth;
 import org.example.howareyou.domain.auth.entity.Provider;
-import org.example.howareyou.domain.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

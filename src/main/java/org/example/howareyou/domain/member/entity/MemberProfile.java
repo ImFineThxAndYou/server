@@ -44,7 +44,7 @@ public class MemberProfile extends BaseEntity {
     private String avatarUrl;                         // 프로필 이미지
 
     @Column(length = 100)
-    private String statusMessage;                     // 상태 메시지
+    private String bio;                     // 상태 메시지
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
@@ -85,13 +85,13 @@ public class MemberProfile extends BaseEntity {
     public static MemberProfile create(
             String nickname,
             String avatarUrl,
-            String statusMessage,
+            String bio,
             Set<Category> interests
     ) {
         return MemberProfile.builder()
                 .nickname(nickname)
                 .avatarUrl(avatarUrl)
-                .statusMessage(statusMessage)
+                .bio(bio)
                 .interests(interests != null ? interests : new HashSet<>())
                 .completed(false)
                 .build();
@@ -117,7 +117,7 @@ public class MemberProfile extends BaseEntity {
      */
     public void updateProfile(
             String nickname,
-            String statusMessage,
+            String bio,
             String avatarUrl,
             Set<Category> interests,
             LocalDate birthDate,
@@ -132,11 +132,11 @@ public class MemberProfile extends BaseEntity {
         this.nickname = nickname.trim();
 
         /* ② 선택 필드 */
-        if (statusMessage != null) this.statusMessage = statusMessage;
-        if (avatarUrl     != null) this.avatarUrl     = avatarUrl;
-        if (birthDate     != null) this.birthDate     = birthDate;
-        if (country       != null) this.country       = country.toUpperCase(Locale.ENGLISH);
-        if (region        != null) this.region        = region;
+        if (bio         != null) this.bio = bio;
+        if (avatarUrl   != null) this.avatarUrl     = avatarUrl;
+        if (birthDate   != null) this.birthDate     = birthDate;
+        if (country     != null) this.country       = country.toUpperCase(Locale.ENGLISH);
+        if (region      != null) this.region        = region;
 
         /* ③ 관심사 (null = 유지, 빈 Set = 전체삭제) */
         if (interests != null) {
@@ -162,7 +162,7 @@ public class MemberProfile extends BaseEntity {
     public void clearPersonalInfo() {
         this.nickname = "deleted_" + this.getId();
         this.avatarUrl = null;
-        this.statusMessage = null;
+        this.bio = null;
         this.interests.clear();
         this.birthDate = null;
         this.country = null;
@@ -172,10 +172,11 @@ public class MemberProfile extends BaseEntity {
     /* ==================== 로케일 유효성 ==================== */
 
     public void setLanguage(String language) {
-        this.language = switch (Optional.ofNullable(language).orElse("ko").toLowerCase()) {
-            case "en" -> "en";
-            default   -> "ko";
-        };
+        this.language = switch (Optional.ofNullable(language).orElse("ko").toLowerCase())
+                        {
+                            case "en" -> "en";
+                            default   -> "ko";
+                        };
     }
 
     public void setTimezone(String timezone) {

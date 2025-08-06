@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * 모든 엔티티의 공통 필드 + 수명주기 콜백으로 타임스탬프 관리
