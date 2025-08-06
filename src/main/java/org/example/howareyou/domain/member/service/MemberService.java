@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.member.service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.example.howareyou.domain.member.dto.request.FilterRequest;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
