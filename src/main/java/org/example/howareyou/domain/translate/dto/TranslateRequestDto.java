@@ -1,10 +1,15 @@
 package org.example.howareyou.domain.translate.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 @Getter
+@Schema(description = "번역 요청 DTO")
 public class TranslateRequestDto {
-    String q; // message
-    String source; //source lang
-    String target; //target lang
+    @Schema(description = "번역할 원문", example = "안녕하세요")
+    private String q;
+    @Schema(description = "소스 언어", example = "ko")
+    private String source;
+    @Schema(description = "타겟 언어", example = "en")
+    private String target;
 }
