@@ -175,7 +175,7 @@ public class MemberController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    @GetMapping("/me/filter")
+    @PostMapping("/me/filter")
     public ResponseEntity<List<MemberProfile>> getFilter(
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
             @RequestBody @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -185,7 +185,7 @@ public class MemberController {
             )
             @Valid FilterRequest filterRequest
     ) {
-        List<MemberProfile> users = memberService.findOthersWithFilter(filterRequest, memberDetails.getId());
+        List<MemberProfile> users = memberService.findOthersWithFilter(filterRequest, 1L);
         return ResponseEntity.ok(users);
     }
 }

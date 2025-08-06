@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -145,14 +146,17 @@ public class MemberServiceImpl implements MemberService {
         List<Member> members =   memberRepo.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
         return members.stream()
                 .map(Member::getProfile)
-                .filter(MemberProfile::isCompleted)
+                //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌
                 .toList();
     }
     /* ---------- Filter로 사용자 찾기 ---------- */
     @Override
     @Transactional
     public List<MemberProfile> findOthersWithFilter(FilterRequest filter,Long requesterId){
-        Set<Category> interests = new HashSet<>(filter.getInterests());
+        Set<Category> interestsEnums = new HashSet<>(filter.getInterests());
+        Set<String> interests = interestsEnums.stream()
+                .map(Enum::name)
+                .collect(Collectors.toSet());
         log.info("메소드 진입;");
         if (interests.isEmpty()) {
             // 관심사 필터가 비어있으면, requester만 제외하고 전부 리턴
@@ -161,10 +165,10 @@ public class MemberServiceImpl implements MemberService {
                     .filter(mp -> !mp.getId().equals(requesterId))
                     .toList();
         }
-        List<Member> members =  memberRepo.findByInterestsContainingAll(interests, requesterId);
+        List<Member> members =  memberRepo.findByInterestsContainingAll(interests, requesterId, interests.size());
         return members.stream()
                 .map(Member::getProfile)
-                .filter(MemberProfile::isCompleted)
+                //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌
                 .toList();
     }
 

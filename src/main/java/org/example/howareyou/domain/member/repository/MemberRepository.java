@@ -22,18 +22,19 @@ public interface MemberRepository extends JpaRepository<Member,Long>{
      * interests 에 주어진 모든 카테고리를 포함하고,
      * member.id ≠ :requesterId 인 프로필만 조회합니다.
      */
-    @Query("""
-  SELECT m
-    FROM Member m
-    JOIN m.profile mp
-    JOIN mp.interests i
-   WHERE i IN :interests
-     AND m.id <> :requesterId
-   GROUP BY m
-  HAVING COUNT(DISTINCT i) = :#{#interests.size()}
-""")
+    @Query(value = """
+SELECT m.*
+  FROM members m
+  JOIN member_profiles mp ON mp.member_id = m.id
+  JOIN member_interests mi ON mi.member_id = m.id
+ WHERE m.id <> :requesterId
+ GROUP BY m.id
+HAVING
+  COUNT(DISTINCT CASE WHEN mi.interest IN (:interests) THEN mi.interest END) = :interestCount
+""", nativeQuery = true)
     List<Member> findByInterestsContainingAll(
-            @Param("interests") Set<Category> interests,
-            @Param("requesterId") Long requesterId
+            @Param("interests") Set<String> interests,
+            @Param("requesterId") Long requesterId,
+            @Param("interestCount") int interestCount
     );
 }
