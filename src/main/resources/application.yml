@@ -55,6 +55,9 @@ jwt:
 
 front:
   url: ${FRONT_URL}
+  cors:
+    allowed-origins:
+      - ${FRONT_URL}
 
 logging:
   level:

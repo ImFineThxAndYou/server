@@ -11,8 +11,8 @@ import java.time.Instant;
 @Builder
 public class MemberStatusResponse {
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long          memberId;
-    private boolean       online;
-    private Instant lastActiveAt;
-    private boolean       profileCompleted;
+    private String          membername;
+    private boolean         online;
+    private Instant         lastActiveAt;
+    private boolean         profileCompleted;
 }

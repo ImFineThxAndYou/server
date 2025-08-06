@@ -100,4 +100,9 @@ public class JwtTokenProvider {
     public long getRefreshTokenExpirationTime() {
         return REFRESH_EXP_MS;
     }
+
+    public String validateAndGetSubject(String token) {
+        Claims claims = parse(token);          // 기존 parse 로직 재사용
+        return claims.getSubject();            // 유효하면 subject 반환
+    }
 }

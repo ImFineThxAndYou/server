@@ -43,9 +43,13 @@ public class Member extends BaseEntity {
     @Builder.Default
     private boolean active = true;       // 활성화 여부
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.USER;
 
-    @Column(name = "last_login_at")
-    private Instant lastLoginAt;   // 마지막 로그인 시간 (UTC)
+    @Column(name = "last_active_at")
+    private Instant lastActiveAt;   // 마지막 로그인 시간 (UTC)
 
     /* ==================== 프로필 연관 ==================== */
 
@@ -129,16 +133,17 @@ public class Member extends BaseEntity {
         if (this.profile != null) this.profile.clearPersonalInfo();
     }
 
-    /** 마지막 로그인 시각 갱신 (UTC) */
-    public void updateLastLogin() { this.lastLoginAt = Instant.now(); }
+    public void markActiveNow(){
+        this.lastActiveAt = Instant.now();
+    }
 
     /* ==================== equals & hashCode ==================== */
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof MemberProfile mp)) return false;
-        return getId() != null && getId().equals(mp.getId());
+        if (!(o instanceof Member other)) return false;
+        return getId() != null && getId().equals(other.getId());
     }
 
     @Override

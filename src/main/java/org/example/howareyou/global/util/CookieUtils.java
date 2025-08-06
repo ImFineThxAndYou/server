@@ -5,6 +5,7 @@ import jakarta.servlet.http.Cookie;
 /** Refresh 쿠키 생성 / 삭제 헬퍼 */
 public final class CookieUtils {
     private CookieUtils(){}
+    
     public static Cookie refresh(String rt, boolean secure){
         Cookie c=new Cookie("Refresh",rt);
         c.setHttpOnly(true);
@@ -13,9 +14,11 @@ public final class CookieUtils {
         c.setMaxAge(14*24*60*60);
         return c;
     }
+    
     public static Cookie expire(){
         Cookie c=new Cookie("Refresh",null);
-        c.setPath("/"); c.setMaxAge(0);
+        c.setPath("/"); 
+        c.setMaxAge(0);
         return c;
     }
 }

@@ -3,17 +3,19 @@ package org.example.howareyou.domain.member.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
+import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
-import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 @Tag(name = "회원 관리", description = "사용자 계정 및 프로필 관련 API")
@@ -29,6 +31,7 @@ public class MemberController {
 
     @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 프로필 정보를 조회합니다.")
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProfileResponse> getMyProfile(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomMemberDetails memberDetails) {
@@ -44,14 +47,14 @@ public class MemberController {
         return ResponseEntity.ok(memberService.updateMyProfile(memberDetails.getId(), request));
     }
 
-    @Operation(summary = "온라인 상태 업데이트", description = "현재 로그인한 사용자의 온라인 상태를 업데이트합니다.")
-    @PostMapping("/profiles/me/status")
-    public ResponseEntity<Void> setPresence(
-            @AuthenticationPrincipal Long memberId,
-            @RequestParam boolean online) {
-        memberService.updatePresence(memberId, online);
-        return ResponseEntity.noContent().build();
-    }
+//    @Operation(summary = "온라인 상태 업데이트", description = "현재 로그인한 사용자의 온라인 상태를 업데이트합니다.")
+//    @PostMapping("/profiles/me/status")
+//    public ResponseEntity<Void> setPresence(
+//            @AuthenticationPrincipal Long memberId,
+//            @RequestParam boolean online) {
+//        memberService.updatePresence(memberId, online);
+//        return ResponseEntity.noContent().build();
+//    }
 
     @Operation(summary = "공개 프로필 조회", description = "특정 사용자의 공개 프로필을 조회합니다.")
     @GetMapping("/{membername}")
@@ -86,11 +89,12 @@ public class MemberController {
     }
 
     @Operation(summary = "Membername 설정", description = "사용자의 Membername을 최초 설정하거나 변경합니다.")
-    @PostMapping("/me/membername")
+    @PostMapping("/membername")
     public ResponseEntity<MembernameResponse> setMembername(
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
-            @Valid @RequestBody MembernameRequest request) {
-        return ResponseEntity.ok(memberService.setMembername(memberDetails.id(), request));
+            @Valid @RequestBody MembernameRequest request,
+            HttpServletResponse res) {
+        return ResponseEntity.ok(memberService.setMembername(memberDetails.getId(), request, res));
     }
 
 }

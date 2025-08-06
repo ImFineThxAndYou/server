@@ -7,11 +7,10 @@ import org.example.howareyou.domain.auth.dto.TokenBundle;
 import org.example.howareyou.domain.auth.entity.Auth;
 import org.example.howareyou.domain.auth.entity.Provider;
 import org.example.howareyou.domain.auth.repository.AuthRepository;
-import org.example.howareyou.domain.member.redis.MemberCache;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
-import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.domain.member.redis.MemberCacheService;
+import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.global.security.jwt.JwtTokenProvider;
 import org.example.howareyou.global.util.UserAgentUtils;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -20,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Slf4j
@@ -118,9 +116,6 @@ public class GoogleLoginProcessor implements OAuth2LoginProcessor {
      */
     private void cacheUserInfo(Auth auth) {
         Member member = auth.getMember();
-
-        MemberCache memberCache = MemberCache.from(member);
-
-        memberCacheService.cacheMember(memberCache);
+        memberCacheService.cache(member);
     }
 }
