@@ -78,17 +78,4 @@ public class ChatRedisService {
     redisTemplate.delete(CURRENT_ROOM_KEY + userId);
   }
 
-  // 채팅방 리스트 + 미리보기 캐시 (Hash)
-  public void cacheChatListItem(String userId, String chatRoomId, ChatPreviewDTO previewDto) {
-    redisTemplate.opsForHash().put(CHAT_LIST_KEY + userId, chatRoomId, previewDto);
-    redisTemplate.expire(CHAT_LIST_KEY + userId, DEFAULT_TTL);
-  }
-
-  public Map<Object, Object> getChatList(String userId) {
-    return redisTemplate.opsForHash().entries(CHAT_LIST_KEY + userId);
-  }
-
-  public void clearChatList(String userId) {
-    redisTemplate.delete(CHAT_LIST_KEY + userId);
-  }
 }
