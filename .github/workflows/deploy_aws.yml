@@ -39,15 +39,17 @@ jobs:
       - name: Restart App on EC2
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-            cd /home/${{ secrets.EC2_USER }}/app
-      
-            # .env 파일의 환경변수 export
-            export \$(cat .env | xargs)
-      
-            echo "🔁 Killing old Spring process..."
-            pkill -f 'java -jar' || true
-      
-            echo "🚀 Starting new Spring Boot app with exported .env..."
-            nohup java -jar app.jar --server.port=8080 --server.address=0.0.0.0 > nohup.out 2>&1 &
-          EOF
+          set -e
+          cd /home/${{ secrets.EC2_USER }}/app
+    
+          # 안전하게 환경변수 주입
+          set -o allexport
+          source .env
+          set +o allexport
+    
+          echo "🔁 Killing old Spring Boot process..."
+          pkill -f 'java -jar' || true
+    
+          echo "🚀 Starting new Spring Boot app with .env variables"
+          nohup java -jar app.jar --server.port=8080 --server.address=0.0.0.0 > nohup.out 2>&1 &
+          EOF  
