@@ -61,7 +61,7 @@ public class ChatMessageService {
 
     boolean isReceiverInRoom = chatRoomId.equals(currentRoom);
 
-    if (!isReceiverInRoom) { // 상대방이 접속 중인 경우
+    if (!isReceiverInRoom) { // 상대방이 접속 중이지 않은 경우
       // 3. 안읽은 메시지 수 증가
       chatRedisService.incrementUnread(chatRoomId, receiverId);
 
@@ -169,6 +169,5 @@ public class ChatMessageService {
         .map(ChatMessageDocumentResponse::from)
         .toList();
   }
-
 
 }
