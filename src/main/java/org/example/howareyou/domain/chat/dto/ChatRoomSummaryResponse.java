@@ -7,7 +7,7 @@ public record ChatRoomSummaryResponse(
     Long opponentId,
     String opponentName,
     String roomStatus,
-    String lastMessageContent,     // 추가
-    Instant lastMessageTime,       // 추가
-    int unreadCount                // 추가
+    String lastMessageContent,
+    Instant lastMessageTime,
+    int unreadCount
 ) {}

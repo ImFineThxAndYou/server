@@ -133,6 +133,14 @@ public class ChatRoomService {
       throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS);
     }
 
+    ChatRoomMember memberEntry = chatRoomMemberRepository
+        .findByChatRoomAndMemberId(chatRoom, myId)
+        .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS));
+
+    if (memberEntry.getStatus() != ChatRoomMemberStatus.JOINED) {
+      throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS);
+    }
+
     Member opponent = chatRoom.getOtherParticipant(myId);
 
     return new ChatRoomResponse(
@@ -192,7 +200,6 @@ public class ChatRoomService {
 
     // 채팅방 인원 연결 끊기
     chatRoomMemberRepository.deleteByChatRoomAndMember(room, me);
-
 
     List<ChatRoomMember> remaining = chatRoomMemberRepository.findByChatRoom(room);
 

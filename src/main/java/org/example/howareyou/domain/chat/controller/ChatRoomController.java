@@ -33,6 +33,7 @@ public class ChatRoomController {
   @PostMapping("/create")
   public CreateChatRoomResponse createChatRoom(@RequestBody CreateChatRoomRequest request,
       @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+    log.info("request 입니다 : {}", request);
     Long senderId = memberDetails.getId();
     return chatRoomService.createChatRoom(request, senderId);
   }
