@@ -77,20 +77,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String redirectUrl;
         
         if ("dev".equals(activeProfile)) {
-            // 개발 환경: 내부 테스트 페이지로 리다이렉트 (Access Token을 URL 파라미터로 전달)
-            String baseUrl = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort();
-            String path = t.completed() ? "/test-login.html" : "/test-signup.html";
+            // 개발 환경: React 앱으로 리다이렉트
+            String path = t.completed() ? "/login/success" : "/signup/membername";
             
             redirectUrl = UriComponentsBuilder
-                    .fromUriString(baseUrl)
+                    .fromUriString(frontUrl)
                     .path(path)
                     .queryParam("oauth_success", "true")
                     .queryParam("provider", provider.name().toLowerCase())
                     .queryParam("profile_completed", String.valueOf(t.completed()))
-                    .queryParam("access_token", t.access()) // Access Token을 URL 파라미터로 전달
                     .build().toUriString();
             
-            log.info("🔧 개발 환경 OAuth2 리다이렉트: {}", redirectUrl);
+            log.info("🔧 개발 환경 OAuth2 리다이렉트 (React): {}", redirectUrl);
         } else {
             // 프로덕션 환경: 프론트엔드로 리다이렉트
             String path = t.completed() ? "/login/success" : "/signup/membername";

@@ -99,7 +99,15 @@ public enum ErrorCode {
     GM_MODEL_MISMATCH(HttpStatus.BAD_REQUEST, "GM015", "지정한 모델이 지원되지 않거나 잘못된 액션 suffix를 사용했습니다."),
     GM_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "GM016", "Gemini 사용량 쿼터를 초과했습니다."),
     GM_AUTH_HEADER_MISSING(HttpStatus.BAD_REQUEST, "GM017", "필수 인증 헤더가 누락되었습니다."),
-    GM_UNKNOWN(HttpStatus.BAD_GATEWAY, "GM018", "알 수 없는 Gemini 처리 오류가 발생했습니다.");
+    GM_UNKNOWN(HttpStatus.BAD_GATEWAY, "GM018", "알 수 없는 Gemini 처리 오류가 발생했습니다."),
+
+    /* ───────────[알림]─────────── */
+    NOTIFICATION_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "N001", "알림 발송에 실패했습니다."),
+    SSE_CONNECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "N002", "SSE 연결에 실패했습니다."),
+    SSE_EMITTER_NOT_FOUND(HttpStatus.NOT_FOUND, "N003", "SSE 연결을 찾을 수 없습니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N004", "알림을 찾을 수 없습니다."),
+    INVALID_NOTIFICATION_TYPE(HttpStatus.BAD_REQUEST, "N005", "유효하지 않은 알림 타입입니다."),
+    NOTIFICATION_RECEIVER_NOT_FOUND(HttpStatus.NOT_FOUND, "N006", "알림 수신자를 찾을 수 없습니다.");
 
 
     /* Getter ― 럼북을 안 쓴 예시 */

@@ -15,7 +15,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     registry
         .addEndpoint("/ws-chatroom") // 클라이언트 연결 엔드포인트
         .setAllowedOriginPatterns("*")
-        .addInterceptors(new WebSocketHandshakeInterceptor())
         .withSockJS(); // SockJS fallback 지원
   }
 

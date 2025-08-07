@@ -39,13 +39,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
 
+        String token = null;
+        
+        // 1. Authorization 헤더에서 토큰 확인
         String bearer = req.getHeader("Authorization");
-        if (!StringUtils.hasText(bearer) || !bearer.startsWith("Bearer ")) {
+        if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
+            token = bearer.substring(7).trim();
+        }
+        
+        // 2. 쿼리 파라미터에서 토큰 확인 (SSE 연결용)
+        if (token == null) {
+            String queryToken = req.getParameter("token");
+            if (StringUtils.hasText(queryToken)) {
+                token = queryToken.trim();
+            }
+        }
+        
+        if (!StringUtils.hasText(token)) {
             chain.doFilter(req, res);      // 토큰 없으면 다음 필터로
             return;
         }
-
-        String token = bearer.substring(7).trim();       // 앞·뒤 공백 제거
 
         // 1️⃣ 형식 안 맞으면 바로 패스
         if (!looksLikeJwt(token)) {

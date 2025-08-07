@@ -100,7 +100,7 @@ public class MemberCache implements Serializable {
                 .lastActiveAt(Instant.now())
                 .build();
     }
-
+        
     public MemberCache touch(){
         this.online       = true;
         this.lastActiveAt = Instant.now();
