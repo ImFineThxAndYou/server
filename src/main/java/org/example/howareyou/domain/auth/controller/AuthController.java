@@ -28,6 +28,7 @@ public class AuthController {
         // 개발 환경에서는 응답 본문에도 Refresh Token 포함 (HttpOnly 쿠키 읽기 문제 해결)
         return ResponseEntity.ok(tokenBundle);
     }
+
     @PostMapping("/refresh")
     public ResponseEntity<Void> refresh(@CookieValue(value = "Refresh", required = false) String refreshToken, HttpServletRequest request, HttpServletResponse response){
         if (refreshToken == null) {

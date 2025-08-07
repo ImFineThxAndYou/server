@@ -67,9 +67,13 @@ public class SecurityConfig {
 
                         // 개발 환경에서만 테스트 및 개발 도구 허용
                         .requestMatchers(isDevProfile() ? new String[]{
+                                "/",
+                                "/index.html",
+                                "/notification-test.html",
                                 "/test-login.html",
                                 "/test-signup.html",
                                 "/test-info.html",
+                                "/js/**",
                                 "/api/test/**",
                                 "/test/**",
                                 "/dev/**",
@@ -86,6 +90,9 @@ public class SecurityConfig {
                                 "/api/v1/members/*/status",
                                 "/api/v1/members/membername/*"
                         ).permitAll()
+
+                        // SSE 엔드포인트는 인증 필요
+                        .requestMatchers("/api/v1/notify/sse").authenticated()
 
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()

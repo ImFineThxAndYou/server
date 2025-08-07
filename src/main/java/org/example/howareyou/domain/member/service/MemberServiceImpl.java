@@ -143,6 +143,14 @@ public class MemberServiceImpl implements MemberService {
                         .build());
     }
 
+    @Override
+    public Long getIdByMembername(String membername) {
+        Member member = memberRepository.findByMembername(membername)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND, 
+                        String.format("사용자를 찾을 수 없습니다: membername=%s", membername)));
+        return member.getId();
+    }
+
     /* ---------- 계정 ---------- */
 
     @Override
