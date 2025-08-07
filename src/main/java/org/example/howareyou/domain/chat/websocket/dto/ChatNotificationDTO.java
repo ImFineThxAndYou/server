@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.chat.websocket.dto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,5 +15,11 @@ public class ChatNotificationDTO {
   private String chatRoomId;
   private String senderId;
   private String content;
-  private LocalDateTime messageTime;
+  private Instant messageTime;
+
+  public ChatNotificationDTO(String senderId, String content, Instant now) {
+    this.senderId = senderId;
+    this.content = content;
+    this.messageTime = now;
+  }
 }

@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,4 +30,5 @@ public class ChatMemberTracker {
   private String getRoomKey(String chatRoomId) {
     return CHAT_ROOM_USER_KEY_PREFIX + chatRoomId + ":users";
   }
+
 }
