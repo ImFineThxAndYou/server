@@ -124,6 +124,7 @@ public class ChatRoomService {
           ChatRoom room = entry.getChatRoom();
           Member opponent = room.getOtherParticipant(myId);
           String uuid = room.getUuid();
+
           // 마지막 메시지 시간 조회 (없으면 Instant.EPOCH)
           Instant messageTime = getLastMessage(uuid)
                   .map(ChatMessageDocumentResponse::getMessageTime)
