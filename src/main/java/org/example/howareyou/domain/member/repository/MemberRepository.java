@@ -19,6 +19,8 @@ public interface MemberRepository extends JpaRepository<Member,Long>{
     boolean existsByMembername(String Membername);
     List<Member> findDistinctByProfileInterestsInAndIdNot(Set<Category> interests, Long excludeId);
 
+    Long getIdByMembername(String membername);
+
     @Modifying
     @Query("update Member m set m.lastActiveAt = :now where m.id = :id")
     void updateLastActive(@Param("id") Long id, @Param("now") Instant now);
