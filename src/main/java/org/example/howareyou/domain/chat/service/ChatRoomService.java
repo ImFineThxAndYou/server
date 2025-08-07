@@ -63,12 +63,15 @@ public class ChatRoomService {
     return new CreateChatRoomResponse(chatRoom.getUuid());
   }
 
+  /**
+   *  채팅 요청 수락
+   */
   @Transactional
   public void acceptChatRoom(String roomUuid, Long receiverId) {
     ChatRoom chatRoom = chatRoomRepository.findByUuid(roomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    // 수락자 확인
+    // 요청자 확인
     memberRepository.findById(receiverId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
@@ -85,6 +88,38 @@ public class ChatRoomService {
     // 채팅방 전체 상태도 변경
     chatRoom.setStatus(ChatRoomStatus.ACCEPTED);
   }
+
+  /**
+   *  채팅 요청 거절
+   */
+  @Transactional
+  public void rejectChatRoom(String roomUuid, Long receiverId) {
+    ChatRoom chatRoom = chatRoomRepository.findByUuid(roomUuid)
+        .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+    // 요청자 확인
+    memberRepository.findById(receiverId)
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+    List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom(chatRoom);
+
+    for (ChatRoomMember member : members) {
+      if (member.getMember().getId().equals(receiverId)) {
+        member.setStatus(ChatRoomMemberStatus.REJECTED);
+        member.setJoinedAt(LocalDateTime.now());
+      } else {
+        // 상대방 상태도 PENDING → REJECTED 처리
+        member.setStatus(ChatRoomMemberStatus.REJECTED);
+      }
+    }
+
+    chatRoom.setStatus(ChatRoomStatus.REJECTED);
+
+    // 삭제 처리 (REJECTED 후 다시 요청 가능하도록 DB에서 제거)
+    chatRoomMemberRepository.deleteAll(members);
+    chatRoomRepository.delete(chatRoom);
+  }
+
 
   /**
    *  uuid 채팅방 단 건 조회
@@ -145,7 +180,7 @@ public class ChatRoomService {
   }
 
   /**
-   * ChatRoom 삭제 시 보호 코드
+   * ChatRoom 삭제 (disconnection)
     */
   @Transactional
   public void disconnectFromChatRoom(Long memberId, String chatRoomUuid) {
@@ -155,9 +190,13 @@ public class ChatRoomService {
     ChatRoom room = chatRoomRepository.findByUuid(chatRoomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
+    // 채팅방 인원 연결 끊기
     chatRoomMemberRepository.deleteByChatRoomAndMember(room, me);
 
+
     List<ChatRoomMember> remaining = chatRoomMemberRepository.findByChatRoom(room);
+
+    // 채팅방 id 삭제
     if (remaining.isEmpty()) {
       chatRoomRepository.delete(room);
     }

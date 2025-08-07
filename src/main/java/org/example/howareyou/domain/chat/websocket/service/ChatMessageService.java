@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 public class ChatMessageService {
   private final ChatMessageDocumentRepository mongoRepository;
   private final ChatRedisService chatRedisService;
-  private final ChatRoomService chatRoomService;
   private final ChatRoomRepository chatRoomRepository;
 
   /**
