@@ -40,7 +40,14 @@ jobs:
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-            APP_DIR="/home/${{ secrets.EC2_USER }}/app"
+            cd /home/${{ secrets.EC2_USER }}/app
+      
+            # .env 파일의 환경변수 export
+            export \$(cat .env | xargs)
+      
+            echo "🔁 Killing old Spring process..."
             pkill -f 'java -jar' || true
-            nohup java -jar $APP_DIR/app.jar > $APP_DIR/nohup.out 2>&1 &
+      
+            echo "🚀 Starting new Spring Boot app with exported .env..."
+            nohup java -jar app.jar --server.port=8080 --server.address=0.0.0.0 > nohup.out 2>&1 &
           EOF
