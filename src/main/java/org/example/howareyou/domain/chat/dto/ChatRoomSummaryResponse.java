@@ -1,13 +1,13 @@
 package org.example.howareyou.domain.chat.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.time.Instant;
 
-@Getter
-@AllArgsConstructor
-public class ChatRoomSummaryResponse {
-  private String uuid;
-  private Long opponentId;
-  private String opponentName;
-  private String status;
-}
+public record ChatRoomSummaryResponse(
+    String chatRoomId,
+    Long opponentId,
+    String opponentName,
+    String roomStatus,
+    String lastMessageContent,     // 추가
+    Instant lastMessageTime,       // 추가
+    int unreadCount                // 추가
+) {}
