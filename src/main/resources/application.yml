@@ -12,9 +12,8 @@ spring:
 
   data:
     mongodb:
-      host: ${MONGO_HOST}
-      port: ${MONGO_PORT}
-      database: ${MONGO_DB}
+      uri: mongodb+srv://howruname:howrupass@howru.ywfyiyp.mongodb.net/?retryWrites=true&w=majority&appName=howru
+      database: howru
 
     redis:
       host: ${REDIS_HOST}
