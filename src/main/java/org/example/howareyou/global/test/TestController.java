@@ -64,7 +64,7 @@ public class TestController {
             Member member = Member.builder()
                     .email(email)
                     .membername(membername)
-                    .role(Role.USER)
+                    .role(Role.valueOf("USER"))
                     .active(true)
                     .build();
             
@@ -88,7 +88,7 @@ public class TestController {
                     .member(member)
                     .email(email)
                     .passwordHash(passwordEncoder.encode(password))
-                    .provider(Provider.LOCAL)
+                    .provider(Provider.valueOf("LOCAL"))
                     .build();
             
             authRepository.save(auth);
