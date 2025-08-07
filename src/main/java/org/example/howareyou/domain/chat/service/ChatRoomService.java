@@ -6,10 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
-import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
-import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
-import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
-import org.example.howareyou.domain.chat.dto.CreateChatRoomResponse;
+import org.example.howareyou.domain.chat.dto.*;
 import org.example.howareyou.domain.chat.entity.*;
 import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
@@ -24,6 +21,7 @@ import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +39,6 @@ public class ChatRoomService {
   private final ChatMessageDocumentRepository chatMessageDocumentRepository;
   private final MemberRepository memberRepository;
   private final ChatRedisService chatRedisService;
-  private final ChatMessageDocumentRepository chatMessageDocumentRepository;
 
   /**
    *  채팅방 생성
@@ -145,21 +142,18 @@ public class ChatRoomService {
           int unreadCount = chatRedisService.getUnreadCount(room.getUuid(), myId.toString());
 
           return new ChatRoomSummaryResponse(
-              room.getUuid(),
-              opponent.getId(),
-              opponent.getMembername(),
-              room.getStatus().name()
+                  room.getUuid(),
+                  opponent.getId(),
+                  opponent.getMembername(),
+                  room.getStatus().name(),
+                  lastMessage != null ? lastMessage.getContent() : null,
+                  lastMessage != null ? lastMessage.getMessageTime() : null,
+                  unreadCount
           );
         })
-            .sorted(Comparator.comparing(ChatRoomSummaryResponse::getMessageTime).reversed()) // 최신순 정렬
             .toList();
   }
-  /* 추가: 시간기준 정렬 (최신채팅방 맨위로)*/
-  public Optional<ChatMessageDocumentResponse> getLastMessage(String chatRoomUuid) {
-    return chatMessageDocumentRepository
-            .findLatestMessageByChatRoom(chatRoomUuid)
-            .map(ChatMessageDocumentResponse::from);
-  }
+
 
   /* 추가: 승인요청 받은 목록조회 */
   @Transactional(readOnly = true)
