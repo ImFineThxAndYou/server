@@ -16,8 +16,8 @@ public class SsePingScheduler {
 
     private final RedisEmitter emitters;
 
-    /** ALB idle-timeout(60 s) 보다 짧게, 25 s */
-    @Scheduled(fixedRate = 25_000)
+    /** ALB idle-timeout(60 s) 보다 짧게, 15 s로 단축 */
+    @Scheduled(fixedRate = 15_000)
     public void pingAll() {
         emitters.forEach((memberId, emitter) -> {
             try {

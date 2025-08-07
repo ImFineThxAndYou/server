@@ -13,6 +13,7 @@ import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentRespon
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.notification.service.NotificationPushService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ public class ChatMessageService {
   private final ChatMessageDocumentRepository mongoRepository;
   private final ChatRedisService chatRedisService;
   private final ChatRoomRepository chatRoomRepository;
+  private final NotificationPushService notificationPushService;
 
   /**
    * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드.
@@ -66,8 +68,7 @@ public class ChatMessageService {
       chatRedisService.incrementUnread(chatRoomId, receiverId);
 
       // 4. 알림 메시지 Redis 저장
-//      ChatNotificationDTO notify = new ChatNotificationDTO(senderId, chatMessage.getContent(), Instant.now());
-//      chatRedisService.saveNotification(receiverId, chatRoomId, notify);
+      notificationPushService.sendChatNotify(Long.valueOf(chatRoomId), Long.valueOf(senderId), messageForMongo.getId(), messageForMongo.getContent(), Long.valueOf(receiverId));
     }
 
     // 5. MongoDB 저장은 동기로 수행 (추후에 kafka로 비동기 저장)

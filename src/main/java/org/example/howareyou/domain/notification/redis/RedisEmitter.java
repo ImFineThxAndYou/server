@@ -26,13 +26,30 @@ public class RedisEmitter {
         local.put(memberId, emitter);
         touch(memberId); // online flag set
 
-        emitter.onCompletion(() -> remove(memberId));
-        emitter.onTimeout(()   -> remove(memberId));
+        log.info("SseEmitter 추가: memberId={}, localSize={}", memberId, local.size());
+
+        emitter.onCompletion(() -> {
+            log.info("SseEmitter 완료: memberId={}", memberId);
+            remove(memberId);
+        });
+        emitter.onTimeout(() -> {
+            log.info("SseEmitter 타임아웃: memberId={}", memberId);
+            remove(memberId);
+        });
         return emitter;
     }
 
     public Optional<SseEmitter> get(Long memberId) {
-        return Optional.ofNullable(local.get(memberId));
+        SseEmitter emitter = local.get(memberId);
+        log.info("SseEmitter 조회: memberId={}, found={}, localSize={}", 
+                memberId, emitter != null, local.size());
+        
+        // 현재 저장된 모든 memberId 출력 (디버깅용)
+        if (local.size() > 0) {
+            log.info("현재 저장된 memberIds: {}", local.keySet());
+        }
+        
+        return Optional.ofNullable(emitter);
     }
 
     public void remove(Long memberId) {

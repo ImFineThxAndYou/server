@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -16,6 +17,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 public class RedisConfig {
 
     @Bean
+    @Primary
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory cf) {
         // 1) ObjectMapper 커스터마이징
         ObjectMapper om = new ObjectMapper()
@@ -34,7 +36,11 @@ public class RedisConfig {
         template.setValueSerializer(serializer);
         template.setHashKeySerializer(RedisSerializer.string());
         template.setHashValueSerializer(serializer);
+        template.setEnableDefaultSerializer(false); // 기본 직렬화 비활성화
+        template.setDefaultSerializer(serializer);
         template.afterPropertiesSet();
         return template;
     }
+
+
 }

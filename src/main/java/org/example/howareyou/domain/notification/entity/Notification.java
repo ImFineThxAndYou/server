@@ -1,17 +1,16 @@
 package org.example.howareyou.domain.notification.entity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
-    import lombok.*;
-import org.example.howareyou.domain.notification.entity.payload.ChatPayload;
-import org.example.howareyou.domain.notification.entity.payload.NotificationPayload;
-import org.example.howareyou.global.converter.JsonbConverter;
-import org.hibernate.annotations.Type;
+import lombok.*;
+import org.example.howareyou.domain.notification.entity.NotificationType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
 @Entity
 @Table(name = "notification")
 @Getter
@@ -30,9 +29,9 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private NotificationType type;
 
-    @Convert(converter = JsonbConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
-    private NotificationPayload payload;  // ✅ 인터페이스 타입
+    private Map<String, Object> payload;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -47,12 +46,44 @@ public class Notification {
     public boolean isUnread() { return readAt == null; }
 
     // 팩토리 메서드
-    // 팩토리 메서드
-    public static Notification chat(Long receiverId, Long roomId, Long senderId, String preview) {
-        ChatPayload payload = new ChatPayload(roomId, senderId, preview);
+    public static Notification chat(Long receiverId, Long roomId, Long senderId,String messageId, String message) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("chatRoomId", roomId);
+        payload.put("senderId", senderId);
+        payload.put("massageId", messageId);
+        payload.put("massage", message);
+        
         return Notification.builder()
                 .receiverId(receiverId)
                 .type(NotificationType.CHAT)
+                .payload(payload)
+                .createdAt(Instant.now())
+                .build();
+    }
+    
+    public static Notification chatReq(Long receiverId, Long requesterId, String requesterName, String message) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("requesterId", requesterId);
+        payload.put("requesterName", requesterName);
+        payload.put("message", message);
+        
+        return Notification.builder()
+                .receiverId(receiverId)
+                .type(NotificationType.CHATREQ)
+                .payload(payload)
+                .createdAt(Instant.now())
+                .build();
+    }
+    
+    public static Notification system(Long receiverId, String title, String content, String category) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("title", title);
+        payload.put("content", content);
+        payload.put("category", category); // "notice", "event", "maintenance" 등
+        
+        return Notification.builder()
+                .receiverId(receiverId)
+                .type(NotificationType.SYSTEM)
                 .payload(payload)
                 .createdAt(Instant.now())
                 .build();
