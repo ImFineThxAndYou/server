@@ -30,6 +30,6 @@ public interface MemberService {
     /* 계정 */
     void deleteAccount(Long id);
 
-    List<MemberProfile> findOthersWithSameCategories(Long requesterId);
-    List<MemberProfile> findOthersWithFilter(FilterRequest filterRequest,Long requesterId);
+    List<ProfileResponse> findOthersWithSameCategories(Long requesterId);
+    List<ProfileResponse> findOthersWithFilter(FilterRequest filterRequest,Long requesterId);
 }

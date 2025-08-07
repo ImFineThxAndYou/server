@@ -157,7 +157,7 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     @Transactional
-    public List<MemberProfile> findOthersWithSameCategories(Long requesterId) {
+    public List<ProfileResponse> findOthersWithSameCategories(Long requesterId) {
         Member me = fetchMember(requesterId);
         MemberProfile myProfile = me.getProfile();
         if (myProfile == null) {
@@ -166,30 +166,31 @@ public class MemberServiceImpl implements MemberService {
 
         // 예: 관심사(카테고리)를 기준으로 다른 사용자 찾기
         Set<Category> interests = myProfile.getInterests(); //
-        List<Member> members =   memberRepository.findDistinctByProfileInterestsInAndIdNot(interests, requesterId);
-        return members.stream()
-                .map(Member::getProfile)
-                //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌
+        List<ProfileResponse> members =   memberRepository.findDistinctByProfileInterestsInAndIdNot(interests, requesterId)
+                .stream()
+                .map(ProfileResponse::from)
                 .toList();
+        return members;
     }
     /* ---------- Filter로 사용자 찾기 ---------- */
     @Override
     @Transactional
-    public List<MemberProfile> findOthersWithFilter(FilterRequest filter,Long requesterId){
+    public List<ProfileResponse> findOthersWithFilter(FilterRequest filter,Long requesterId){
         Set<Category> interestsEnums = new HashSet<>(filter.getInterests());
         Set<String> interests = interestsEnums.stream()
                 .map(Enum::name)
                 .collect(Collectors.toSet());
         if (interests.isEmpty()) {
             // 관심사 필터가 비어있으면, requester만 제외하고 전부 리턴
-            return memberRepository.findAll().stream()
-                    .map(Member::getProfile)
-                    .filter(mp -> !mp.getId().equals(requesterId))
+            return memberRepository.findAll()
+                    .stream()
+                    .map(ProfileResponse::from)
                     .toList();
+
         }
         List<Member> members =  memberRepository.findByInterestsContainingAll(interests, requesterId, interests.size());
         return members.stream()
-                .map(Member::getProfile)
+                .map(ProfileResponse::from)
                 //.filter(MemberProfile::isCompleted) 나중에 주석해제 테스트 단계에서는 무시해도 됌
                 .toList();
     }

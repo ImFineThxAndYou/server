@@ -143,14 +143,14 @@ public class MemberController {
             )
     })
     @GetMapping("/search/peers")
-    public ResponseEntity<List<MemberProfile>> getPeers(
+    public ResponseEntity<List<ProfileResponse>> getPeers(
             @Parameter(
                     name        = "memberDetails",
                     description = "인증된 사용자 정보 (스프링 시큐리티가 주입)",
                     hidden      = true
             )
             @AuthenticationPrincipal CustomMemberDetails memberDetails){
-        List<MemberProfile> users = memberService.findOthersWithSameCategories(memberDetails.getId());
+        List<ProfileResponse> users = memberService.findOthersWithSameCategories(memberDetails.getId());
         return ResponseEntity.ok().body(users);
     }
 
@@ -178,7 +178,7 @@ public class MemberController {
             )
     })
     @PostMapping("/search/filter")
-    public ResponseEntity<List<MemberProfile>> getFilter(
+    public ResponseEntity<List<ProfileResponse>> getFilter(
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
             @RequestBody @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "관심사 필터 요청",
@@ -187,7 +187,7 @@ public class MemberController {
             )
             @Valid FilterRequest filterRequest
     ) {
-        List<MemberProfile> users = memberService.findOthersWithFilter(filterRequest, 1L);
+        List<ProfileResponse> users = memberService.findOthersWithFilter(filterRequest, memberDetails.getId());
         return ResponseEntity.ok(users);
     }
 }
