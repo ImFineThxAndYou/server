@@ -25,16 +25,21 @@ public class ChatRoom extends BaseTime {
   @Column(unique = true, nullable = false)
   private String uuid;
 
+// 1:1, 1:n
   @Enumerated(EnumType.STRING)
   private ChatRoomType type = ChatRoomType.ONE_TO_ONE;
 
+// 채팅 요청 수락/거절/대기
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
   private ChatRoomStatus status = ChatRoomStatus.PENDING;
 
+ // 채팅멤버
   @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ChatRoomMember> members = new ArrayList<>();
 
+  @Column(nullable = true)
+  private String ws_id; // 웹소켓 id 저장.
   @PrePersist
   public void generateUuid() {
     if (this.uuid == null) {

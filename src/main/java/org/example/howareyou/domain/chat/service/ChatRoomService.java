@@ -1,29 +1,41 @@
 package org.example.howareyou.domain.chat.service;
 
-import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
-import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
-import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
-import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
-import org.example.howareyou.domain.chat.dto.CreateChatRoomResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.chat.dto.*;
 import org.example.howareyou.domain.chat.entity.*;
 import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
+import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
+import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
+import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatRoomService {
-
+  /*  TODO
+       1,2,3 은 나중에 고려하기.
+  *    1. 내가 나갔을때 - 상대방한테 유지?삭제?
+  *    2. 상대방이 나갔을때 - 나한테 유지?삭제?
+  *    3. 아예 커넥션 끊기 (채팅방 ID 자체가 사라지는데 softdelete)
+  *    -----------------------------------------------------
+  *    4. 채팅방 시간기준 정렬
+  */
   private final ChatRoomRepository chatRoomRepository;
   private final ChatRoomMemberRepository chatRoomMemberRepository;
   private final MemberRepository memberRepository;
+  private final ChatMessageDocumentRepository chatMessageDocumentRepository;
 
   /* 채팅방 생성 */
   @Transactional
@@ -55,7 +67,7 @@ public class ChatRoomService {
 
     return new CreateChatRoomResponse(chatRoom.getUuid());
   }
-
+  /* 채팅방 수락 */
   @Transactional
   public void acceptChatRoom(String roomUuid, Long receiverId) {
     ChatRoom chatRoom = chatRoomRepository.findByUuid(roomUuid)
@@ -71,7 +83,7 @@ public class ChatRoomService {
     for (ChatRoomMember member : members) {
       if (member.getStatus() != ChatRoomMemberStatus.JOINED) {
         member.setStatus(ChatRoomMemberStatus.JOINED);
-        member.setJoinedAt(LocalDateTime.now());
+        member.setJoinedAt(Instant.now());
       }
     }
 
@@ -106,7 +118,6 @@ public class ChatRoomService {
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
     List<ChatRoomMember> myEntries = chatRoomMemberRepository.findByMember(me);
-
     return myEntries.stream()
         .map(entry -> {
           ChatRoom room = entry.getChatRoom();
@@ -119,5 +130,39 @@ public class ChatRoomService {
           );
         })
         .toList();
+  }
+  /* 4. 시간기준 정렬 (최신채팅방 맨위로)*/
+  public Optional<ChatMessageDocumentResponse> getLastMessage(String chatRoomUuid) {
+    return chatMessageDocumentRepository
+            .findLatestMessageByChatRoom(chatRoomUuid)
+            .map(ChatMessageDocumentResponse::from);
+  }
+
+  /* 6. 승인요청 받은 목록조회 */
+  @Transactional(readOnly = true)
+  public List<ChatRoomRequestMemberResponse> getRequestMembers(Long myId) {
+    Member me = memberRepository.findById(myId)
+            .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+    // 내가 참여한 모든 채팅방 멤버 레코드
+    List<ChatRoomMember> myEntries = chatRoomMemberRepository.findByMember(me);
+
+    return myEntries.stream()
+            .flatMap(myEntry -> {
+              ChatRoom room = myEntry.getChatRoom();
+              Instant myCreatedAt = myEntry.getJoinedAt();
+
+              return room.getMembers().stream()
+                      .filter(other -> !other.getMember().getId().equals(myId))
+                      .filter(other -> other.getJoinedAt().isBefore(myCreatedAt))
+                      .map(other -> new ChatRoomRequestMemberResponse(
+                              other.getMember().getId(),
+                              other.getMember().getMembername(),
+                              room.getUuid(),
+                              other.getStatus().name(),
+                              other.getJoinedAt()
+                      ));
+            })
+            .toList();
   }
 }

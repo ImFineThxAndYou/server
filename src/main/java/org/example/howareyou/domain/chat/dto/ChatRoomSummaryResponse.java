@@ -7,7 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class ChatRoomSummaryResponse {
   private String uuid;
-  private Long opponentId;
-  private String opponentName;
+  private Long opponentId; // 상대방 ID
+  private String opponentName; // 상대방 name
   private String status;
 }
