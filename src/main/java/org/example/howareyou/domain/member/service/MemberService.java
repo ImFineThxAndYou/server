@@ -27,6 +27,8 @@ public interface MemberService {
     MemberStatusResponse getMemberStatus(Long id);
     MemberStatusResponse getMemberStatus(String membername);
 
+    Long getIdByMembername(String membername);
+
     /* 계정 */
     void deleteAccount(Long id);
 

@@ -422,6 +422,11 @@
                     // 사용자 정보 로드
                     await loadUserInfo();
                     
+                    // 공통 인증 정보 저장
+                    if (window.authManager) {
+                        window.authManager.saveAuthInfo(result.user || currentUser, currentAccessToken);
+                    }
+                    
                     showHomePage();
                     showNotification('로그인 성공!', 'success');
                 } else {
@@ -974,5 +979,9 @@
             }
         }
     </script>
+
+    <!-- 공통 스크립트 포함 -->
+    <script src="/js/auth-common.js"></script>
+    <script src="/js/common-header.js"></script>
 </body>
 </html> 
