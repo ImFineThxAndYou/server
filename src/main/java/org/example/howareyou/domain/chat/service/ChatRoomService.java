@@ -1,6 +1,7 @@
 package org.example.howareyou.domain.chat.service;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -122,23 +123,30 @@ public class ChatRoomService {
         .map(entry -> {
           ChatRoom room = entry.getChatRoom();
           Member opponent = room.getOtherParticipant(myId);
+          String uuid = room.getUuid();
+          // 마지막 메시지 시간 조회 (없으면 Instant.EPOCH)
+          Instant messageTime = getLastMessage(uuid)
+                  .map(ChatMessageDocumentResponse::getMessageTime)
+                  .orElse(Instant.EPOCH);
           return new ChatRoomSummaryResponse(
-              room.getUuid(),
+              uuid,
               opponent.getId(),
               opponent.getMembername(),
-              room.getStatus().name()
+              room.getStatus().name(),
+                  messageTime
           );
         })
-        .toList();
+            .sorted(Comparator.comparing(ChatRoomSummaryResponse::getMessageTime).reversed()) // 최신순 정렬
+            .toList();
   }
-  /* 4. 시간기준 정렬 (최신채팅방 맨위로)*/
+  /* 추가: 시간기준 정렬 (최신채팅방 맨위로)*/
   public Optional<ChatMessageDocumentResponse> getLastMessage(String chatRoomUuid) {
     return chatMessageDocumentRepository
             .findLatestMessageByChatRoom(chatRoomUuid)
             .map(ChatMessageDocumentResponse::from);
   }
 
-  /* 6. 승인요청 받은 목록조회 */
+  /* 추가: 승인요청 받은 목록조회 */
   @Transactional(readOnly = true)
   public List<ChatRoomRequestMemberResponse> getRequestMembers(Long myId) {
     Member me = memberRepository.findById(myId)
