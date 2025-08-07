@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
 import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
+import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -48,13 +50,13 @@ public class ChatMessageController {
   /**
    * 메시지 읽음 처리
    * @param chatRoomId 채팅방 ID
-   * @param userId 현재 유저 ID
    */
   @PostMapping("/{chatRoomId}/read")
   public void markMessagesAsRead(
       @PathVariable String chatRoomId,
-      @RequestParam String userId
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
   ) {
+    String userId = memberDetails.getId().toString();
     chatMessageService.markMessagesAsRead(chatRoomId, userId);
   }
 

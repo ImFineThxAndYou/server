@@ -8,6 +8,8 @@ import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomResponse;
 import org.example.howareyou.domain.chat.service.ChatRoomService;
+import org.example.howareyou.global.security.CustomMemberDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +32,8 @@ public class ChatRoomController {
    */
   @PostMapping("/create")
   public CreateChatRoomResponse createChatRoom(@RequestBody CreateChatRoomRequest request,
-      @RequestParam Long senderId) {
+      @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+    Long senderId = memberDetails.getId();
     return chatRoomService.createChatRoom(request, senderId);
   }
 
@@ -58,15 +61,17 @@ public class ChatRoomController {
    */
   @GetMapping("/{roomUuid}")
   public ChatRoomResponse getChatRoom(@PathVariable String roomUuid,
-      @RequestParam Long memberId) {
-    return chatRoomService.getChatRoom(roomUuid, memberId);
+      @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+    Long myId = memberDetails.getId();
+    return chatRoomService.getChatRoom(roomUuid, myId);
   }
 
   /**
    * 현재 유저가 참여 중인 채팅방 목록 (GET)
    */
   @GetMapping("/my-rooms")
-  public List<ChatRoomSummaryResponse> getMyChatRooms(@RequestParam Long myId) {
+  public List<ChatRoomSummaryResponse> getMyChatRooms(@AuthenticationPrincipal CustomMemberDetails memberDetails) {
+    Long myId = memberDetails.getId();
     return chatRoomService.getMyChatRooms(myId);
   }
 
@@ -75,8 +80,9 @@ public class ChatRoomController {
    */
   @DeleteMapping("/{roomUuid}")
   public void disconnectChatRoom(@PathVariable String roomUuid,
-      @RequestParam Long memberId) {
-    chatRoomService.disconnectFromChatRoom(memberId, roomUuid);
+      @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+    Long myId = memberDetails.getId();
+    chatRoomService.disconnectFromChatRoom(myId, roomUuid);
   }
 
 
