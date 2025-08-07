@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class ChatMessageController {
+public class ChatController {
 
   private final SimpMessagingTemplate messagingTemplate;
   private final ChatMessageService chatMessageService;
