@@ -44,5 +44,5 @@ jobs:
             export $(cat .env | xargs) # 환경 변수 주입
             pkill -f 'java -jar' || true
             echo "🚀 Starting new Spring Boot app with exported .env..."
-            nohup java -jar $APP_DIR/app.jar > $APP_DIR/nohup.out 2>&1 &
+            nohup java -jar app.jar --server.port=8080 --server.address=0.0.0.0 > nohup.out 2>&1 &
           EOF
