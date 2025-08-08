@@ -81,11 +81,12 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/actuator/**",
                                 "/error",
-                                "/favicon.ico"
+                                "/favicon.ico",
+                                "/upload-csv"
                         } : new String[]{}).permitAll()
 
                         // 읽기 전용 API (공개)
-                        .requestMatchers(HttpMethod.GET, 
+                        .requestMatchers(HttpMethod.GET,
                                 "/api/v1/members/*",
                                 "/api/v1/members/*/status",
                                 "/api/v1/members/membername/*"
@@ -93,6 +94,9 @@ public class SecurityConfig {
 
                         // SSE 엔드포인트는 인증 필요
                         .requestMatchers("/api/v1/notify/sse").authenticated()
+
+                        // ✅ CSV 업로드 API 허용
+//                        .requestMatchers("/upload-csv").permitAll()
 
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()
@@ -161,7 +165,7 @@ public class SecurityConfig {
      */
     private boolean isDevProfile() {
         String[] activeProfiles = environment.getActiveProfiles();
-        return activeProfiles.length == 0 || 
+        return activeProfiles.length == 0 ||
                java.util.Arrays.asList(activeProfiles).contains("dev");
     }
 }

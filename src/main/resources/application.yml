@@ -13,7 +13,7 @@ spring:
   data:
     mongodb:
       uri: mongodb+srv://howruname:howrupass@howru.ywfyiyp.mongodb.net/?retryWrites=true&w=majority&appName=howru
-      database: howru
+      database: howrudb
 
     redis:
       host: ${REDIS_HOST}
