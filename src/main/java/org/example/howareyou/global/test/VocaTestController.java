@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
-import org.example.howareyou.domain.vocabulary.service.VocaBookService;
+import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +29,7 @@ import java.util.Map;
 public class VocaTestController {
 
     private final ChatMessageDocumentRepository chatMessageDocumentRepository;
-    private final VocaBookService vocaBookService;
+    private final ChatVocaBookService chatVocaBookService;
 
     @Operation(
             summary = "테스트용 채팅 메시지 생성",
@@ -109,7 +109,7 @@ public class VocaTestController {
             Instant from = start != null ? start : now.minus(1, ChronoUnit.HOURS);
             Instant to = end != null ? end : now;
 
-            vocaBookService.generateVocabularyForLastHour(from, to);
+            chatVocaBookService.generateVocabularyForLastHour(from, to);
 
             result.put("success", true);
             result.put("message", "단어장 생성 로직 실행 완료");

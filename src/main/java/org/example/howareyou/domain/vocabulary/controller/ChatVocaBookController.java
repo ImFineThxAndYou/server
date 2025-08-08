@@ -5,13 +5,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
-import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
-import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
 import org.example.howareyou.domain.vocabulary.service.NlpClient;
-import org.example.howareyou.domain.vocabulary.service.VocaBookService;
+import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,10 +17,10 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/vocabook")
-public class VocaBookController {
+@RequestMapping("/api/vocabook")
+public class ChatVocaBookController {
     private final NlpClient nlpClient;
-    private final VocaBookService vocaBookService;
+    private final ChatVocaBookService chatVocaBookService;
 
     @PostMapping("/analyze/chats")
     public ResponseEntity<List<AnalyzedResponseWord>> analyzeText(@RequestBody AnalyzeRequestDto request) {
@@ -47,7 +45,7 @@ public class VocaBookController {
             @Parameter(description = "채팅방 UUID", example = "room1234")
             @PathVariable String chatRoomUuid
     ) {
-        List<ChatRoomVocabulary> vocabList = vocaBookService.getAllVocabularyByChatRoom(chatRoomUuid);
+        List<ChatRoomVocabulary> vocabList = chatVocaBookService.getAllVocabularyByChatRoom(chatRoomUuid);
         return ResponseEntity.ok(vocabList);
     }
 
@@ -63,7 +61,7 @@ public class VocaBookController {
     })
     @GetMapping("/all")
     public ResponseEntity<List<ChatRoomVocabulary>> getAllVocabularies() {
-        List<ChatRoomVocabulary> allVocabularies = vocaBookService.getAllVocabularies();
+        List<ChatRoomVocabulary> allVocabularies = chatVocaBookService.getAllVocabularies();
         return ResponseEntity.ok(allVocabularies);
     }
 

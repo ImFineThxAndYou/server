@@ -4,8 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.voca.dto.ChatMessageReadModel;
 import org.example.howareyou.domain.chat.voca.service.ChatMessageVocaService;
-import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
-import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
 //import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.DictionaryData;
@@ -25,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class VocaBookService {
+public class ChatVocaBookService {
 
     private final ChatMessageVocaService chatMessageVocaService;
     private final NlpClient nlpClient;
