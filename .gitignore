@@ -38,3 +38,5 @@ out/
 
 # secret 설정 파일
 /src/main/resources/application-secret.yml
+
+.env
