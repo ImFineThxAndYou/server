@@ -2462,7 +2462,7 @@
 2461,haunt,나타나다,verb,c1,enko,2025-08-04 15:39
 2462,have,가지다,verb,a1,enko,2025-08-04 15:39
 2463,have,가지다,auxiliary verb,a2,enko,2025-08-04 15:39
-2464,have,가지다,to modal verb,a1,enko,2025-08-04 15:39
+2464,have to,가져야한다,modal verb,a1,enko,2025-08-04 15:39
 2465,hazard,위험,noun,c1,enko,2025-08-04 15:39
 2466,he,그,pronoun,a1,enko,2025-08-04 15:39
 2467,head,머리,noun,a1,enko,2025-08-04 15:39
@@ -3492,7 +3492,7 @@
 3491,next,다음,adjective,a1,enko,2025-08-04 15:39
 3492,next,다음,adverb,a1,enko,2025-08-04 15:39
 3493,next,다음,noun,b1,enko,2025-08-04 15:39
-3494,next,다음,to preposition,a1,enko,2025-08-04 15:39
+3494,next to,~옆에,preposition,a1,enko,2025-08-04 15:39
 3495,nice,멋진,adjective,a1,enko,2025-08-04 15:39
 3496,niche,벽감,noun,c1,enko,2025-08-04 15:39
 3497,night,밤,noun,a1,enko,2025-08-04 15:39
@@ -5639,7 +5639,7 @@
 5638,use,사용,noun,a2,enko,2025-08-04 15:39
 5639,use,사용,verb,a1,enko,2025-08-04 15:39
 5640,used,사용된,adjective,b1,enko,2025-08-04 15:39
-5641,used,사용된,to modal verb,a2,enko,2025-08-04 15:39
+5641,used to,~하는데 사용되다,modal verb,a2,enko,2025-08-04 15:39
 5642,useful,유용한,adjective,a1,enko,2025-08-04 15:39
 5643,useless,쓸모 없는,adjective,b2,enko,2025-08-04 15:39
 5644,user,사용자,noun,a2,enko,2025-08-04 15:39

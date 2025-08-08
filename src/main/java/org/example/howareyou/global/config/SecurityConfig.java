@@ -81,7 +81,8 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/actuator/**",
                                 "/error",
-                                "/favicon.ico"
+                                "/favicon.ico",
+                                "/upload-csv"
                         } : new String[]{}).permitAll()
 
                         // 읽기 전용 API (공개)
@@ -95,7 +96,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/notify/sse").authenticated()
 
                         // ✅ CSV 업로드 API 허용
-                        .requestMatchers("/upload-csv").permitAll()
+//                        .requestMatchers("/upload-csv").permitAll()
 
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()

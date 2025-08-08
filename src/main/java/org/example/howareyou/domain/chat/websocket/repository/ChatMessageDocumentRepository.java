@@ -13,17 +13,19 @@ public interface ChatMessageDocumentRepository extends MongoRepository<ChatMessa
 
   @Query(value = "{'chatRoomUuid': ?0, 'messageTime': { '$lt': ?1 }}")
   List<ChatMessageDocument> findTopNByChatRoomUuidAndMessageTimeBeforeOrderByMessageTimeDesc(
-      String chatRoomUuid,
-      Instant messageTimeBefore,
-      Pageable pageable
+          String chatRoomUuid,
+          Instant messageTimeBefore,
+          Pageable pageable
   );
 
   List<ChatMessageDocument> findByChatRoomUuidAndSenderNotAndChatMessageStatus(
-      String chatRoomUuid,
-      String senderId,
-      ChatMessageStatus status
+          String chatRoomUuid,
+          String senderId,
+          ChatMessageStatus status
   );
 
   Optional<ChatMessageDocument> findTopByChatRoomUuidOrderByMessageTimeDesc(String chatRoomUuid);
+
+  List<ChatMessageDocument> findByMessageTimeBetween(Instant start, Instant end);
 
 }
