@@ -1,8 +1,11 @@
 package org.example.howareyou.domain.member.repository;
 
+import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
 import org.example.howareyou.domain.member.entity.Category;
 import org.example.howareyou.domain.member.entity.Member;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -63,4 +66,31 @@ HAVING
             @Param("requesterId") Long requesterId,
             @Param("interestCount") int interestCount
     );
+
+
+    @Query("""
+        select new org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca(
+            m.id,
+            m.membername,
+            p.language,
+            p.timezone
+        )
+        from Member m
+        join m.profile p
+        where m.active = true
+    """)
+    List<MemberProfileViewForVoca> findAllActiveProfilesForVoca();
+
+    @Query("""
+        select new org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca(
+            m.id,
+            m.membername,
+            p.language,
+            p.timezone
+        )
+        from Member m
+        join m.profile p
+        where m.active = true
+    """)
+    Page<MemberProfileViewForVoca> findAllActiveProfilesForVoca(Pageable pageable);
 }

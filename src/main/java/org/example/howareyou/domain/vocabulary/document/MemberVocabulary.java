@@ -21,14 +21,14 @@ public class MemberVocabulary {
     private String membername;     // 사용자 ID
     private Instant createdAt;     // 생성 시각
 
-    private List<UserWordEntry> words; // 단어 리스트
+    private List<MemberWordEntry> words; // 단어 리스트
 
     @Getter
     @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class UserWordEntry {
+    public static class MemberWordEntry {
 
         private String word;    //원문
         private String meaning; //뜻

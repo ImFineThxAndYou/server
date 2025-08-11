@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.member.dto.request.FilterRequest;
 import org.example.howareyou.domain.member.dto.request.MembernameRequest;
 import org.example.howareyou.domain.member.dto.request.ProfileCreateRequest;
+import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
@@ -230,5 +231,13 @@ public class MemberServiceImpl implements MemberService {
                 .country(c.getCountry())
                 .region(c.getRegion())
                 .build();
+    }
+
+
+    /*단어장 생성용 조회*/
+
+    @Override
+    public List<MemberProfileViewForVoca> findAllActiveProfilesForVoca() {
+        return memberRepository.findAllActiveProfilesForVoca();
     }
 }
