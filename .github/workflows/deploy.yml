@@ -63,7 +63,7 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-
+            JWT_SECRET="${{ secrets.JWT_SECRET }}"
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
