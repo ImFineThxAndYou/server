@@ -1,4 +1,5 @@
-name: Deploy Spring (pin image tag)
+name: Deploy Spring (Dockerfile → ECS)
+
 on:
   push:
     branches: [ main ]
@@ -6,35 +7,41 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: aws-actions/configure-aws-credentials@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push with SHA tag
+      - name: Build & Push image (tag = commit SHA)
         env:
-          REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          REPO: ${{ secrets.ECR_REPO }}
+          REGISTRY: ${{ secrets.ECR_REGISTRY }}   # e.g. 2579....dkr.ecr.ap-northeast-2.amazonaws.com
+          REPO: ${{ secrets.ECR_REPO }}           # e.g. howru-spring
           SHA: ${{ github.sha }}
         run: |
-          IMAGE=$REGISTRY/$REPO:$SHA
-          docker build -t $IMAGE .
-          docker push $IMAGE
+          set -e
+          IMAGE="$REGISTRY/$REPO:$SHA"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      - name: Get current task definition ARN
+      - name: Get current task definition ARN from service
         id: cur
         run: |
+          set -e
           ARN=$(aws ecs describe-services \
             --cluster "${{ secrets.ECS_CLUSTER }}" \
             --services "${{ secrets.ECS_SERVICE }}" \
-            --region "${{ secrets.AWS_REGION }}" \
+            --region  "${{ secrets.AWS_REGION }}" \
             --query "services[0].taskDefinition" --output text)
           if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
             echo "Service not found or no taskDefinition attached"; exit 1
@@ -48,24 +55,24 @@ jobs:
             --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition" > taskdef.json
 
-      - name: Patch image in taskdef
+      - name: Patch image (container: spring-app)
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
+          sudo apt-get update -y && sudo apt-get install -y jq
           cat taskdef.json \
-          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
+          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.runtimePlatform)' \
           | jq --arg IMG "${{ env.IMAGE }}" \
                '.containerDefinitions |= (map(if .name=="spring-app" then .image=$IMG else . end))' \
           > taskdef-patched.json
-          jq '.containerDefinitions[] | {name,image}' taskdef-patched.json
+          jq '.family, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
       - name: Register new task definition
         id: reg
         run: |
-          NEW_ARN=$(aws ecs register-task-definition \
+          NEW=$(aws ecs register-task-definition \
             --cli-input-json file://taskdef-patched.json \
             --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition.taskDefinitionArn" --output text)
-          echo "NEW_TASKDEF_ARN=$NEW_ARN" >> $GITHUB_OUTPUT
+          echo "NEW_TASKDEF_ARN=$NEW" >> $GITHUB_OUTPUT
 
       - name: Update ECS service
         run: |
@@ -73,4 +80,11 @@ jobs:
             --cluster "${{ secrets.ECS_CLUSTER }}" \
             --service "${{ secrets.ECS_SERVICE }}" \
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
+            --region "${{ secrets.AWS_REGION }}"
+
+      - name: Wait until service stable
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ secrets.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
             --region "${{ secrets.AWS_REGION }}"
