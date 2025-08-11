@@ -38,7 +38,7 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       # --- 서비스 → family(ACTIVE 최신 리비전) 순으로 견고하게 taskDef 확보 ---
-      - name: Locate task definition (robust: service → family ACTIVE)
+      - name: Locate task definition
         id: td
         run: |
           set -euo pipefail
