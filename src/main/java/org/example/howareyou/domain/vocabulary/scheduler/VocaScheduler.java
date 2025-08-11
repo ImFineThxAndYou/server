@@ -2,7 +2,8 @@ package org.example.howareyou.domain.vocabulary.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.howareyou.domain.vocabulary.service.VocaBookService;
+import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
+import org.example.howareyou.domain.vocabulary.service.MemberVocaBookService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,8 @@ import java.time.temporal.ChronoUnit;
 @RequiredArgsConstructor
 public class VocaScheduler {
 
-    private final VocaBookService vocaBookService;
+    private final ChatVocaBookService chatVocaBookService;
+    private final MemberVocaBookService memberVocaBookService;
 
     @Scheduled(cron = "0 0 * * * *") // 매 정각 실행
     public void generateVocabularyBookHourly() {
@@ -23,6 +25,13 @@ public class VocaScheduler {
 
         log.info("[VocaScheduler] 단어장 생성 시작 - {} ~ {}", oneHourAgo, now);
 
-        vocaBookService.generateVocabularyForLastHour(oneHourAgo, now);
+        chatVocaBookService.generateVocabularyForLastHour(oneHourAgo, now);
+    }
+
+
+    // 사용자 단어장: 매 정각 (UTC)
+    @Scheduled(cron = "0 0 * * * *", zone = "UTC")
+    public void driveMemberTimezoneBatch() {
+        memberVocaBookService.runByTimezoneWindow();
     }
 }

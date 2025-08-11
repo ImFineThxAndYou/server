@@ -3,6 +3,9 @@ package org.example.howareyou.domain.chat.service;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
@@ -207,6 +210,22 @@ public class ChatRoomService {
     if (remaining.isEmpty()) {
       chatRoomRepository.delete(room);
     }
+  }
+
+  /**
+   * 단어장 생성을 위한 chatroom 조회
+   */
+  @Transactional
+  public Set<String> getMyChatRoomUuids(Long myId) {
+    Member me = memberRepository.findById(myId)
+            .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+    List<ChatRoomMember> myEntries = chatRoomMemberRepository.findByMember(me);
+
+    return myEntries.stream()
+//            .filter(entry -> entry.getStatus() == ChatRoomMemberStatus.JOINED)
+            .map(entry -> entry.getChatRoom().getUuid())
+            .collect(Collectors.toSet());
   }
 
 

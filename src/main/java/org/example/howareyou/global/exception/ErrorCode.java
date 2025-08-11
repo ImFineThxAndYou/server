@@ -107,8 +107,10 @@ public enum ErrorCode {
     SSE_EMITTER_NOT_FOUND(HttpStatus.NOT_FOUND, "N003", "SSE 연결을 찾을 수 없습니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N004", "알림을 찾을 수 없습니다."),
     INVALID_NOTIFICATION_TYPE(HttpStatus.BAD_REQUEST, "N005", "유효하지 않은 알림 타입입니다."),
-    NOTIFICATION_RECEIVER_NOT_FOUND(HttpStatus.NOT_FOUND, "N006", "알림 수신자를 찾을 수 없습니다.");
+    NOTIFICATION_RECEIVER_NOT_FOUND(HttpStatus.NOT_FOUND, "N006", "알림 수신자를 찾을 수 없습니다."),
 
+    /* ───────────[단어장]─────────── */
+    VOCABULARY_NOT_FOUND(HttpStatus.NOT_FOUND, "V001", "단어장을 찾을 수 없습니다.");
 
     /* Getter ― 럼북을 안 쓴 예시 */
     /* 필드 정의 */

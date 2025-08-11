@@ -1,0 +1,208 @@
+package org.example.howareyou.domain.vocabulary.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.chat.service.ChatRoomService;
+import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
+import org.example.howareyou.domain.member.service.MemberService;
+import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
+import org.example.howareyou.domain.vocabulary.document.MemberVocabulary;
+import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
+import org.example.howareyou.domain.vocabulary.repository.MemberVocabularyRepository;
+import org.example.howareyou.global.exception.CustomException;
+import org.example.howareyou.global.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.time.*;
+import java.util.*;
+
+/**
+ * 사용자별 단어장 생성 서비스
+ *
+ * 동작 개요
+ * 1) 단일 스케줄러가 주기적으로 실행된다.
+ * 2) 모든 사용자를 순회하되, "해당 사용자의 타임존(Local time)이 05:00"인 경우에만 처리한다.
+ * 3) 그 사용자 타임존 기준 "어제 00:00 ~ 오늘 00:00" 기간(=어제 하루)을 UTC Instant로 변환한다.
+ * 4) 그 기간에 생성된 채팅방 단어장(ChatRoomVocabulary) 중,
+ *    - 사용자가 참여한 채팅방의 것만 취합하고,
+ *    - 사용자의 프로필 언어의 반대(lang)만 필터링해서
+ *    - 동일 단어는 frequency를 누적한다.
+ * 5) MongoDB user_vocabulary 컬렉션에 저장한다.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class MemberVocaBookService {
+
+    private final MemberService memberService;
+    private final ChatRoomService chatRoomService;
+    private final ChatRoomVocabularyRepository chatRoomVocabularyRepository;
+    private final MemberVocabularyRepository memberVocabularyRepository;
+
+    /**
+     * “05:00 정확히”만 보려면 0을 권장.
+     * 운영 편의를 위해 10분 윈도우 등 허용하려면 10처럼 조절 가능.
+     */
+    @Value("${vocabook.allowedMinuteWindow:0}")
+    private int allowedMinuteWindow;
+
+    /**
+     * (옵션) 한 번 실행 시 전체 유저 순회가 길어질 수 있으면 페이징으로 나눠서 호출하도록 구성할 수 있다.
+     * 여기선 단순화를 위해 한 번에 전체 유저를 불러온다.
+     */
+    public void runByTimezoneWindow() {
+        // 1) 배치용 얇은 뷰 조회
+        List<MemberProfileViewForVoca> profiles = memberService.findAllActiveProfilesForVoca();
+        if (profiles.isEmpty()) {
+            log.debug("🟡 처리할 회원이 없습니다.");
+            return;
+        }
+
+        int processed = 0;
+
+        for (MemberProfileViewForVoca profile : profiles) {
+            try {
+                // 2) 타임존 기준 '시(hour)가 5'인지 간단 체크 (매시간 실행 전제)
+                if (!shouldRunNowHourly(profile.timezone())) continue;
+
+                // 3) 사용자 타임존의 "어제 00:00 ~ 오늘 00:00" → UTC 범위(+ 문서 날짜)
+                TimeRange range = resolveYesterdayRangeInTz(profile.timezone());
+                String docId = profile.membername() + "_" + range.yesterLocalDate().toString();
+
+                // 중복 생성 방지: 이미 문서 있으면 스킵
+                if (memberVocabularyRepository.existsById(docId)) {
+                    log.info("⏩ 이미 생성된 문서 스킵: {}", docId);
+                    continue;
+                }
+
+                log.info("🕔 {} (tz: {}) 사용자 단어장 생성 - {} ~ {}",
+                        profile.membername(), profile.timezone(), range.start(), range.end());
+
+                // 4) 사용자 단어장 생성
+                generateVocabularyForMember(
+                        profile.memberId(),
+                        profile.membername(),
+                        profile.language(),
+                        range.start(),
+                        range.end()
+                );
+                processed++;
+            } catch (Exception e) {
+                log.error("❌ 사용자 단어장 생성 실패 - member={}", profile.membername(), e);
+            }
+        }
+
+        if (processed > 0) {
+            log.info("✅ 타임존 05시 대상 처리 완료 - {}명", processed);
+        }
+    }
+
+
+    /**
+     * 외부/스케줄러에서 직접 호출 가능한 API형 메서드 (원하는 시간 범위로 실행)
+     */
+    public void generateVocabularyForMember(Long memberId,
+                                            String membername,
+                                            String userLang,
+                                            Instant start,
+                                            Instant end) {
+        String targetLang = "ko".equalsIgnoreCase(userLang) ? "en" : "ko";
+
+        // ✅ 사용자 참여 채팅방 UUID 미리 조회 (셋)
+        Set<String> myRoomUuids = chatRoomService.getMyChatRoomUuids(memberId);
+        if (myRoomUuids.isEmpty()) {
+            log.info("ℹ️ 사용자 {} 참여 채팅방 없음 → 스킵", membername);
+            return;
+        }
+
+        // 기간 내 방 단어장 조회
+        List<ChatRoomVocabulary> roomVocabs =
+                chatRoomVocabularyRepository.findByAnalyzedAtBetween(start, end);
+
+        Map<String, MemberVocabulary.MemberWordEntry> wordMap = new HashMap<>();
+
+        for (ChatRoomVocabulary vocab : roomVocabs) {
+            String roomUuid = vocab.getChatRoomUuid();
+            if (!myRoomUuids.contains(roomUuid)) continue; // ✅ 내가 속한 방만
+
+            Instant analyzedAt = vocab.getAnalyzedAt();
+
+            vocab.getWords().stream()
+                    .filter(w -> w.getLang().equalsIgnoreCase(targetLang))
+                    .forEach(w -> {
+                        wordMap.merge(
+                                w.getWord(),
+                                MemberVocabulary.MemberWordEntry.builder()
+                                        .word(w.getWord())
+                                        .meaning(w.getMeaning())
+                                        .pos(w.getPos())
+                                        .lang(w.getLang())
+                                        .level(w.getLevel())
+                                        .dictionaryType(w.getDictionaryType())
+                                        .chatRoomUuid(roomUuid)
+                                        .analyzedAt(analyzedAt)
+                                        .frequency(1)
+                                        .build(),
+                                (exist, inc) -> { exist.setFrequency(exist.getFrequency() + 1); return exist; }
+                        );
+                    });
+        }
+
+        if (wordMap.isEmpty()) {
+            log.info("ℹ️ {} 대상 단어 없음 → 스킵", membername);
+            return;
+        }
+
+        String docId = membername + "_" + LocalDate.now(ZoneId.of("UTC")).minusDays(1);
+
+        MemberVocabulary doc = MemberVocabulary.builder()
+                .id(docId)
+                .membername(membername)
+                .createdAt(Instant.now())
+                .words(new ArrayList<>(wordMap.values()))
+                .build();
+
+        memberVocabularyRepository.save(doc);
+        log.info("💾 저장 완료: {} [{}개 단어] (docId={})", membername, wordMap.size(), docId);
+    }
+
+    /* -------------------- 내부 유틸들 -------------------- */
+
+    /** 매 시간 실행 전제: 분/초는 고려하지 않고 '해당 타임존의 시(hour)가 5인지'만 본다 */
+    private boolean shouldRunNowHourly(String timezone) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(timezone));
+        return now.getHour() == 5;
+    }
+
+    /** 어제(사용자 타임존)의 시작/끝 + 문서 ID용 로컬 날짜 */
+    private TimeRange resolveYesterdayRangeInTz(String timezone) {
+        ZoneId zone = ZoneId.of(timezone);
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        ZonedDateTime startZdt = now.minusDays(1).toLocalDate().atStartOfDay(zone);
+        ZonedDateTime endZdt = startZdt.plusDays(1);
+        return new TimeRange(startZdt.toInstant(), endZdt.toInstant(), startZdt.toLocalDate());
+    }
+
+    /** 문서 생성 범위/날짜 전달용 */
+    private record TimeRange(Instant start, Instant end, LocalDate yesterLocalDate) {}
+
+
+    /*
+    * 사용자 별 단어장 조회용
+    * */
+    public List<MemberVocabulary> findAll() {
+        return memberVocabularyRepository.findAll();
+    }
+
+    public List<MemberVocabulary> findByMembername(String membername) {
+        return memberVocabularyRepository.findByMembername(membername);
+    }
+
+    public MemberVocabulary findByMembernameAndDate(String membername, LocalDate date) {
+        String docId = membername + "_" + date.toString();
+        return memberVocabularyRepository.findById(docId)
+                .orElseThrow(() -> new CustomException(ErrorCode.VOCABULARY_NOT_FOUND));
+    }
+
+}
