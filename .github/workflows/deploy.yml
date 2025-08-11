@@ -23,59 +23,75 @@ jobs:
           REPO: ${{ secrets.ECR_REPO }}
           SHA: ${{ github.sha }}
         run: |
-          IMAGE=$REGISTRY/$REPO:$SHA
-          docker build -t $IMAGE .
-          docker push $IMAGE
+          set -euo pipefail
+          IMAGE="$REGISTRY/$REPO:$SHA"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      # 현재 서비스가 쓰는 태스크 정의 이름/리비전 조회
+      # ✅ 서비스에서 현재 taskDefinition ARN 가져오기 (줄 끝에 \ 필수)
       - name: Get current task definition ARN
         id: cur
         run: |
+          set -euo pipefail
           ARN=$(aws ecs describe-services \
             --cluster "${{ secrets.ECS_CLUSTER }}" \
             --services "${{ secrets.ECS_SERVICE }}" \
-
-            --query "services[0].taskDefinition" --output text)
-
-
-
+            --region  "${{ secrets.AWS_REGION }}" \
+            --query "services[0].taskDefinition" \
+            --output text)
+          if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
+            echo "Service not found or no taskDefinition"; exit 1
+          fi
           echo "TASKDEF_ARN=$ARN" >> $GITHUB_OUTPUT
 
       # 태스크 정의 JSON을 워크스페이스로 덤프
       - name: Export task definition JSON
         run: |
+          set -euo pipefail
           aws ecs describe-task-definition \
             --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
-
+            --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition" > taskdef.json
 
       # 컨테이너 이미지 태그만 교체 (jq 필요)
       - name: Patch image in taskdef
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
+          set -euo pipefail
+          sudo apt-get update -y && sudo apt-get install -y jq
           cat taskdef.json \
           | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
-          | jq --arg IMG "${{ env.IMAGE }}" \
-               '.containerDefinitions |= (map(if .name=="spring-app" then .image=$IMG else . end))' \
+          | jq --arg IMG "${{ env.IMAGE }}" '
+               .containerDefinitions |= (map(if .name=="spring-app" then .image=$IMG else . end))' \
           > taskdef-patched.json
-          cat taskdef-patched.json
+          jq -r '.family, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
       # 새 리비전 등록
       - name: Register new task definition
         id: reg
         run: |
+          set -euo pipefail
           NEW_ARN=$(aws ecs register-task-definition \
             --cli-input-json file://taskdef-patched.json \
-
+            --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition.taskDefinitionArn" --output text)
           echo "NEW_TASKDEF_ARN=$NEW_ARN" >> $GITHUB_OUTPUT
 
       # 서비스 업데이트 (롤링 배포)
       - name: Update ECS service
         run: |
+          set -euo pipefail
           aws ecs update-service \
             --cluster "${{ secrets.ECS_CLUSTER }}" \
             --service "${{ secrets.ECS_SERVICE }}" \
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
+            --region "${{ secrets.AWS_REGION }}"
+
+      # 안정화 대기
+      - name: Wait until service stable
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster "${{ secrets.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
             --region "${{ secrets.AWS_REGION }}"
