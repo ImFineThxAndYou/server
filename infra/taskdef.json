@@ -32,7 +32,6 @@
         "java",
         "-jar",
         "/app/app.jar",
-        "--server.address=0.0.0.0"
       ]
     }
   ]
