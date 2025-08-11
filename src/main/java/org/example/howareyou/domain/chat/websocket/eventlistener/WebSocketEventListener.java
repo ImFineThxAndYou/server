@@ -19,23 +19,23 @@ public class WebSocketEventListener {
   private final ChatMemberTracker chatMemberTracker;
   private final ChatRedisService chatRedisService;
 
-  @EventListener
-  public void handleWebSocketConnectListener(SessionConnectedEvent event) {
-    StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-
-    String userId = (String) headerAccessor.getSessionAttributes().get("userId");
-    String chatRoomId = (String) headerAccessor.getSessionAttributes().get("chatRoomId");
-
-    if (userId != null && chatRoomId != null) {
-      // 채팅방 접속 멤버 등록
-      chatMemberTracker.addUserToRoom(chatRoomId, userId);
-
-      // 유저가 현재 접속 중인 채팅방 ID Redis에 저장
-      chatRedisService.setCurrentChatRoom(userId, chatRoomId);
-
-      log.info("유저 입장: userId={}, chatRoomId={}", userId, chatRoomId);
-    }
-  }
+//  @EventListener
+//  public void handleWebSocketConnectListener(SessionConnectedEvent event) {
+//    StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+//
+//    String userId = (String) headerAccessor.getSessionAttributes().get("userId");
+//    String chatRoomId = (String) headerAccessor.getSessionAttributes().get("chatRoomId");
+//
+//    if (userId != null && chatRoomId != null) {
+//      // 채팅방 접속 멤버 등록
+//      chatMemberTracker.addUserToRoom(chatRoomId, userId);
+//
+//      // 유저가 현재 접속 중인 채팅방 ID Redis에 저장
+//      chatRedisService.setCurrentChatRoom(userId, chatRoomId);
+//
+//      log.info("유저 입장: userId={}, chatRoomId={}", userId, chatRoomId);
+//    }
+//  }
 
   @EventListener
   public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
