@@ -8,13 +8,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION:       ${{ secrets.AWS_REGION }}
-      ECR_REGISTRY:     ${{ secrets.ECR_REGISTRY }}   # 1234....dkr.ecr.ap-northeast-2.amazonaws.com
-      ECR_REPO:         ${{ secrets.ECR_REPO }}       # e.g. howru-spring
-      ECS_CLUSTER:      ${{ secrets.ECS_CLUSTER }}    # 서비스가 있는 클러스터 "이름" 또는 ARN
-      ECS_SERVICE:      ${{ secrets.ECS_SERVICE }}    # 서비스 "이름" (다중 있으면 정확히)
-      TASKDEF_FAMILY:   howru-backend-service              # 네가 말한 family
-      CONTAINER_NAME:   spring-app                    # taskdef의 컨테이너 이름과 일치시켜라
+      AWS_REGION:       ap-northeast-2
+      ECR_REGISTRY:     ${{ secrets.ECR_REGISTRY }}   # 예: 1234.dkr.ecr.ap-northeast-2.amazonaws.com
+      ECR_REPO:         ${{ secrets.ECR_REPO }}       # 예: howru-spring
+      ECS_CLUSTER:      howru-cluster
+      ECS_SERVICE:      howru-backend-service
+      TASKDEF_FAMILY:   howru-backend
+      # 다중 컨테이너면 반드시 지정
+      # CONTAINER_NAME: spring-app
 
     steps:
       - uses: actions/checkout@v4
@@ -36,12 +37,12 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      # ---- 여기서부터 견고한 taskDef 획득 로직 ----
-      - name: Locate task definition (service → fallback to family)
+      # --- 서비스 → family(ACTIVE 최신 리비전) 순으로 견고하게 taskDef 확보 ---
+      - name: Locate task definition (robust: service → family ACTIVE)
         id: td
         run: |
           set -euo pipefail
-          echo "Trying to read taskDef from service: cluster='${ECS_CLUSTER}', service='${ECS_SERVICE}', region='${AWS_REGION}'"
+          echo "Trying service lookup: cluster='${ECS_CLUSTER}', service='${ECS_SERVICE}', region='${AWS_REGION}'"
           SVC_TD_ARN=$(aws ecs describe-services \
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}" \
@@ -52,25 +53,60 @@ jobs:
             echo "Found taskDef on service: $SVC_TD_ARN"
             echo "MODE=service" >> $GITHUB_OUTPUT
             echo "TASKDEF_ARN=$SVC_TD_ARN" >> $GITHUB_OUTPUT
-            aws ecs describe-task-definition \
-              --task-definition "$SVC_TD_ARN" \
-              --region "${AWS_REGION}" \
-              --query "taskDefinition" > taskdef.json
           else
-            echo "::warning::Service not found or no taskDefinition. Falling back to family '${TASKDEF_FAMILY}'."
-            echo "MODE=family" >> $GITHUB_OUTPUT
-            aws ecs describe-task-definition \
-              --task-definition "${TASKDEF_FAMILY}" \
+            echo "::warning::Service not found or no taskDefinition. Fallback to family '${TASKDEF_FAMILY}'."
+            TD_ARN=$(aws ecs list-task-definitions \
+              --family-prefix "${TASKDEF_FAMILY}" \
+              --status ACTIVE \
+              --sort DESC \
+              --max-items 1 \
               --region "${AWS_REGION}" \
-              --query "taskDefinition" > taskdef.json
+              --query 'taskDefinitionArns[0]' --output text 2>/dev/null || true)
 
-            echo "For debugging, listing clusters/services in region '${AWS_REGION}'..."
-            aws ecs list-clusters --region "${AWS_REGION}" --output text || true
-            aws ecs list-services --cluster "${ECS_CLUSTER}" --region "${AWS_REGION}" --output text || true
+            if [ -n "$TD_ARN" ] && [ "$TD_ARN" != "None" ] && [ "$TD_ARN" != "null" ]; then
+              echo "Found ACTIVE taskDef by family: $TD_ARN"
+              echo "MODE=family" >> $GITHUB_OUTPUT
+              echo "TASKDEF_ARN=$TD_ARN" >> $GITHUB_OUTPUT
+            else
+              echo "::error::No ACTIVE task definitions found for family '${TASKDEF_FAMILY}' in region '${AWS_REGION}'."
+              echo "Hint: family/region 확인하거나 baseline task definition을 한 번 등록해라."
+              echo "Clusters in region:"
+              aws ecs list-clusters --region "${AWS_REGION}" --output text || true
+              echo "Services in cluster '${ECS_CLUSTER}':"
+              aws ecs list-services --cluster "${ECS_CLUSTER}" --region "${AWS_REGION}" --output text || true
+              echo "Families (ACTIVE):"
+              aws ecs list-task-definition-families --status ACTIVE --region "${AWS_REGION}" --output text || true
+              exit 5
+            fi
           fi
 
+          # 최종 taskdef JSON 추출
+          aws ecs describe-task-definition \
+            --task-definition "$(echo $TASKDEF_ARN)" \
+            --region "${AWS_REGION}" \
+            --query "taskDefinition" > taskdef.json
+
           echo "TaskDef summary:"
-          jq -r '.family, (.containerDefinitions[] | {name,image})' taskdef.json
+          jq -r '.family, .revision, (.containerDefinitions[] | {name,image})' taskdef.json
+
+      - name: Resolve container name (auto if single)
+        id: cname
+        run: |
+          set -euo pipefail
+          if [ -n "${{ env.CONTAINER_NAME || '' }}" ]; then
+            echo "NAME=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          CNT=$(jq '.containerDefinitions | length' taskdef.json)
+          if [ "$CNT" -eq 1 ]; then
+            NAME=$(jq -r '.containerDefinitions[0].name' taskdef.json)
+            echo "Auto-detected container name: $NAME"
+            echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          else
+            echo "Multiple containers found. Set CONTAINER_NAME." >&2
+            jq -r '.containerDefinitions[].name' taskdef.json >&2
+            exit 2
+          fi
 
       - name: Patch image in taskdef (pin to this commit)
         run: |
@@ -78,7 +114,7 @@ jobs:
           sudo apt-get update -y && sudo apt-get install -y jq
           cat taskdef.json \
           | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
-          | jq --arg IMG "${IMAGE}" --arg NAME "${CONTAINER_NAME}" '
+          | jq --arg IMG "${IMAGE}" --arg NAME "${{ steps.cname.outputs.NAME }}" '
               .containerDefinitions as $defs
               | ([$defs[] | select(.name==$NAME)] | length) as $hit
               | if $hit == 0 then
@@ -110,11 +146,11 @@ jobs:
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
             --region "${AWS_REGION}"
 
-      - name: Fail if service is missing (so 너가 값 바로잡게)
+      - name: Fail if service is missing
         if: steps.td.outputs.MODE == 'family'
         run: |
-          echo "::error::ECS service '${ECS_SERVICE}' not found in cluster '${ECS_CLUSTER}' (region ${AWS_REGION})."
-          echo "Fix ECS_CLUSTER/ECS_SERVICE/region, or create the service, then rerun."
+          echo "::error::ECS service '${{ env.ECS_SERVICE }}' not found in cluster '${{ env.ECS_CLUSTER }}' (region ${AWS_REGION})."
+          echo "리전/클러스터/서비스 이름 확인하고, 서비스 없으면 먼저 만들어라."
           exit 4
 
       - name: Wait until service stable
