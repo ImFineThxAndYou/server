@@ -13,7 +13,7 @@ jobs:
       ECR_REPO:         ${{ secrets.ECR_REPO }}       # e.g. howru-spring
       ECS_CLUSTER:      ${{ secrets.ECS_CLUSTER }}    # 서비스가 있는 클러스터 "이름" 또는 ARN
       ECS_SERVICE:      ${{ secrets.ECS_SERVICE }}    # 서비스 "이름" (다중 있으면 정확히)
-      TASKDEF_FAMILY:   howru-backend                 # 네가 말한 family
+      TASKDEF_FAMILY:   howru-backend-service              # 네가 말한 family
       CONTAINER_NAME:   spring-app                    # taskdef의 컨테이너 이름과 일치시켜라
 
     steps:
