@@ -89,6 +89,12 @@ jobs:
           echo "TaskDef summary:"
           jq -r '.family, .revision, (.containerDefinitions[] | {name,image})' taskdef.json
 
+      - name: Store previous task definition for rollback
+        if: steps.td.outputs.MODE == 'service'
+        run: |
+          echo "PREVIOUS_TASKDEF=${{ steps.td.outputs.TASKDEF_ARN }}" >> $GITHUB_ENV
+          echo "Previous taskDef for rollback: ${{ steps.td.outputs.TASKDEF_ARN }}"
+
       - name: Resolve container name (auto if single)
         id: cname
         run: |
@@ -125,6 +131,16 @@ jobs:
             ' > taskdef-patched.json
           jq -r '.family, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
+      - name: Scan image for vulnerabilities (optional)
+        continue-on-error: true
+        run: |
+          echo "Starting vulnerability scan..."
+          aws ecr start-image-scan \
+            --registry-id $(aws sts get-caller-identity --query Account --output text) \
+            --repository-name "${ECR_REPO}" \
+            --image-id imageTag="${GITHUB_SHA}" \
+            --region "${AWS_REGION}" || echo "Scan failed or already in progress"
+
       - name: Register new task definition
         id: reg
         run: |
@@ -140,6 +156,7 @@ jobs:
         if: steps.td.outputs.MODE == 'service'
         run: |
           set -euo pipefail
+          echo "Updating ECS service with new task definition..."
           aws ecs update-service \
             --cluster "${ECS_CLUSTER}" \
             --service "${ECS_SERVICE}" \
@@ -157,7 +174,53 @@ jobs:
         if: steps.td.outputs.MODE == 'service'
         run: |
           set -euo pipefail
+          echo "Waiting for service to stabilize..."
           aws ecs wait services-stable \
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}" \
             --region "${AWS_REGION}"
+
+      - name: Health check after deployment
+        if: steps.td.outputs.MODE == 'service'
+        run: |
+          echo "Performing post-deployment health check..."
+          sleep 30
+          
+          # 서비스 상태 확인
+          RUNNING_COUNT=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --region "${AWS_REGION}" \
+            --query "services[0].runningCount" --output text)
+          
+          DESIRED_COUNT=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --region "${AWS_REGION}" \
+            --query "services[0].desiredCount" --output text)
+          
+          echo "Service status: $RUNNING_COUNT/$DESIRED_COUNT tasks running"
+          
+          if [ "$RUNNING_COUNT" -eq "$DESIRED_COUNT" ]; then
+            echo "✅ Deployment successful! All tasks are running."
+          else
+            echo "⚠️ Warning: Not all tasks are running yet."
+          fi
+
+      - name: Rollback on failure
+        if: failure() && steps.td.outputs.MODE == 'service' && env.PREVIOUS_TASKDEF != ''
+        run: |
+          echo "🔄 Rolling back to previous task definition due to deployment failure..."
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --task-definition "${PREVIOUS_TASKDEF}" \
+            --region "${AWS_REGION}"
+          
+          echo "Waiting for rollback to complete..."
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --region "${AWS_REGION}"
+          
+          echo "❌ Deployment failed and rolled back to previous version."
