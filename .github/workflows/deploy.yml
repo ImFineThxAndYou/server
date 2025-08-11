@@ -1,4 +1,4 @@
-name: Deploy Spring (Dockerfile → ECS)
+name: Deploy Spring 
 
 on:
   push:
@@ -8,48 +8,37 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
-      ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPO: ${{ secrets.ECR_REPO }}       # e.g. howru-spring
-      CONTAINER_NAME: spring-app              # taskdef의 컨테이너 name과 동일해야 함
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      ECR_REPO:       ${{ secrets.ECR_REPO }}       # e.g. howru-spring
+      ECS_CLUSTER:    ${{ secrets.ECS_CLUSTER }}
+      ECS_SERVICE:    ${{ secrets.ECS_SERVICE }}
+      TASKDEF_FAMILY: howru-backend                 # 네 환경 기준
+      # 단일 컨테이너가 아니면 지정: CONTAINER_NAME: spring-app
+      FIXED_TAG: latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # AccessKey 사용
       - name: Configure AWS credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Get current task definition ARN from service
-        id: cur
-        run: |
-          set -euo pipefail
-          ARN=$(aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE" \
-            --query "services[0].taskDefinition" --output text)
-          [ -n "$ARN" ] && [ "$ARN" != "None" ] || { echo "No taskDefinition"; exit 1; }
-          echo "TASKDEF_ARN=$ARN" >> $GITHUB_OUTPUT
-
-      - name: Export task definition JSON
+      - name: Fetch task definition (by family)
         run: |
           set -euo pipefail
           aws ecs describe-task-definition \
-            --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
+            --task-definition "$TASKDEF_FAMILY" \
             --query "taskDefinition" > taskdef.json
-          cat taskdef.json | jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})'
+          jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})' taskdef.json
 
-      # taskdef.runtimePlatform 기준으로 이미지 아키텍처 맞춤
-      - name: Derive build platform
+      - name: Derive build platform from taskdef
         id: plat
         run: |
           set -euo pipefail
@@ -61,58 +50,64 @@ jobs:
           esac
           echo "PLATFORM=$PLATFORM" >> $GITHUB_OUTPUT
 
+      - name: Resolve container name
+        id: cname
+        run: |
+          set -euo pipefail
+          if [ -n "${{ env.CONTAINER_NAME || '' }}" ]; then
+            echo "NAME=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+          else
+            CNT=$(jq '.containerDefinitions | length' taskdef.json)
+            if [ "$CNT" -eq 1 ]; then
+              echo "NAME=$(jq -r '.containerDefinitions[0].name' taskdef.json)" >> $GITHUB_OUTPUT
+            else
+              echo "Multiple containers found. Set CONTAINER_NAME." >&2
+              jq -r '.containerDefinitions[].name' taskdef.json >&2
+              exit 2
+            fi
+          fi
+
+      - name: Assert taskdef uses fixed tag
+        run: |
+          set -euo pipefail
+          NAME="${{ steps.cname.outputs.NAME }}"
+          IMG=$(jq -r --arg NAME "$NAME" '.containerDefinitions[] | select(.name==$NAME) | .image' taskdef.json)
+          echo "TaskDef image: $IMG"
+          case "$IMG" in
+            *:${{ env.FIXED_TAG }}) echo "OK: fixed tag '${{ env.FIXED_TAG }}'";;
+            *) echo "TaskDef image tag is not '${{ env.FIXED_TAG }}'. Found: $IMG. Refusing to proceed without new taskdef." >&2; exit 3;;
+          esac
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Push image (tag = commit SHA)
+      - name: Build & Push image (fixed tag + optional sha)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: ${{ steps.plat.outputs.PLATFORM }}
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.FIXED_TAG }}
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Patch task definition image
-        run: |
-          set -euo pipefail
-          sudo apt-get update -y && sudo apt-get install -y jq
-          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}"
-          cat taskdef.json \
-          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
-          | jq --arg IMG "$IMAGE" --arg NAME "$CONTAINER_NAME" '
-              .containerDefinitions as $defs
-              | ([$defs[] | select(.name==$NAME)] | length) as $hit
-              | if $hit == 0 then halt_error(2; "Container not found: \($NAME)")
-                else .containerDefinitions = ($defs | map(if .name==$NAME then .image=$IMG else . end))
-                end
-            ' > taskdef-patched.json
-          jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})' taskdef-patched.json
-
-      - name: Register new task definition
-        id: reg
-        run: |
-          set -euo pipefail
-          NEW=$(aws ecs register-task-definition \
-            --cli-input-json file://taskdef-patched.json \
-            --query "taskDefinition.taskDefinitionArn" --output text)
-          echo "NEW_TASKDEF_ARN=$NEW" >> $GITHUB_OUTPUT
-
-      - name: Update ECS service
+      - name: Force new deployment (no new taskdef)
         run: |
           set -euo pipefail
           aws ecs update-service \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
-            --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}"
+            --force-new-deployment \
+            --region "$AWS_REGION"
 
-      - name: Wait until service stable
+      - name: Wait until stable
         run: |
-          set -euo pipefail
           aws ecs wait services-stable \
             --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE"
+            --services "$ECS_SERVICE" \
+            --region "$AWS_REGION"
 
       - name: Dump ECS events on failure
         if: failure()
@@ -120,4 +115,5 @@ jobs:
           aws ecs describe-services \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
             --query "services[0].events[0:20].[createdAt,message]" --output table
