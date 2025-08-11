@@ -1,20 +1,25 @@
-name: Deploy Spring 
+name: Deploy Spring (no new taskdef; force redeploy)
 
 on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION:     ${{ secrets.AWS_REGION }}
-      ECR_REPO:       ${{ secrets.ECR_REPO }}       # e.g. howru-spring
-      ECS_CLUSTER:    ${{ secrets.ECS_CLUSTER }}
-      ECS_SERVICE:    ${{ secrets.ECS_SERVICE }}
-      TASKDEF_FAMILY: howru-backend                 # 네 환경 기준
-      # 단일 컨테이너가 아니면 지정: CONTAINER_NAME: spring-app
-      FIXED_TAG: latest
+      AWS_REGION:     ${{ secrets.AWS_REGION }}        # 예: ap-northeast-2
+      ECR_REPO:       ${{ secrets.ECR_REPO }}          # 예: howru-spring
+      ECS_CLUSTER:    ${{ secrets.ECS_CLUSTER }}       # 예: howru-cluster
+      ECS_SERVICE:    ${{ secrets.ECS_SERVICE }}       # 예: howru-service
+      TASKDEF_FAMILY: howru-backend                    # 네가 말한 family
+      FIXED_TAG:      latest                           # 새 리비전 없이 배포하려면 고정 태그가 필수
+      # 필요시 컨테이너 이름 명시 (다중 컨테이너면 필수)
+      # CONTAINER_NAME: spring-app
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +31,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
+      - name: Install jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
       - name: Login to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -35,6 +45,7 @@ jobs:
           set -euo pipefail
           aws ecs describe-task-definition \
             --task-definition "$TASKDEF_FAMILY" \
+            --region "$AWS_REGION" \
             --query "taskDefinition" > taskdef.json
           jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})' taskdef.json
 
@@ -56,32 +67,34 @@ jobs:
           set -euo pipefail
           if [ -n "${{ env.CONTAINER_NAME || '' }}" ]; then
             echo "NAME=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          CNT=$(jq '.containerDefinitions | length' taskdef.json)
+          if [ "$CNT" -eq 1 ]; then
+            NAME=$(jq -r '.containerDefinitions[0].name' taskdef.json)
+            echo "Auto-detected container name: $NAME"
+            echo "NAME=$NAME" >> $GITHUB_OUTPUT
           else
-            CNT=$(jq '.containerDefinitions | length' taskdef.json)
-            if [ "$CNT" -eq 1 ]; then
-              echo "NAME=$(jq -r '.containerDefinitions[0].name' taskdef.json)" >> $GITHUB_OUTPUT
-            else
-              echo "Multiple containers found. Set CONTAINER_NAME." >&2
-              jq -r '.containerDefinitions[].name' taskdef.json >&2
-              exit 2
-            fi
+            echo "Multiple containers found. Set CONTAINER_NAME." >&2
+            jq -r '.containerDefinitions[].name' taskdef.json >&2
+            exit 2
           fi
 
-      - name: Assert taskdef uses fixed tag
+      - name: Assert taskdef uses fixed tag (latest)
         run: |
           set -euo pipefail
           NAME="${{ steps.cname.outputs.NAME }}"
           IMG=$(jq -r --arg NAME "$NAME" '.containerDefinitions[] | select(.name==$NAME) | .image' taskdef.json)
           echo "TaskDef image: $IMG"
           case "$IMG" in
-            *:${{ env.FIXED_TAG }}) echo "OK: fixed tag '${{ env.FIXED_TAG }}'";;
+            *:${{ env.FIXED_TAG }}) echo "OK: taskdef points to :${{ env.FIXED_TAG }}";;
             *) echo "TaskDef image tag is not '${{ env.FIXED_TAG }}'. Found: $IMG. Refusing to proceed without new taskdef." >&2; exit 3;;
           esac
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Push image (fixed tag + optional sha)
+      - name: Build & Push image (latest + sha)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -102,8 +115,9 @@ jobs:
             --force-new-deployment \
             --region "$AWS_REGION"
 
-      - name: Wait until stable
+      - name: Wait until service stable
         run: |
+          set -euo pipefail
           aws ecs wait services-stable \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
