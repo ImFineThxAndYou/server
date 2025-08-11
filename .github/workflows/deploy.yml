@@ -11,14 +11,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_REGION:     ${{ secrets.AWS_REGION }}        # 예: ap-northeast-2
-      ECR_REPO:       ${{ secrets.ECR_REPO }}          # 예: howru-spring
-      ECS_CLUSTER:    ${{ secrets.ECS_CLUSTER }}       # 예: howru-cluster
-      ECS_SERVICE:    ${{ secrets.ECS_SERVICE }}       # 예: howru-service
+      AWS_REGION:     ${{ secrets.AWS_REGION }}        # e.g. ap-northeast-2
+      ECR_REPO:       ${{ secrets.ECR_REPO }}          # e.g. howru-spring
+      ECS_CLUSTER:    ${{ secrets.ECS_CLUSTER }}
+      ECS_SERVICE:    ${{ secrets.ECS_SERVICE }}
       TASKDEF_FAMILY: howru-backend                    # 네가 말한 family
       FIXED_TAG:      latest                           # 새 리비전 없이 배포하려면 고정 태그가 필수
-      # 필요시 컨테이너 이름 명시 (다중 컨테이너면 필수)
-      # CONTAINER_NAME: spring-app
+      # 다중 컨테이너면 명시: CONTAINER_NAME: spring-app
+      ALLOW_MIGRATE:  'true'                           # ✅ 첫 실행만 true → 성공 후 반드시 'false'로 변경
 
     steps:
       - name: Checkout
@@ -80,54 +80,14 @@ jobs:
             exit 2
           fi
 
-      - name: Assert taskdef uses fixed tag (latest)
+      # ONE-TIME: 태스크 정의의 이미지 태그를 :latest로 바꿔 새 리비전 등록 후 서비스에 적용
+      - name: Maybe migrate taskdef image to :latest (ONE-TIME)
+        if: ${{ env.ALLOW_MIGRATE == 'true' }}
+        id: migrate
         run: |
           set -euo pipefail
           NAME="${{ steps.cname.outputs.NAME }}"
-          IMG=$(jq -r --arg NAME "$NAME" '.containerDefinitions[] | select(.name==$NAME) | .image' taskdef.json)
-          echo "TaskDef image: $IMG"
-          case "$IMG" in
-            *:${{ env.FIXED_TAG }}) echo "OK: taskdef points to :${{ env.FIXED_TAG }}";;
-            *) echo "TaskDef image tag is not '${{ env.FIXED_TAG }}'. Found: $IMG. Refusing to proceed without new taskdef." >&2; exit 3;;
-          esac
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build & Push image (latest + sha)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          platforms: ${{ steps.plat.outputs.PLATFORM }}
-          tags: |
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.FIXED_TAG }}
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Force new deployment (no new taskdef)
-        run: |
-          set -euo pipefail
-          aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "$ECS_SERVICE" \
-            --force-new-deployment \
-            --region "$AWS_REGION"
-
-      - name: Wait until service stable
-        run: |
-          set -euo pipefail
-          aws ecs wait services-stable \
-            --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE" \
-            --region "$AWS_REGION"
-
-      - name: Dump ECS events on failure
-        if: failure()
-        run: |
-          aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE" \
-            --region "$AWS_REGION" \
-            --query "services[0].events[0:20].[createdAt,message]" --output table
+          CUR_IMG=$(jq -r --arg NAME "$NAME" '.containerDefinitions[] | select(.name==$NAME) | .image' taskdef.json)
+          echo "Current TaskDef image: $CUR_IMG"
+          if [[ "$CUR_IMG" == *":${{ env.FIXED_TAG }}" ]]; then
+            echo "MIG
