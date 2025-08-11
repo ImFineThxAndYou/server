@@ -4,87 +4,134 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    env:
+      ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPO: ${{ secrets.ECR_REPO }}       # e.g. howru-spring
+      CONTAINER_NAME: spring-app              # 실제 컨테이너 이름과 일치시켜라
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      # 권장: OIDC 역할 가정 (액세스키 대신)
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # arn:aws:iam::123456789012:role/gha-ecs-deploy
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push image (tag = commit SHA)
-        env:
-          REGISTRY: ${{ secrets.ECR_REGISTRY }}   # e.g. 2579....dkr.ecr.ap-northeast-2.amazonaws.com
-          REPO: ${{ secrets.ECR_REPO }}           # e.g. howru-spring
-          SHA: ${{ github.sha }}
-        run: |
-          set -e
-          IMAGE="$REGISTRY/$REPO:$SHA"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-
+      # 현재 서비스의 task definition 먼저 확보 (아키텍처 파악용)
       - name: Get current task definition ARN from service
         id: cur
         run: |
-          set -e
+          set -euo pipefail
           ARN=$(aws ecs describe-services \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --services "${{ secrets.ECS_SERVICE }}" \
-            --region  "${{ secrets.AWS_REGION }}" \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
             --query "services[0].taskDefinition" --output text)
           if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
-            echo "Service not found or no taskDefinition attached"; exit 1
+            echo "Service not found or no taskDefinition attached" >&2; exit 1
           fi
           echo "TASKDEF_ARN=$ARN" >> $GITHUB_OUTPUT
 
       - name: Export task definition JSON
         run: |
+          set -euo pipefail
           aws ecs describe-task-definition \
             --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
-            --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition" > taskdef.json
+          echo "Current taskdef:"
+          cat taskdef.json | jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})'
 
-      - name: Patch image (container: spring-app)
+      # taskdef의 runtimePlatform에 맞춰 빌드 플랫폼 결정
+      - name: Derive build platform from runtimePlatform
+        id: plat
         run: |
+          set -euo pipefail
+          ARCH=$(jq -r '.runtimePlatform.cpuArchitecture // "X86_64"' taskdef.json)
+          case "$ARCH" in
+            ARM64)   PLATFORM="linux/arm64"  ;;
+            X86_64)  PLATFORM="linux/amd64"  ;;
+            *) echo "Unsupported cpuArchitecture: $ARCH" >&2; exit 1 ;;
+          esac
+          echo "PLATFORM=$PLATFORM" >> $GITHUB_OUTPUT
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push image (tag = SHA, latest)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: ${{ steps.plat.outputs.PLATFORM }}
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Patch task definition image
+        run: |
+          set -euo pipefail
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}"
           sudo apt-get update -y && sudo apt-get install -y jq
+          # 삭제하면 안되는 runtimePlatform은 유지한다.
           cat taskdef.json \
-          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.runtimePlatform)' \
-          | jq --arg IMG "${{ env.IMAGE }}" \
-               '.containerDefinitions |= (map(if .name=="spring-app" then .image=$IMG else . end))' \
+          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
+          | jq --arg IMG "$IMAGE" --arg NAME "$CONTAINER_NAME" '
+              .containerDefinitions as $defs
+              | ([$defs[] | select(.name==$NAME)] | length) as $hit
+              | if $hit == 0 then
+                  halt_error(2; "Container name not found in taskdef: \($NAME)")
+                else
+                  .containerDefinitions = ($defs | map(if .name==$NAME then .image=$IMG else . end))
+                end
+            ' \
           > taskdef-patched.json
-          jq '.family, (.containerDefinitions[] | {name,image})' taskdef-patched.json
+          jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
       - name: Register new task definition
         id: reg
         run: |
+          set -euo pipefail
           NEW=$(aws ecs register-task-definition \
             --cli-input-json file://taskdef-patched.json \
-            --region "${{ secrets.AWS_REGION }}" \
             --query "taskDefinition.taskDefinitionArn" --output text)
           echo "NEW_TASKDEF_ARN=$NEW" >> $GITHUB_OUTPUT
 
       - name: Update ECS service
         run: |
+          set -euo pipefail
           aws ecs update-service \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --service "${{ secrets.ECS_SERVICE }}" \
-            --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
-            --region "${{ secrets.AWS_REGION }}"
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}"
+          # 같은 리비전 재배포가 필요하면 --force-new-deployment 옵션 사용
 
       - name: Wait until service stable
         run: |
+          set -euo pipefail
           aws ecs wait services-stable \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --services "${{ secrets.ECS_SERVICE }}" \
-            --region "${{ secrets.AWS_REGION }}"
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
+
+      - name: Dump ECS events on failure
+        if: failure()
+        run: |
+          aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].events[0:20].[createdAt,message]" --output table
