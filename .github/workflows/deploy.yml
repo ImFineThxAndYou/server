@@ -40,20 +40,39 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get current task definition ARN
+      - name: Get current task definition ARN 
         id: cur
         run: |
+          set -euo pipefail
+          echo "DEBUG cluster=$CLUSTER service=$SERVICE region=$AWS_REGION"
+      
+          # 서비스 존재/상태 확인 + 최근 이벤트 한 줄
+          aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].{status:status,taskDef:taskDefinition,event:events[0].message}'
+      
           ARN=$(aws ecs describe-services \
             --cluster "$CLUSTER" \
             --services "$SERVICE" \
+            --region "$AWS_REGION" \
             --query 'services[0].taskDefinition' \
             --output text)
+      
+          if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
+            echo "ERROR: Service not found or no taskDefinition attached. Check CLUSTER/SERVICE/REGION." >&2
+            exit 1
+          fi
           echo "TASKDEF_ARN=$ARN" >> "$GITHUB_OUTPUT"
 
       - name: Export current task definition JSON
         run: |
+          set -euo pipefail
+          echo "Describing ${{ steps.cur.outputs.TASKDEF_ARN }}"
           aws ecs describe-task-definition \
             --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
+            --region "$AWS_REGION" \
             --query 'taskDefinition' > taskdef.json
 
       - name: Patch image
