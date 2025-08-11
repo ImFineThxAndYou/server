@@ -31,7 +31,7 @@
       "command": [
         "java",
         "-jar",
-        "/app/app.jar",
+        "/app/app.jar"
       ]
     }
   ]
