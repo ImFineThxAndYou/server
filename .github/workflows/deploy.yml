@@ -1,5 +1,4 @@
 name: Deploy Spring to ECS
-
 on:
   push:
     branches: [ main ]
@@ -7,28 +6,26 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     env:
       AWS_REGION:  ${{ secrets.AWS_REGION }}
       CLUSTER:     ${{ secrets.ECS_CLUSTER }}
       SERVICE:     ${{ secrets.ECS_SERVICE }}
-      REPO_URI:    ${{ secrets.ECR_REPO_URI }}   # e.g. 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/howru-spring
-      CONTAINER:   spring-app
+      FAMILY:      ${{ secrets.ECS_TASKDEF_FAMILY }}   # ex) howru-backend
+      REPO_URI:    ${{ secrets.ECR_REPO_URI }}         # ex) 1234....amazonaws.com/howru-spring
+      CONTAINER:   spring-app                          # 태스크 정의의 컨테이너 이름
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push image
+      - name: Build & push image
         run: |
           set -e
           IMAGE="${REPO_URI}:${GITHUB_SHA}"
@@ -39,45 +36,36 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get current task definition ARN (safe)
-        id: cur
+      - name: Get latest task definition (by family)
+        id: td
         run: |
-          set -euo pipefail
-          ARN=$(aws ecs describe-services \
-            --cluster "$CLUSTER" \
-            --services "$SERVICE" \
-            --region "$AWS_REGION" \
-            --query 'services[0].taskDefinition' --output text)
-          if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
-            echo "ERROR: Service not found or no taskDefinition attached." >&2
-            exit 1
-          fi
-          echo "TASKDEF_ARN=$ARN" >> "$GITHUB_OUTPUT"
+          set -e
+          TD=$(aws ecs list-task-definitions \
+              --family-prefix "$FAMILY" --sort DESC --max-items 1 \
+              --region "$AWS_REGION" \
+              --query 'taskDefinitionArns[0]' --output text)
+          echo "TASKDEF_ARN=$TD" >> "$GITHUB_OUTPUT"
 
-      - name: Export current task definition JSON
+      - name: Export and patch task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
+            --task-definition "${{ steps.td.outputs.TASKDEF_ARN }}" \
             --region "$AWS_REGION" \
             --query 'taskDefinition' > taskdef.json
-
-      - name: Patch image 
-        run: |
           jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.runtimePlatform)
              | .containerDefinitions |= map(if .name=="'${CONTAINER}'" then .image=env.IMAGE else . end)
           ' taskdef.json > taskdef-patched.json
-          cat taskdef-patched.json
 
       - name: Register new task definition
         id: reg
         run: |
-          NEW_ARN=$(aws ecs register-task-definition \
+          NEW=$(aws ecs register-task-definition \
             --cli-input-json file://taskdef-patched.json \
             --region "$AWS_REGION" \
             --query 'taskDefinition.taskDefinitionArn' --output text)
-          echo "NEW_TASKDEF_ARN=$NEW_ARN" >> "$GITHUB_OUTPUT"
+          echo "NEW_TASKDEF_ARN=$NEW" >> "$GITHUB_OUTPUT"
 
-      - name: Update ECS service
+      - name: Update service
         run: |
           aws ecs update-service \
             --cluster "$CLUSTER" \
@@ -85,5 +73,5 @@ jobs:
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
             --region "$AWS_REGION"
 
-      - name: Wait for service stable (optional)
+      - name: Wait (optional)
         run: aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION" || true
