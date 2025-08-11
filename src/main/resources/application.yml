@@ -1,9 +1,9 @@
 spring:
   config:
-    import: optional:file:application-secret.yml
+    import:
+      optional:file:.env[.properties]
   profiles:
     active: dev
-  port: 8080
 
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
@@ -12,16 +12,26 @@ spring:
 
   data:
     mongodb:
-      host: ${MONGO_HOST}
-      port: ${MONGO_PORT}
-      database: ${MONGO_DB}
+      uri: mongodb+srv://howruname:howrupass@howru.ywfyiyp.mongodb.net/?retryWrites=true&w=majority&appName=howru
+      database: howrudb
 
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 
   session:
     store-type: redis
+    redis:
+      namespace: spring:session
+      flush-mode: on_save
+    timeout: 30m
 
   security:
     oauth2:
@@ -39,3 +49,40 @@ spring:
             authorization-uri: https://accounts.google.com/o/oauth2/auth
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+
+libretranslate:
+  host: ${LIBER_HOST}
+  port: ${LIBER_PORT}
+
+gemini:
+  base-url: https://generativelanguage.googleapis.com/v1
+  model: gemini-2.0-flash  # 무료/기본 모델, 필요에 따라 변경
+  api-key: ${GEMINI_API_KEY}  # .env나 환경변수로 실제 키 주입
+  timeout-seconds: 10
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs            # ✏️ JSON 스펙 엔드포인트
+  swagger-ui:
+    path: /swagger-ui.html        # ✏️ UI 진입점
+    operations-sorter: method
+    tags-sorter: alpha
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+
+jwt:
+  secret: ${JWT_SECRET}
+
+front:
+  url: ${FRONT_URL}
+  cors:
+    allowed-origins:
+      - ${FRONT_URL}
+      - http://localhost:3000  # React 개발 서버
+      - http://localhost:5173  # Vite 개발 서버
+      - http://localhost:8080  # 기본 개발 서버
+
+logging:
+  level:
+    org.springframework.boot.context.config: DEBUG

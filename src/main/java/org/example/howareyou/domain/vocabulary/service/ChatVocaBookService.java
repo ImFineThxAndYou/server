@@ -1,0 +1,156 @@
+package org.example.howareyou.domain.vocabulary.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.chat.voca.dto.ChatMessageReadModel;
+import org.example.howareyou.domain.chat.voca.service.ChatMessageVocaService;
+//import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
+import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
+import org.example.howareyou.domain.vocabulary.document.DictionaryData;
+import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
+//import org.example.howareyou.domain.vocabulary.entity.DictionaryData;
+//import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
+import org.example.howareyou.domain.vocabulary.dto.WordPosPair;
+import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
+import org.example.howareyou.domain.vocabulary.repository.DictionaryDataRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ChatVocaBookService {
+
+    private final ChatMessageVocaService chatMessageVocaService;
+    private final NlpClient nlpClient;
+    private final DictionaryDataRepository dictionaryDataRepository;
+    private final ChatRoomVocabularyRepository chatRoomVocabularyRepository;
+
+    /**
+     * 1시간 단위로 실행되는 단어장 생성 배치 메서드
+     */
+    public void generateVocabularyForLastHour(Instant start, Instant end) {
+
+        List<ChatMessageReadModel> messages = chatMessageVocaService.getMessagesInRange(start, end);
+
+        // 주어진 시간 범위 내 모든 메시지를 채팅방 기준으로 그룹핑
+        Map<String, List<ChatMessageReadModel>> groupedMessages = fetchGroupedMessagesByRoom(start, end);
+
+        // 각 채팅방별로 NLP 분석 및 단어장 생성 처리
+        for (Map.Entry<String, List<ChatMessageReadModel>> entry : groupedMessages.entrySet()) {
+            String chatRoomUuid = entry.getKey();
+            List<ChatMessageReadModel> roomMessages = entry.getValue();
+
+            // NLP 분석 수행
+            List<AnalyzedResponseWord> analyzedWords = analyzeMessagesAsText(chatRoomUuid, roomMessages);
+
+            // 사전 데이터셋과 매칭하여 실제 존재하는 단어만 추출
+            List<DictionaryData> matchedWords = matchWordsWithDictionary(analyzedWords);
+
+            // 해당 채팅방의 단어장을 저장
+            saveVocabulary(chatRoomUuid, matchedWords);
+        }
+    }
+
+    /**
+     * 주어진 시간 범위 내의 메시지를 채팅방 UUID 기준으로 그룹핑
+     */
+    private Map<String, List<ChatMessageReadModel>> fetchGroupedMessagesByRoom(Instant start, Instant end) {
+        List<ChatMessageReadModel> messages = chatMessageVocaService.getMessagesInRange(start, end);
+
+        return messages.stream()
+                .collect(Collectors.groupingBy(ChatMessageReadModel::getChatRoomUuid));
+    }
+
+    /**
+     * 나의 채팅방 메시지를 전체 문장으로 합쳐 NLP 분석 요청
+     */
+    private List<AnalyzedResponseWord> analyzeMessagesAsText(String chatRoomUuid, List<ChatMessageReadModel> messages) {
+        // 전체 메시지를 하나의 텍스트로 연결
+        String fullText = messages.stream()
+                .map(ChatMessageReadModel::getContent)
+                .collect(Collectors.joining(" "));
+
+//        log.info("📌 채팅방 UUID: {}", chatRoomUuid);
+//        log.info("💬 분석 대상 전체 문장: {}", fullText);
+
+        // Python 서버로 NLP 분석 요청
+        List<AnalyzedResponseWord> analyzed = nlpClient.analyze(fullText);
+//        log.info("🧠 분석 결과 ({}개):", analyzed.size());
+
+//        for (AnalyzedResponseWord word : analyzed) {
+//            log.info(" - 단어: {}, 품사: {}, 언어: {}", word.getText(), word.getPos(), word.getLang());
+//        }
+
+        return analyzed;
+    }
+
+    /**
+     * 분석된 단어 중 사전 데이터셋에 존재하는 단어만 추출
+     */
+    private List<DictionaryData> matchWordsWithDictionary(List<AnalyzedResponseWord> analyzedWords) {
+        // ✅ 단어 + 품사 기준으로 후보 리스트 만들기
+        List<WordPosPair> pairs = analyzedWords.stream()
+                .map(w -> new WordPosPair(w.getText(), w.getPos()))
+                .distinct()
+                .toList();
+
+//        log.info("🔍 후보 단어+품사 쌍 ({}개)", pairs.size());
+
+        // ✅ 단어 + 품사 매칭으로 MongoDB 조회
+        List<DictionaryData> matchedWords = dictionaryDataRepository.findByWordAndPosPairs(pairs);
+
+        log.info("✅ 매칭된 단어 수: {}", matchedWords.size());
+
+        return matchedWords;
+    }
+
+    /**
+     * 채팅방 단어장을 MongoDB에 저장
+     */
+    private void saveVocabulary(String chatRoomUuid, List<DictionaryData> matchedWords) {
+        // MongoDB에 저장할 단어 항목 리스트 생성
+        List<ChatRoomVocabulary.DictionaryWordEntry> wordEntries = matchedWords.stream()
+                .map(word -> ChatRoomVocabulary.DictionaryWordEntry.builder()
+                        .word(word.getWord())
+                        .meaning(word.getMeaning())
+                        .pos(word.getPos())
+                        .lang(word.getDictionaryType().startsWith("en") ? "en" : "ko")
+                        .level(word.getLevel())
+                        .dictionaryType(word.getDictionaryType())
+                        .build())
+                .toList();
+
+        // 채팅방 단어장 도큐먼트 생성
+        ChatRoomVocabulary document = ChatRoomVocabulary.builder()
+                .chatRoomUuid(chatRoomUuid)
+                .analyzedAt(Instant.now())
+                .words(wordEntries)
+                .build();
+
+        // MongoDB 저장
+        chatRoomVocabularyRepository.save(document);
+    }
+
+
+    /**
+     * 채팅방 UUID로 전체 단어장 조회 (최신순)
+     */
+    public List<ChatRoomVocabulary> getAllVocabularyByChatRoom(String chatRoomUuid) {
+        return chatRoomVocabularyRepository
+                .findByChatRoomUuidOrderByAnalyzedAtDesc(chatRoomUuid);
+    }
+
+    /**
+     * 전체 채팅방 전체 단어장 조회 (최신순)
+     */
+    public List<ChatRoomVocabulary> getAllVocabularies() {
+        return chatRoomVocabularyRepository.findAllByOrderByAnalyzedAtDesc();
+    }
+
+
+}
