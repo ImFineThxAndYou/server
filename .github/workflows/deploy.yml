@@ -1,4 +1,5 @@
 name: Deploy Spring (pin image tag)
+
 on:
   push:
     branches: [ main ]
@@ -6,92 +7,121 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION:       ${{ secrets.AWS_REGION }}
+      ECR_REGISTRY:     ${{ secrets.ECR_REGISTRY }}   # 1234....dkr.ecr.ap-northeast-2.amazonaws.com
+      ECR_REPO:         ${{ secrets.ECR_REPO }}       # e.g. howru-spring
+      ECS_CLUSTER:      ${{ secrets.ECS_CLUSTER }}    # 서비스가 있는 클러스터 "이름" 또는 ARN
+      ECS_SERVICE:      ${{ secrets.ECS_SERVICE }}    # 서비스 "이름" (다중 있으면 정확히)
+      TASKDEF_FAMILY:   howru-backend                 # 네가 말한 family
+      CONTAINER_NAME:   spring-app                    # taskdef의 컨테이너 이름과 일치시켜라
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
 
       - name: Build & Push with SHA tag
-        env:
-          REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          REPO: ${{ secrets.ECR_REPO }}
-          SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          IMAGE="$REGISTRY/$REPO:$SHA"
+          IMAGE="${ECR_REGISTRY}/${ECR_REPO}:${GITHUB_SHA}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      # ✅ 서비스에서 현재 taskDefinition ARN 가져오기 (줄 끝에 \ 필수)
-      - name: Get current task definition ARN
-        id: cur
+      # ---- 여기서부터 견고한 taskDef 획득 로직 ----
+      - name: Locate task definition (service → fallback to family)
+        id: td
         run: |
           set -euo pipefail
-          ARN=$(aws ecs describe-services \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --services "${{ secrets.ECS_SERVICE }}" \
-            --region  "${{ secrets.AWS_REGION }}" \
-            --query "services[0].taskDefinition" \
-            --output text)
-          if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
-            echo "Service not found or no taskDefinition"; exit 1
+          echo "Trying to read taskDef from service: cluster='${ECS_CLUSTER}', service='${ECS_SERVICE}', region='${AWS_REGION}'"
+          SVC_TD_ARN=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --region  "${AWS_REGION}" \
+            --query "services[0].taskDefinition" --output text 2>/dev/null || true)
+
+          if [ -n "$SVC_TD_ARN" ] && [ "$SVC_TD_ARN" != "None" ] && [ "$SVC_TD_ARN" != "null" ]; then
+            echo "Found taskDef on service: $SVC_TD_ARN"
+            echo "MODE=service" >> $GITHUB_OUTPUT
+            echo "TASKDEF_ARN=$SVC_TD_ARN" >> $GITHUB_OUTPUT
+            aws ecs describe-task-definition \
+              --task-definition "$SVC_TD_ARN" \
+              --region "${AWS_REGION}" \
+              --query "taskDefinition" > taskdef.json
+          else
+            echo "::warning::Service not found or no taskDefinition. Falling back to family '${TASKDEF_FAMILY}'."
+            echo "MODE=family" >> $GITHUB_OUTPUT
+            aws ecs describe-task-definition \
+              --task-definition "${TASKDEF_FAMILY}" \
+              --region "${AWS_REGION}" \
+              --query "taskDefinition" > taskdef.json
+
+            echo "For debugging, listing clusters/services in region '${AWS_REGION}'..."
+            aws ecs list-clusters --region "${AWS_REGION}" --output text || true
+            aws ecs list-services --cluster "${ECS_CLUSTER}" --region "${AWS_REGION}" --output text || true
           fi
-          echo "TASKDEF_ARN=$ARN" >> $GITHUB_OUTPUT
 
-      # 태스크 정의 JSON을 워크스페이스로 덤프
-      - name: Export task definition JSON
-        run: |
-          set -euo pipefail
-          aws ecs describe-task-definition \
-            --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
-            --region "${{ secrets.AWS_REGION }}" \
-            --query "taskDefinition" > taskdef.json
+          echo "TaskDef summary:"
+          jq -r '.family, (.containerDefinitions[] | {name,image})' taskdef.json
 
-      # 컨테이너 이미지 태그만 교체 (jq 필요)
-      - name: Patch image in taskdef
+      - name: Patch image in taskdef (pin to this commit)
         run: |
           set -euo pipefail
           sudo apt-get update -y && sudo apt-get install -y jq
           cat taskdef.json \
           | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
-          | jq --arg IMG "${{ env.IMAGE }}" '
-               .containerDefinitions |= (map(if .name=="spring-app" then .image=$IMG else . end))' \
-          > taskdef-patched.json
+          | jq --arg IMG "${IMAGE}" --arg NAME "${CONTAINER_NAME}" '
+              .containerDefinitions as $defs
+              | ([$defs[] | select(.name==$NAME)] | length) as $hit
+              | if $hit == 0 then
+                  halt_error(2; "Container not found in taskdef: \($NAME)")
+                else
+                  .containerDefinitions = ($defs | map(if .name==$NAME then .image=$IMG else . end))
+                end
+            ' > taskdef-patched.json
           jq -r '.family, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
-      # 새 리비전 등록
       - name: Register new task definition
         id: reg
         run: |
           set -euo pipefail
           NEW_ARN=$(aws ecs register-task-definition \
             --cli-input-json file://taskdef-patched.json \
-            --region "${{ secrets.AWS_REGION }}" \
+            --region "${AWS_REGION}" \
             --query "taskDefinition.taskDefinitionArn" --output text)
           echo "NEW_TASKDEF_ARN=$NEW_ARN" >> $GITHUB_OUTPUT
+          echo "New taskDef: $NEW_ARN"
 
-      # 서비스 업데이트 (롤링 배포)
-      - name: Update ECS service
+      - name: Update ECS service (only if service exists)
+        if: steps.td.outputs.MODE == 'service'
         run: |
           set -euo pipefail
           aws ecs update-service \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --service "${{ secrets.ECS_SERVICE }}" \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
-            --region "${{ secrets.AWS_REGION }}"
+            --region "${AWS_REGION}"
 
-      # 안정화 대기
+      - name: Fail if service is missing (so 너가 값 바로잡게)
+        if: steps.td.outputs.MODE == 'family'
+        run: |
+          echo "::error::ECS service '${ECS_SERVICE}' not found in cluster '${ECS_CLUSTER}' (region ${AWS_REGION})."
+          echo "Fix ECS_CLUSTER/ECS_SERVICE/region, or create the service, then rerun."
+          exit 4
+
       - name: Wait until service stable
+        if: steps.td.outputs.MODE == 'service'
         run: |
           set -euo pipefail
           aws ecs wait services-stable \
-            --cluster "${{ secrets.ECS_CLUSTER }}" \
-            --services "${{ secrets.ECS_SERVICE }}" \
-            --region "${{ secrets.AWS_REGION }}"
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --region "${AWS_REGION}"
