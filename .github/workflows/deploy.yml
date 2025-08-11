@@ -4,10 +4,6 @@ on:
   push:
     branches: [ main ]
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -16,23 +12,23 @@ jobs:
       ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ECR_REPO: ${{ secrets.ECR_REPO }}       # e.g. howru-spring
-      CONTAINER_NAME: spring-app              # 실제 컨테이너 이름과 일치시켜라
+      CONTAINER_NAME: spring-app              # taskdef의 컨테이너 name과 동일해야 함
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 권장: OIDC 역할 가정 (액세스키 대신)
-      - name: Configure AWS credentials (OIDC)
+      # AccessKey 사용
+      - name: Configure AWS credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # arn:aws:iam::123456789012:role/gha-ecs-deploy
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 현재 서비스의 task definition 먼저 확보 (아키텍처 파악용)
       - name: Get current task definition ARN from service
         id: cur
         run: |
@@ -41,9 +37,7 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
             --query "services[0].taskDefinition" --output text)
-          if [ -z "$ARN" ] || [ "$ARN" = "None" ]; then
-            echo "Service not found or no taskDefinition attached" >&2; exit 1
-          fi
+          [ -n "$ARN" ] && [ "$ARN" != "None" ] || { echo "No taskDefinition"; exit 1; }
           echo "TASKDEF_ARN=$ARN" >> $GITHUB_OUTPUT
 
       - name: Export task definition JSON
@@ -52,55 +46,48 @@ jobs:
           aws ecs describe-task-definition \
             --task-definition "${{ steps.cur.outputs.TASKDEF_ARN }}" \
             --query "taskDefinition" > taskdef.json
-          echo "Current taskdef:"
           cat taskdef.json | jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})'
 
-      # taskdef의 runtimePlatform에 맞춰 빌드 플랫폼 결정
-      - name: Derive build platform from runtimePlatform
+      # taskdef.runtimePlatform 기준으로 이미지 아키텍처 맞춤
+      - name: Derive build platform
         id: plat
         run: |
           set -euo pipefail
           ARCH=$(jq -r '.runtimePlatform.cpuArchitecture // "X86_64"' taskdef.json)
           case "$ARCH" in
-            ARM64)   PLATFORM="linux/arm64"  ;;
-            X86_64)  PLATFORM="linux/amd64"  ;;
-            *) echo "Unsupported cpuArchitecture: $ARCH" >&2; exit 1 ;;
+            ARM64)  PLATFORM="linux/arm64" ;;
+            X86_64) PLATFORM="linux/amd64" ;;
+            *) echo "Unsupported cpuArchitecture: $ARCH"; exit 1 ;;
           esac
           echo "PLATFORM=$PLATFORM" >> $GITHUB_OUTPUT
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Push image (tag = SHA, latest)
+      - name: Build & Push image (tag = commit SHA)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: ${{ steps.plat.outputs.PLATFORM }}
-          tags: |
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:latest
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Patch task definition image
         run: |
           set -euo pipefail
-          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}"
           sudo apt-get update -y && sudo apt-get install -y jq
-          # 삭제하면 안되는 runtimePlatform은 유지한다.
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}"
           cat taskdef.json \
           | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
           | jq --arg IMG "$IMAGE" --arg NAME "$CONTAINER_NAME" '
               .containerDefinitions as $defs
               | ([$defs[] | select(.name==$NAME)] | length) as $hit
-              | if $hit == 0 then
-                  halt_error(2; "Container name not found in taskdef: \($NAME)")
-                else
-                  .containerDefinitions = ($defs | map(if .name==$NAME then .image=$IMG else . end))
+              | if $hit == 0 then halt_error(2; "Container not found: \($NAME)")
+                else .containerDefinitions = ($defs | map(if .name==$NAME then .image=$IMG else . end))
                 end
-            ' \
-          > taskdef-patched.json
+            ' > taskdef-patched.json
           jq -r '.family, .runtimePlatform, (.containerDefinitions[] | {name,image})' taskdef-patched.json
 
       - name: Register new task definition
@@ -119,7 +106,6 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
             --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}"
-          # 같은 리비전 재배포가 필요하면 --force-new-deployment 옵션 사용
 
       - name: Wait until service stable
         run: |
