@@ -1,77 +1,73 @@
-name: Deploy Spring to ECS
+name: Deploy to Amazon ECS
+
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+
+env:
+  AWS_REGION:           ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY:       ${{ secrets.ECR_REPO }}        # 예: howru-spring
+  ECS_SERVICE:          ${{ secrets.ECS_SERVICE }}     # 예: howru-backend-service
+  ECS_CLUSTER:          ${{ secrets.ECS_CLUSTER }}     # 예: howru-cluster
+  ECS_TASK_DEFINITION:  infra/taskdef.json             # 리포 안의 태스크 정의 파일 경로
+  CONTAINER_NAME:       spring-app                     # 태스크 정의의 컨테이너 name
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION:  ${{ secrets.AWS_REGION }}
-      CLUSTER:     ${{ secrets.ECS_CLUSTER }}
-      SERVICE:     ${{ secrets.ECS_SERVICE }}
-      FAMILY:      ${{ secrets.ECS_TASKDEF_FAMILY }}   # ex) howru-backend
-      REPO_URI:    ${{ secrets.ECR_REPO_URI }}         # ex) 1234....amazonaws.com/howru-spring
-      CONTAINER:   spring-app                          # 태스크 정의의 컨테이너 이름
+    environment: production
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ secrets.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push image
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG:    ${{ github.sha }}
         run: |
-          set -e
-          IMAGE="${REPO_URI}:${GITHUB_SHA}"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Fill env & image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: infra/taskdef.json
+          container-name: spring-app
+          image: ${{ steps.build-image.outputs.image }}
+          environment-variables: |
+            SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
 
-      - name: Get latest task definition (by family)
-        id: td
-        run: |
-          set -e
-          TD=$(aws ecs list-task-definitions \
-              --family-prefix "$FAMILY" --sort DESC --max-items 1 \
-              --region "$AWS_REGION" \
-              --query 'taskDefinitionArns[0]' --output text)
-          echo "TASKDEF_ARN=$TD" >> "$GITHUB_OUTPUT"
-
-      - name: Export and patch task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition "${{ steps.td.outputs.TASKDEF_ARN }}" \
-            --region "$AWS_REGION" \
-            --query 'taskDefinition' > taskdef.json
-          jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.runtimePlatform)
-             | .containerDefinitions |= map(if .name=="'${CONTAINER}'" then .image=env.IMAGE else . end)
-          ' taskdef.json > taskdef-patched.json
-
-      - name: Register new task definition
-        id: reg
-        run: |
-          NEW=$(aws ecs register-task-definition \
-            --cli-input-json file://taskdef-patched.json \
-            --region "$AWS_REGION" \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-          echo "NEW_TASKDEF_ARN=$NEW" >> "$GITHUB_OUTPUT"
-
-      - name: Update service
-        run: |
-          aws ecs update-service \
-            --cluster "$CLUSTER" \
-            --service "$SERVICE" \
-            --task-definition "${{ steps.reg.outputs.NEW_TASKDEF_ARN }}" \
-            --region "$AWS_REGION"
-
-      - name: Wait (optional)
-        run: aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION" || true
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition:               ${{ steps.task-def.outputs.task-definition }}
+          service:                       ${{ env.ECS_SERVICE }}
+          cluster:                       ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability:    true
