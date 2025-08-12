@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "55432:5432"
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -56,6 +56,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  fastapi-api:
+    build:
+      context: ./fastapi-api
+    container_name: fastapi-api
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 
 volumes:
   pgdata:
