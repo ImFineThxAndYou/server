@@ -91,6 +91,8 @@ public class SecurityConfig {
                                 "/api/v1/members/*/status",
                                 "/api/v1/members/membername/*"
                         ).permitAll()
+                        //server health 체크
+                        .requestMatchers("/health").permitAll()
 
                         // SSE 엔드포인트는 인증 필요
                         .requestMatchers("/api/v1/notify/sse").authenticated()
