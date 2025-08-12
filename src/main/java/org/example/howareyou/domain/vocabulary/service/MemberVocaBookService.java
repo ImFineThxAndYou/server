@@ -41,18 +41,10 @@ public class MemberVocaBookService {
     private final MemberVocabularyRepository memberVocabularyRepository;
 
     /**
-     * “05:00 정확히”만 보려면 0을 권장.
-     * 운영 편의를 위해 10분 윈도우 등 허용하려면 10처럼 조절 가능.
-     */
-    @Value("${vocabook.allowedMinuteWindow:0}")
-    private int allowedMinuteWindow;
-
-    /**
-     * (옵션) 한 번 실행 시 전체 유저 순회가 길어질 수 있으면 페이징으로 나눠서 호출하도록 구성할 수 있다.
-     * 여기선 단순화를 위해 한 번에 전체 유저를 불러온다.
+     * 한 번에 전체 유저를 불러온다.
      */
     public void runByTimezoneWindow() {
-        // 1) 배치용 얇은 뷰 조회
+        // 배치용 뷰 조회
         List<MemberProfileViewForVoca> profiles = memberService.findAllActiveProfilesForVoca();
         if (profiles.isEmpty()) {
             log.debug("🟡 처리할 회원이 없습니다.");
@@ -63,10 +55,10 @@ public class MemberVocaBookService {
 
         for (MemberProfileViewForVoca profile : profiles) {
             try {
-                // 2) 타임존 기준 '시(hour)가 5'인지 간단 체크 (매시간 실행 전제)
+                // 타임존 기준 '시(hour)가 5'인지 간단 체크 (매시간 실행 전제)
                 if (!shouldRunNowHourly(profile.timezone())) continue;
 
-                // 3) 사용자 타임존의 "어제 00:00 ~ 오늘 00:00" → UTC 범위(+ 문서 날짜)
+                // 사용자 타임존의 "어제 00:00 ~ 오늘 00:00" → UTC 범위(+ 문서 날짜)
                 TimeRange range = resolveYesterdayRangeInTz(profile.timezone());
                 String docId = profile.membername() + "_" + range.yesterLocalDate().toString();
 
@@ -79,13 +71,14 @@ public class MemberVocaBookService {
                 log.info("🕔 {} (tz: {}) 사용자 단어장 생성 - {} ~ {}",
                         profile.membername(), profile.timezone(), range.start(), range.end());
 
-                // 4) 사용자 단어장 생성
+                // 사용자 단어장 생성
                 generateVocabularyForMember(
                         profile.memberId(),
                         profile.membername(),
                         profile.language(),
                         range.start(),
-                        range.end()
+                        range.end(),
+                        docId
                 );
                 processed++;
             } catch (Exception e) {
@@ -106,7 +99,8 @@ public class MemberVocaBookService {
                                             String membername,
                                             String userLang,
                                             Instant start,
-                                            Instant end) {
+                                            Instant end,
+                                            String docId) {
         String targetLang = "ko".equalsIgnoreCase(userLang) ? "en" : "ko";
 
         // ✅ 사용자 참여 채팅방 UUID 미리 조회 (셋)
@@ -118,14 +112,12 @@ public class MemberVocaBookService {
 
         // 기간 내 방 단어장 조회
         List<ChatRoomVocabulary> roomVocabs =
-                chatRoomVocabularyRepository.findByAnalyzedAtBetween(start, end);
+                chatRoomVocabularyRepository.findByChatRoomUuidInAndAnalyzedAtBetween(myRoomUuids,start, end);
 
         Map<String, MemberVocabulary.MemberWordEntry> wordMap = new HashMap<>();
 
         for (ChatRoomVocabulary vocab : roomVocabs) {
             String roomUuid = vocab.getChatRoomUuid();
-            if (!myRoomUuids.contains(roomUuid)) continue; // ✅ 내가 속한 방만
-
             Instant analyzedAt = vocab.getAnalyzedAt();
 
             vocab.getWords().stream()
@@ -153,20 +145,10 @@ public class MemberVocaBookService {
                                     // 빈도 합산
                                     exist.setFrequency(exist.getFrequency() + 1);
 
-                                    // 채팅방 UUID 최신/병합 처리
-                                    if (!exist.getChatRoomUuid().contains(roomUuid)) {
-                                        exist.setChatRoomUuid(exist.getChatRoomUuid() + "," + roomUuid);
-                                    }
-
-                                    // 메시지 ID 병합 (중복 제거)
-                                    Set<String> msgIds = new LinkedHashSet<>(exist.getChatMessageId());
-                                    msgIds.addAll(inc.getChatMessageId());
-                                    exist.setChatMessageId(new ArrayList<>(msgIds));
-
-                                    // 예문 병합 (중복 제거)
-                                    Set<String> examples = new LinkedHashSet<>(exist.getExample());
-                                    examples.addAll(inc.getExample());
-                                    exist.setExample(new ArrayList<>(examples));
+                                    // 최신 채팅방 정보로 교체
+                                    exist.setChatRoomUuid(roomUuid);
+                                    exist.setChatMessageId(new ArrayList<>(inc.getChatMessageId())); // 최신 메시지 ID
+                                    exist.setExample(new ArrayList<>(inc.getExample()));             // 최신 예문
 
                                     // 분석 시점 최신값 유지
                                     if (inc.getAnalyzedAt().isAfter(exist.getAnalyzedAt())) {
@@ -183,7 +165,7 @@ public class MemberVocaBookService {
             return;
         }
 
-        String docId = membername + "_" + LocalDate.now(ZoneId.of("UTC")).minusDays(1);
+//        String docId = membername + "_" + LocalDate.now(ZoneId.of("UTC")).minusDays(1);
 
         MemberVocabulary doc = MemberVocabulary.builder()
                 .id(docId)

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -123,7 +124,7 @@ public class VocaTestController {
             @ApiResponse(responseCode = "200", description = "요청 접수(비동기 시작)"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PostMapping("/generate-vocabook-reactive")  // 👈 이게 있어야 Swagger가 인식
+    @PostMapping("/generate-vocabook-reactive")
     public ResponseEntity<Map<String, Object>> testGenerateVocabulary(
             @Parameter(description = "시작 시간 (ISO-8601)", example = "2025-08-06T07:00:00Z")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
@@ -154,18 +155,6 @@ public class VocaTestController {
     /**
      * 단일 사용자에 대해 단어장 생성 로직 테스트
      */
-    @Operation(
-            summary = "사용자 단어장 생성 실행 (테스트)",
-            description = """
-                    특정 사용자에 대해 단어장 생성 로직을 실행합니다.
-                    - start/end 미지정 시, timezone 기준 '어제 00:00 ~ 오늘 00:00'을 자동 계산합니다.
-                    - userLang은 'ko' 또는 'en' (반대 언어가 수집 대상)
-                    """
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "생성 실행 성공"),
-            @ApiResponse(responseCode = "500", description = "실행 중 서버 오류", content = @Content)
-    })
     @PostMapping("/generate-for-member")
     public ResponseEntity<Map<String, Object>> generateForMember(
             @Parameter(description = "사용자 ID", example = "3", required = true)
@@ -177,11 +166,11 @@ public class VocaTestController {
             @Parameter(description = "사용자 언어(ko/en) — 반대 언어가 수집 대상", example = "ko", required = true)
             @RequestParam String userLang,
 
-            @Parameter(description = "시작 시간 (ISO-8601, UTC)", example = "2025-08-08T00:00:00Z")
+            @Parameter(description = "시작 시간 (ISO-8601, UTC)", example = "2025-08-12T00:00:00Z")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
 
-            @Parameter(description = "종료 시간 (ISO-8601, UTC)", example = "2025-08-09T00:00:00Z")
+            @Parameter(description = "종료 시간 (ISO-8601, UTC)", example = "2025-08-13T00:00:00Z")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end,
 
@@ -190,30 +179,39 @@ public class VocaTestController {
     ) {
         Map<String, Object> result = new HashMap<>();
         try {
-            // 시간 범위 계산: start/end 없으면 timezone 기준 어제 하루
             Instant from, to;
+            LocalDate yesterLocalDate;
+            ZoneId zone = ZoneId.of(timezone);
+
             if (start != null && end != null) {
                 from = start;
                 to = end;
+                // 시작 시간을 사용자 타임존으로 변환해서 날짜 추출
+                yesterLocalDate = start.atZone(zone).toLocalDate();
             } else {
-                ZoneId zone = ZoneId.of(timezone);
                 ZonedDateTime now = ZonedDateTime.now(zone);
                 ZonedDateTime startZdt = now.minusDays(1).toLocalDate().atStartOfDay(zone);
                 ZonedDateTime endZdt = startZdt.plusDays(1);
                 from = startZdt.toInstant();
                 to = endZdt.toInstant();
+                yesterLocalDate = startZdt.toLocalDate();
             }
 
-            log.info("▶️ 테스트 실행: memberId={}, membername={}, userLang={}, range={}~{}, tz={}",
-                    memberId, membername, userLang, from, to, timezone);
+            // ✅ docId를 여기서 미리 생성
+            String docId = membername + "_" + yesterLocalDate.toString();
 
-            memberVocaBookService.generateVocabularyForMember(memberId, membername, userLang, from, to);
+            log.info("▶️ 테스트 실행: memberId={}, membername={}, userLang={}, docId={}, range={}~{}, tz={}",
+                    memberId, membername, userLang, docId, from, to, timezone);
+
+            // ✅ 서비스 호출 시 docId를 함께 전달
+            memberVocaBookService.generateVocabularyForMember(memberId, membername, userLang, from, to, docId);
 
             result.put("success", true);
             result.put("message", "사용자 단어장 생성 로직 실행 완료");
             result.put("memberId", memberId);
             result.put("membername", membername);
             result.put("userLang", userLang);
+            result.put("docId", docId);
             result.put("start", from.toString());
             result.put("end", to.toString());
             result.put("timezone", timezone);
@@ -226,11 +224,6 @@ public class VocaTestController {
             return ResponseEntity.ok(result);
         }
     }
-
-
-
-
-
 
 
 }
