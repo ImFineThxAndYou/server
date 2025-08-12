@@ -7,9 +7,11 @@ import org.example.howareyou.domain.chat.voca.service.ChatMessageVocaService;
 //import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.DictionaryData;
+import org.example.howareyou.domain.vocabulary.dto.AnalyzeBatchRequest;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
 //import org.example.howareyou.domain.vocabulary.entity.DictionaryData;
 //import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
+import org.example.howareyou.domain.vocabulary.dto.MessageItem;
 import org.example.howareyou.domain.vocabulary.dto.WordPosPair;
 import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
 import org.example.howareyou.domain.vocabulary.repository.DictionaryDataRepository;
@@ -37,61 +39,102 @@ public class ChatVocaBookService {
      * ✅ 리액티브 배치 진입점
      * 주어진 시간 범위 [start, end)의 채팅 메시지를 채팅방별로 그룹핑하고,
      * 각 채팅방마다:
-     *   1) 메시지 전체 텍스트 생성 → NLP 분석 (비동기)
+     *   1) Json으로 통째로 보내기 → NLP 분석 (비동기)
      *   2) 분석 결과를 사전 데이터와 매칭 (블로킹 → boundedElastic)
      *   3) MongoDB에 단어장 저장 (블로킹 → boundedElastic)
      *
      * 반환: Mono<Void>  (구독 시 작업이 시작되며, 완료 시 onComplete 신호)
      */
     public Mono<Void> generateVocabularyForRangeReactive(Instant start, Instant end) {
-        return fetchGroupedMessagesByRoomReactive(start, end)              // Mono<Map<room, messages>>
-                .flatMapMany(map -> Flux.fromIterable(map.entrySet()))    // Flux<Map.Entry<...>>
+        return fetchGroupedMessagesByRoomReactive(start, end)              // 시간 범위 내 메시지 조회 & 채팅방별 그룹핑
+                .flatMapMany(map -> Flux.fromIterable(map.entrySet()))    // Map<room, messages> → Flux<Entry> 변환
                 .flatMap(entry ->
-                                analyzeMessagesAsTextReactive(entry.getKey(), entry.getValue())    // Mono<List<Analyzed...>>
-                                        .flatMap(this::matchWordsWithDictionaryReactive)          // Mono<List<DictionaryData>>
+                                //NLP 배치 분석 → 사전 매칭 → Mongo 저장 순차 처리
+                                analyzeMessagesAsBatchReactive(entry.getKey(), entry.getValue())
+                                        .flatMap(this::matchWordsWithDictionaryReactive)
                                         .flatMap(matched -> saveVocabularyReactive(entry.getKey(), matched)),
-                        /* 동시성 제한 */ 6
+                                        /* 동시에 처리할 채팅방 개수 제한 */
+                                        6
                 )
-                .then()
+                .then()     // 모든 채팅방 처리 완료 시 Mono<Void> 반환
                 .doOnSubscribe(s -> log.info("🚀 채팅방 단어장 생성 시작: {} ~ {}", start, end))
                 .doOnTerminate(() -> log.info("✅ 채팅방 단어장 생성 종료"));
     }
 
     /* ---------- 내부 리액티브 유틸 ---------- */
 
-    /** 메시지 조회(블로킹 가정) → boundedElastic에서 실행 */
+    /**
+     * ✅ (블로킹) 채팅 메시지를 시간 범위로 조회 후, 채팅방별로 그룹핑
+     *    - boundedElastic 스레드풀에서 실행 (DB 조회는 블로킹이므로)
+     */
     private Mono<Map<String, List<ChatMessageReadModel>>> fetchGroupedMessagesByRoomReactive(Instant start, Instant end) {
         return Mono.fromCallable(() -> chatMessageVocaService.getMessagesInRange(start, end))
                 .subscribeOn(Schedulers.boundedElastic())
                 .map(messages -> messages.stream().collect(Collectors.groupingBy(ChatMessageReadModel::getChatRoomUuid)));
     }
 
-    /** NLP 호출: ✅ 논블로킹 */
-    private Mono<List<AnalyzedResponseWord>> analyzeMessagesAsTextReactive(String chatRoomUuid,
-                                                                           List<ChatMessageReadModel> messages) {
-        String fullText = messages.stream()
-                .map(ChatMessageReadModel::getContent)
-                .collect(Collectors.joining(" "));
-        return nlpClient.analyzeReactive(fullText)
+//    /** NLP 호출: fulltext로 합쳐서 String으로 보내기 */
+//    private Mono<List<AnalyzedResponseWord>> analyzeMessagesAsTextReactive(String chatRoomUuid,
+//                                                                           List<ChatMessageReadModel> messages) {
+//        String fullText = messages.stream()
+//                .map(ChatMessageReadModel::getContent)
+//                .collect(Collectors.joining(" "));
+//        return nlpClient.analyzeReactive(fullText)
+//                .doOnNext(list -> log.info("🧠 NLP 완료 - room={}, analyzed={}", chatRoomUuid, list.size()));
+//    }
+
+    /**
+     * ✅ (비동기) NLP 서버에 배치 분석 요청
+     *    - 채팅방의 모든 메시지를 JSON 배열로 변환하여 전달
+     *    - NLP 서버 응답: 각 단어의 text, pos, lang 등
+     */
+    private Mono<List<AnalyzedResponseWord>> analyzeMessagesAsBatchReactive(
+            String chatRoomUuid,
+            List<ChatMessageReadModel> messages
+    ) {
+        AnalyzeBatchRequest req = new AnalyzeBatchRequest(
+                chatRoomUuid,
+                messages.stream()
+                        .map(m -> new MessageItem(
+                                m.getId(),
+                                m.getContent(),
+                                m.getSender(),
+                                m.getMessageTime().toString()
+                        ))
+                        .toList()
+        );
+
+        return nlpClient.analyzeBatchReactive(req)
                 .doOnNext(list -> log.info("🧠 NLP 완료 - room={}, analyzed={}", chatRoomUuid, list.size()));
     }
 
-    /** 사전 매칭: 블로킹 → boundedElastic */
+    /**
+     * ✅ (블로킹) 분석 결과 단어를 사전 데이터셋과 매칭
+     *    - Word + POS 쌍으로 중복 제거 후 MongoDB 조회
+     *    - boundedElastic에서 실행
+     */
     private Mono<List<DictionaryData>> matchWordsWithDictionaryReactive(List<AnalyzedResponseWord> analyzedWords) {
         return Mono.fromCallable(() -> {
                     List<WordPosPair> pairs = analyzedWords.stream()
-                            .map(w -> new WordPosPair(w.getText(), w.getPos()))
+                            .map(w -> new WordPosPair(w.getWord(), w.getPos()))
                             .distinct()
                             .toList();
-                    return dictionaryDataRepository.findByWordAndPosPairs(pairs);
+                    log.info("검색 요청 pairs: {}", pairs); // 여기 찍어서 값 확인
+                    return dictionaryDataRepository.findByWordAndPosPairs(pairs);   // MongoDB 사전 검색
                 })
-                .subscribeOn(Schedulers.boundedElastic())
+                .doOnError(e -> log.error("❌ 사전 매칭 중 에러", e))
+                .subscribeOn(Schedulers.boundedElastic())   //블로킹 DB 조회
                 .doOnNext(list -> log.info("🔍 사전 매칭 완료 - {}개", list.size()));
     }
 
-    /** Mongo 저장: 블로킹 → boundedElastic */
+    /**
+     * ✅ (블로킹) MongoDB에 채팅방 단어장 저장
+     *    - 사전 매칭된 단어 리스트를 Document 구조로 변환 후 저장
+     *    - boundedElastic에서 실행
+     */
     private Mono<Void> saveVocabularyReactive(String chatRoomUuid, List<DictionaryData> matchedWords) {
         return Mono.fromRunnable(() -> {
+                    // 단어 목록 변환
                     List<ChatRoomVocabulary.DictionaryWordEntry> wordEntries = matchedWords.stream()
                             .map(word -> ChatRoomVocabulary.DictionaryWordEntry.builder()
                                     .word(word.getWord())
@@ -103,6 +146,7 @@ public class ChatVocaBookService {
                                     .build())
                             .toList();
 
+                    // 단어장 Document 생성
                     ChatRoomVocabulary document = ChatRoomVocabulary.builder()
                             .chatRoomUuid(chatRoomUuid)
                             .analyzedAt(Instant.now())

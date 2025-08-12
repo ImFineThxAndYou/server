@@ -9,6 +9,7 @@ import java.time.Instant;
 @Getter
 @Builder
 public class ChatMessageReadModel {
+    private final String id;
     private final String chatRoomUuid;
     private final String sender;
     private final String content;
