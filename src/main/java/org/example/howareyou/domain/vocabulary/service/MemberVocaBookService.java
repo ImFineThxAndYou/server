@@ -131,8 +131,10 @@ public class MemberVocaBookService {
             vocab.getWords().stream()
                     .filter(w -> w.getLang().equalsIgnoreCase(targetLang))
                     .forEach(w -> {
+                        String key = w.getWord().toLowerCase() + "|" + w.getPos().toLowerCase(); // 단어+품사 기준 병합
+
                         wordMap.merge(
-                                w.getWord(),
+                                key,
                                 MemberVocabulary.MemberWordEntry.builder()
                                         .word(w.getWord())
                                         .meaning(w.getMeaning())
@@ -141,10 +143,37 @@ public class MemberVocaBookService {
                                         .level(w.getLevel())
                                         .dictionaryType(w.getDictionaryType())
                                         .chatRoomUuid(roomUuid)
+                                        .chatMessageId(new ArrayList<>(w.getMessageIds()))
+                                        .example(new ArrayList<>(w.getUsedInMessages()))
                                         .analyzedAt(analyzedAt)
                                         .frequency(1)
                                         .build(),
-                                (exist, inc) -> { exist.setFrequency(exist.getFrequency() + 1); return exist; }
+                                //이미 있던 값과 새 값 병합하는 함수
+                                (exist, inc) -> {
+                                    // 빈도 합산
+                                    exist.setFrequency(exist.getFrequency() + 1);
+
+                                    // 채팅방 UUID 최신/병합 처리
+                                    if (!exist.getChatRoomUuid().contains(roomUuid)) {
+                                        exist.setChatRoomUuid(exist.getChatRoomUuid() + "," + roomUuid);
+                                    }
+
+                                    // 메시지 ID 병합 (중복 제거)
+                                    Set<String> msgIds = new LinkedHashSet<>(exist.getChatMessageId());
+                                    msgIds.addAll(inc.getChatMessageId());
+                                    exist.setChatMessageId(new ArrayList<>(msgIds));
+
+                                    // 예문 병합 (중복 제거)
+                                    Set<String> examples = new LinkedHashSet<>(exist.getExample());
+                                    examples.addAll(inc.getExample());
+                                    exist.setExample(new ArrayList<>(examples));
+
+                                    // 분석 시점 최신값 유지
+                                    if (inc.getAnalyzedAt().isAfter(exist.getAnalyzedAt())) {
+                                        exist.setAnalyzedAt(inc.getAnalyzedAt());
+                                    }
+                                    return exist;
+                                }
                         );
                     });
         }
@@ -165,6 +194,7 @@ public class MemberVocaBookService {
 
         memberVocabularyRepository.save(doc);
         log.info("💾 저장 완료: {} [{}개 단어] (docId={})", membername, wordMap.size(), docId);
+
     }
 
     /* -------------------- 내부 유틸들 -------------------- */
