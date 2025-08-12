@@ -60,7 +60,6 @@ jobs:
             SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
             SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_HOST }}
             SPRING_DATA_REDIS_PORT=${{ secrets.REDIS_PORT }}
-            SPRING_DATA_REDIS_USERNAME=${{secrets.REDIS_USERNAME}}
             SPRING_DATA_REDIS_PASSWORD=${{secrets.REDIS_PASSWORD}}
             SPRING_DATA_REDIS_SSL_ENABLED=true
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
