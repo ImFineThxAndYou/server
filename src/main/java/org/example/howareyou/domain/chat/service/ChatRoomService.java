@@ -1,6 +1,8 @@
 package org.example.howareyou.domain.chat.service;
 
 import jakarta.transaction.Transactional;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -84,7 +86,7 @@ public class ChatRoomService {
     for (ChatRoomMember member : members) {
       if (member.getStatus() != ChatRoomMemberStatus.JOINED) {
         member.setStatus(ChatRoomMemberStatus.JOINED);
-        member.setJoinedAt(LocalDateTime.now());
+        member.setJoinedAt(Instant.now());
       }
     }
 
@@ -109,7 +111,7 @@ public class ChatRoomService {
     for (ChatRoomMember member : members) {
       if (member.getMember().getId().equals(receiverId)) {
         member.setStatus(ChatRoomMemberStatus.REJECTED);
-        member.setJoinedAt(LocalDateTime.now());
+        member.setJoinedAt(Instant.now());
       } else {
         // 상대방 상태도 PENDING → REJECTED 처리
         member.setStatus(ChatRoomMemberStatus.REJECTED);

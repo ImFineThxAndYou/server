@@ -194,11 +194,11 @@ public class MemberVocaBookService {
     public List<MemberVocabulary> findAll() {
         return memberVocabularyRepository.findAll();
     }
-
+// 멤버 이름별로 단어장
     public List<MemberVocabulary> findByMembername(String membername) {
         return memberVocabularyRepository.findByMembername(membername);
     }
-
+// 멤버 별로 단어장 + 날짜 지정까지
     public MemberVocabulary findByMembernameAndDate(String membername, LocalDate date) {
         String docId = membername + "_" + date.toString();
         return memberVocabularyRepository.findById(docId)

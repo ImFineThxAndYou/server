@@ -1,6 +1,8 @@
 package org.example.howareyou.domain.chat.entity;
 
 import jakarta.persistence.*;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,7 +31,7 @@ public class ChatRoomMember {
   private ChatRoomMemberStatus status;
 
   @Column(updatable = false)
-  private LocalDateTime joinedAt;
+  private Instant joinedAt;
 
   public ChatRoomMember(ChatRoom chatRoom, Member member, ChatRoomMemberStatus status) {
     this.chatRoom = chatRoom;

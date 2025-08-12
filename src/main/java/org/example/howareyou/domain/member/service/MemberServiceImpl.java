@@ -204,6 +204,16 @@ public class MemberServiceImpl implements MemberService {
                 .toList();
     }
 
+    @Override
+    public Member getMemberById(Long id) {
+        return fetchMember(id);
+    }
+
+    @Override
+    public Member getMemberByMembername(String membername) {
+        return fetchMember(membername);
+    }
+
     /* ---------- util ---------- */
 
     private Member fetchMember(Long id) {
