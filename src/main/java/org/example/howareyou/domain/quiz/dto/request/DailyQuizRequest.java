@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.howareyou.domain.quiz.dto.membervoca.MemberVocabWordQuiz;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -26,7 +25,7 @@ public class DailyQuizRequest {
     /** 문제로 사용할 단어/뜻 */
     @NotNull
     @Valid
-    private MemberVocabWordQuiz vocab;
+    private String vocab;
 
     /** 문항수 */
     @Min(5) @Max(30) private int count;

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.howareyou.domain.quiz.dto.membervoca.MemberVocabWordQuiz;
 
 @Getter @Setter @Builder
 public class RandomQuizRequest {
@@ -19,7 +18,7 @@ public class RandomQuizRequest {
     /** 문제로 사용할 단어/뜻 */
     @NotNull
     @Valid
-    private MemberVocabWordQuiz vocab;
+    private String vocab;
 
     /** 문항 수 */
     @Min(5) @Max(30)
