@@ -13,6 +13,6 @@ public class AnalyzedResponseWord {
     private String pos;
     private String lang;
 
-    private String sourceMessageId;
-    private String example;
+    private String sourceMessageId;     //단어가 쓰인 채팅 ID
+    private String example;             //단어가 쓰인 예문
 }

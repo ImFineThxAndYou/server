@@ -133,7 +133,7 @@ def analyze_mixed():
     result = analyze_mixed_text(text)
     return jsonify(result)
 
-#배치 문장 분석
+# 배치 문장 분석
 @app.route("/analyze/mixed-batch", methods=["POST"])
 def analyze_mixed_batch():
     data = request.get_json()
@@ -142,10 +142,19 @@ def analyze_mixed_batch():
     all_tokens = []
     for msg in messages:
         text = msg.get("content", "")
-        analyzed_tokens = analyze_mixed_text(text)
-        all_tokens.extend(analyzed_tokens)  # 전부 하나의 리스트로 합치기
+        message_id = msg.get("messageId") or msg.get("id")
 
-    return jsonify(all_tokens)  # 바로 tokens 배열 반환
+        analyzed_tokens = analyze_mixed_text(text)
+
+        #각 토큰에 messageId와 example 추가
+        for token in analyzed_tokens:
+            token["sourceMessageId"] = message_id
+            token["example"] = text
+
+        all_tokens.extend(analyzed_tokens)
+
+    return jsonify(all_tokens)
+
 
 
 

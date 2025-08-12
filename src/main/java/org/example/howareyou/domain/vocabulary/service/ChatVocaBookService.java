@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.vocabulary.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.voca.dto.ChatMessageReadModel;
@@ -49,12 +50,14 @@ public class ChatVocaBookService {
         return fetchGroupedMessagesByRoomReactive(start, end)              // 시간 범위 내 메시지 조회 & 채팅방별 그룹핑
                 .flatMapMany(map -> Flux.fromIterable(map.entrySet()))    // Map<room, messages> → Flux<Entry> 변환
                 .flatMap(entry ->
-                                //NLP 배치 분석 → 사전 매칭 → Mongo 저장 순차 처리
-                                analyzeMessagesAsBatchReactive(entry.getKey(), entry.getValue())
-                                        .flatMap(this::matchWordsWithDictionaryReactive)
-                                        .flatMap(matched -> saveVocabularyReactive(entry.getKey(), matched)),
-                                        /* 동시에 처리할 채팅방 개수 제한 */
-                                        6
+                                analyzeMessagesAsBatchReactive(entry.getKey(), entry.getValue()) // NLP 결과
+                                        .flatMap(analyzedWords ->
+                                                matchWordsWithDictionaryReactive(analyzedWords)          // 사전 매칭
+                                                        .flatMap(matched ->
+                                                                saveVocabularyReactive(entry.getKey(), matched, analyzedWords) // Mongo 저장
+                                                        )
+                                        ),
+                        6 // 동시에 처리할 채팅방 개수 제한
                 )
                 .then()     // 모든 채팅방 처리 완료 시 Mono<Void> 반환
                 .doOnSubscribe(s -> log.info("🚀 채팅방 단어장 생성 시작: {} ~ {}", start, end))
@@ -104,6 +107,13 @@ public class ChatVocaBookService {
                         .toList()
         );
 
+        try {
+            String jsonPayload = new ObjectMapper().writeValueAsString(req);
+            log.info("📤 NLP 요청 JSON: {}", jsonPayload);
+        } catch (Exception e) {
+            log.error("❌ NLP 요청 JSON 직렬화 실패", e);
+        }
+
         return nlpClient.analyzeBatchReactive(req)
                 .doOnNext(list -> log.info("🧠 NLP 완료 - room={}, analyzed={}", chatRoomUuid, list.size()));
     }
@@ -119,7 +129,6 @@ public class ChatVocaBookService {
                             .map(w -> new WordPosPair(w.getWord(), w.getPos()))
                             .distinct()
                             .toList();
-                    log.info("검색 요청 pairs: {}", pairs); // 여기 찍어서 값 확인
                     return dictionaryDataRepository.findByWordAndPosPairs(pairs);   // MongoDB 사전 검색
                 })
                 .doOnError(e -> log.error("❌ 사전 매칭 중 에러", e))
@@ -132,21 +141,43 @@ public class ChatVocaBookService {
      *    - 사전 매칭된 단어 리스트를 Document 구조로 변환 후 저장
      *    - boundedElastic에서 실행
      */
-    private Mono<Void> saveVocabularyReactive(String chatRoomUuid, List<DictionaryData> matchedWords) {
+    private Mono<Void> saveVocabularyReactive(
+            String chatRoomUuid,
+            List<DictionaryData> matchedWords,
+            List<AnalyzedResponseWord> analyzedWords) {
         return Mono.fromRunnable(() -> {
-                    // 단어 목록 변환
                     List<ChatRoomVocabulary.DictionaryWordEntry> wordEntries = matchedWords.stream()
-                            .map(word -> ChatRoomVocabulary.DictionaryWordEntry.builder()
-                                    .word(word.getWord())
-                                    .meaning(word.getMeaning())
-                                    .pos(word.getPos())
-                                    .lang(word.getDictionaryType().startsWith("en") ? "en" : "ko")
-                                    .level(word.getLevel())
-                                    .dictionaryType(word.getDictionaryType())
-                                    .build())
+                            .map(word -> {
+                                // ✅ 이 단어와 품사가 같은 NLP 분석 결과 필터링
+                                List<AnalyzedResponseWord> matches = analyzedWords.stream()
+                                        .filter(a -> a.getWord().equalsIgnoreCase(word.getWord())
+                                                && a.getPos().equalsIgnoreCase(word.getPos()))
+                                        .toList();
+
+                                // ✅ 사용된 문장 & 메시지 ID 추출
+                                List<String> examples = matches.stream()
+                                        .map(AnalyzedResponseWord::getExample)
+                                        .distinct()
+                                        .toList();
+
+                                List<String> messageIds = matches.stream()
+                                        .map(AnalyzedResponseWord::getSourceMessageId)
+                                        .distinct()
+                                        .toList();
+
+                                return ChatRoomVocabulary.DictionaryWordEntry.builder()
+                                        .word(word.getWord())
+                                        .meaning(word.getMeaning())
+                                        .pos(word.getPos())
+                                        .lang(word.getDictionaryType().startsWith("en") ? "en" : "ko")
+                                        .level(word.getLevel())
+                                        .dictionaryType(word.getDictionaryType())
+                                        .usedInMessages(examples)  // ✅ 사용된 문장 저장
+                                        .messageIds(messageIds)    // ✅ 채팅 ID 저장
+                                        .build();
+                            })
                             .toList();
 
-                    // 단어장 Document 생성
                     ChatRoomVocabulary document = ChatRoomVocabulary.builder()
                             .chatRoomUuid(chatRoomUuid)
                             .analyzedAt(Instant.now())
