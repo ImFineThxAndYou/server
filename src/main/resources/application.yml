@@ -40,7 +40,8 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri:
+              "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
               - email
               - profile
@@ -72,7 +73,7 @@ springdoc:
 
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET}d
 
 front:
   url: ${FRONT_URL}
