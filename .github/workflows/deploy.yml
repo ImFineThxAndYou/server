@@ -62,7 +62,7 @@ jobs:
             SPRING_DATA_REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_DATA_REDIS_PASSWORD=${{secrets.REDIS_PASSWORD}}
             SPRING_DATA_REDIS_SSL_ENABLED=true
-            FRONT_URL=${{ secrets.FRONTEND_URL }}
+            FRONT_URL=${{ secrets.FRONT_URL }}
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
