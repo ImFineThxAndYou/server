@@ -21,6 +21,8 @@ RUN ./gradlew build --no-daemon -x test
 FROM openjdk:17-jdk-slim
 WORKDIR /app
 
+# install curl for health check
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Copy the built jar from the build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
