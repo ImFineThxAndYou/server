@@ -2,7 +2,9 @@ package org.example.howareyou.global.test;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
@@ -10,11 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
+import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
 import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
 import org.example.howareyou.domain.vocabulary.service.MemberVocaBookService;
+import org.example.howareyou.domain.vocabulary.service.NlpClient;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -34,6 +40,27 @@ public class VocaTestController {
     private final ChatMessageDocumentRepository chatMessageDocumentRepository;
     private final ChatVocaBookService chatVocaBookService;
     private final MemberVocaBookService memberVocaBookService;
+    private final NlpClient nlpClient;
+
+
+    @Operation(
+            summary = "채팅 메시지 NLP 분석",
+            description = "주어진 텍스트를 NLP 서버로 전송하여 불용어 제거 및 품사 태깅된 단어 목록을 반환합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "분석 성공",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnalyzedResponseWord.class)))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @PostMapping("/analyze/chats")
+    public Mono<ResponseEntity<List<AnalyzedResponseWord>>> analyzeText(
+            @Parameter(description = "분석할 텍스트", required = true)
+            @RequestBody AnalyzeRequestDto request) {
+        return nlpClient.analyzeReactive(request.getText())
+                .map(ResponseEntity::ok);
+    }
+
 
     @Operation(
             summary = "테스트용 채팅 메시지 생성",
@@ -87,43 +114,39 @@ public class VocaTestController {
         return ResponseEntity.ok(result);
     }
 
-    //단어장 생성 로직을 테스트
+    //채팅창 별 단어장 생성 - 비동기 버전
     @Operation(
-            summary = "단어장 생성 배치 실행 (테스트)",
-            description = "주어진 시간 범위에 포함된 채팅 메시지를 기반으로 NLP 분석 후 MongoDB에 단어장 데이터를 저장합니다. 파라미터 생략 시 기본적으로 직전 1시간 범위로 분석합니다."
+            summary = "단어장 생성 배치 실행 (비동기, 테스트)",
+            description = "주어진 시간 범위를 NLP 분석해 채팅방 단어장을 생성합니다. 미지정 시 직전 1시간."
     )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "단어장 생성 성공"),
-            @ApiResponse(responseCode = "500", description = "단어장 생성 중 서버 오류")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "요청 접수(비동기 시작)"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @PostMapping("/generate-vocabook")
+    @PostMapping("/generate-vocabook-reactive")  // 👈 이게 있어야 Swagger가 인식
     public ResponseEntity<Map<String, Object>> testGenerateVocabulary(
-            @Parameter(description = "시작 시간 (ISO-8601 형식)", example = "2025-08-05T04:00:00Z")
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
-
-            @Parameter(description = "종료 시간 (ISO-8601 형식)", example = "2025-08-07T05:00:00Z")
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
+            @Parameter(description = "시작 시간 (ISO-8601)", example = "2025-08-06T07:00:00Z")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
+            @Parameter(description = "종료 시간 (ISO-8601)", example = "2025-08-06T11:00:00Z")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
     ) {
         Map<String, Object> result = new HashMap<>();
 
-        try {
-            Instant now = Instant.now();
-            Instant from = start != null ? start : now.minus(1, ChronoUnit.HOURS);
-            Instant to = end != null ? end : now;
+        Instant now = Instant.now();
+        Instant from = start != null ? start : now.minus(1, ChronoUnit.HOURS);
+        Instant to = end != null ? end : now;
 
-            chatVocaBookService.generateVocabularyForLastHour(from, to);
+        chatVocaBookService.generateVocabularyForRangeReactive(from, to)
+                .subscribe(
+                        null,
+                        ex -> log.error("단어장 생성 실패", ex),
+                        () -> log.info("단어장 생성 완료: {} ~ {}", from, to)
+                );
 
-            result.put("success", true);
-            result.put("message", "단어장 생성 로직 실행 완료");
-            result.put("start", from.toString());
-            result.put("end", to.toString());
-        } catch (Exception e) {
-            log.error("단어장 생성 중 오류", e);
-            result.put("success", false);
-            result.put("message", "오류 발생: " + e.getMessage());
-        }
+        result.put("success", true);
+        result.put("message", "단어장 생성 요청이 비동기로 시작되었습니다.");
+        result.put("start", from.toString());
+        result.put("end", to.toString());
 
         return ResponseEntity.ok(result);
     }
@@ -203,6 +226,10 @@ public class VocaTestController {
             return ResponseEntity.ok(result);
         }
     }
+
+
+
+
 
 
 

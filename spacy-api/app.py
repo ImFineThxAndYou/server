@@ -106,7 +106,7 @@ def analyze_mixed_text(text):
 
                 if mapped_pos and mapped_pos in dictionary_pos_set:
                     result.append({
-                        "text": token.text,
+                        "word": token.text,
                         "pos": mapped_pos,
                         "lang": "en"
                     })
@@ -118,20 +118,44 @@ def analyze_mixed_text(text):
             kor_pos = pos_to_korean.get(pos)
             if kor_pos in allowed_pos_fullnames:
                 result.append({
-                    "text": word,
+                    "word": word,
                     "pos": kor_pos,
                     "lang": "ko"
                 })
 
     return result
 
-
+#단일 문장 분석
 @app.route("/analyze/mixed", methods=["POST"])
 def analyze_mixed():
     data = request.get_json()
     text = data.get("text", "")
     result = analyze_mixed_text(text)
     return jsonify(result)
+
+# 배치 문장 분석
+@app.route("/analyze/mixed-batch", methods=["POST"])
+def analyze_mixed_batch():
+    data = request.get_json()
+    messages = data.get("messages", [])
+
+    all_tokens = []
+    for msg in messages:
+        text = msg.get("content", "")
+        message_id = msg.get("messageId") or msg.get("id")
+
+        analyzed_tokens = analyze_mixed_text(text)
+
+        #각 토큰에 messageId와 example 추가
+        for token in analyzed_tokens:
+            token["sourceMessageId"] = message_id
+            token["example"] = text
+
+        all_tokens.extend(analyzed_tokens)
+
+    return jsonify(all_tokens)
+
+
 
 
 @app.route("/health")

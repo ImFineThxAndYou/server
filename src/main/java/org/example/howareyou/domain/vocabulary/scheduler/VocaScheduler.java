@@ -25,7 +25,12 @@ public class VocaScheduler {
 
         log.info("[VocaScheduler] 단어장 생성 시작 - {} ~ {}", oneHourAgo, now);
 
-        chatVocaBookService.generateVocabularyForLastHour(oneHourAgo, now);
+        chatVocaBookService.generateVocabularyForRangeReactive(oneHourAgo, now)
+                .subscribe(
+                        v -> {},
+                        ex -> log.error("배치 실패", ex),
+                        () -> log.info("배치 완료: {} ~ {}", oneHourAgo, now)
+                );
     }
 
 
