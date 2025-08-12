@@ -62,11 +62,13 @@ jobs:
             SPRING_DATA_REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_DATA_REDIS_PASSWORD=${{secrets.REDIS_PASSWORD}}
             SPRING_DATA_REDIS_SSL_ENABLED=true
-            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            FRONT_URL=${{ secrets.FRONT_URL }}
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            LIBER_HOST=${{secrets.LIBER_HOST}}
+            LIBER_PORT=${{secrets.LIBER_PORT}}
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
