@@ -10,14 +10,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
+
   Optional<ChatRoom> findByUuid(String uuid);
+
   @Query("""
-    SELECT c FROM ChatRoom c
+    SELECT DISTINCT c
+    FROM ChatRoom c
     JOIN c.members m1
     JOIN c.members m2
-    WHERE m1.member = :member1 AND m2.member = :member2
+    WHERE m1.member.id = :member1Id
+      AND m2.member.id = :member2Id
   """)
-  ChatRoom findByMembers(@Param("member1") Member member1, @Param("member2") Member member2);
+  ChatRoom findByMembers(@Param("member1Id") Long member1Id, @Param("member2Id") Long member2Id);
 
 
 }

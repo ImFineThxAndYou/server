@@ -19,14 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/vocabook")
 public class ChatVocaBookController {
-    private final NlpClient nlpClient;
     private final ChatVocaBookService chatVocaBookService;
-
-    @PostMapping("/analyze/chats")
-    public ResponseEntity<List<AnalyzedResponseWord>> analyzeText(@RequestBody AnalyzeRequestDto request) {
-        List<AnalyzedResponseWord> result = nlpClient.analyze(request.getText());
-        return ResponseEntity.ok(result);
-    }
 
     /**
      * 특정 채팅방의 전체 단어장 목록 조회 (최신순)
