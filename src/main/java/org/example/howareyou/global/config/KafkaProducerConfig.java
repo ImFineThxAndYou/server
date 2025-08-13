@@ -1,6 +1,6 @@
 package org.example.howareyou.global.config;
 
-import com.fasterxml.jackson.databind.ser.std.StringSerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -14,8 +14,10 @@ import java.util.Map;
 
 @Configuration
 public class KafkaProducerConfig {
-    @Value("${spring.kafka.bootstrap-servers}")
-    String bootstrapServers;
+
+    @Value("${spring.kafka.producer.bootstrap-servers}")
+    private String bootstrapServers;
+
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
        Map<String, Object> config = new HashMap<>();
