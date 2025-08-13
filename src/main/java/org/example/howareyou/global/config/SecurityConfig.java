@@ -12,7 +12,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,7 +38,7 @@ public class SecurityConfig {
     private final Environment environment;
 
     /* ──────────── CORS Origins (@Value 로 yml 주입 가능) ──────────── */
-    @Value("${front.cors.allowed-origins:http://localhost:5173}")
+    @Value("${front.cors.allowed-origins:http://localhost:3000}")
     private List<String> allowedOrigins;
 
     /* ──────────── Security Filter Chain ──────────── */
@@ -87,13 +86,13 @@ public class SecurityConfig {
 
                         // 읽기 전용 API (공개)
                         .requestMatchers(HttpMethod.GET,
-                                "/api/v1/members/*",
-                                "/api/v1/members/*/status",
-                                "/api/v1/members/membername/*"
+                                "/api/members/*",
+                                "/api/members/*/status",
+                                "/api/members/membername/*"
                         ).permitAll()
 
                         // SSE 엔드포인트는 인증 필요
-                        .requestMatchers("/api/v1/notify/sse").authenticated()
+                        .requestMatchers("/api/notify/sse").authenticated()
 
                         // ✅ CSV 업로드 API 허용
 //                        .requestMatchers("/upload-csv").permitAll()

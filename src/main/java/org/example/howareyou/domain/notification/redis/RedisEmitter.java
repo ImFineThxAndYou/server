@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +35,22 @@ public class RedisEmitter {
         });
         emitter.onTimeout(() -> {
             log.info("SseEmitter 타임아웃: memberId={}", memberId);
+            remove(memberId);
+        });
+        emitter.onError((ex) -> {
+            // SSE 연결 에러 처리 (클라이언트 연결 끊김 등)
+            if (ex instanceof IOException) {
+                String message = ex.getMessage();
+                if (message != null && (message.contains("Broken pipe") || 
+                                       message.contains("Connection reset") ||
+                                       message.contains("disconnected"))) {
+                    log.debug("SSE 연결 끊김 (정상): memberId={}, error={}", memberId, message);
+                } else {
+                    log.warn("SSE 연결 에러: memberId={}, error={}", memberId, message);
+                }
+            } else {
+                log.warn("SSE 기타 에러: memberId={}, error={}", memberId, ex.getMessage());
+            }
             remove(memberId);
         });
         return emitter;

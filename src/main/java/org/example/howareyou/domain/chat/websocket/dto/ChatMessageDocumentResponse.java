@@ -1,9 +1,10 @@
 package org.example.howareyou.domain.chat.websocket.dto;
 
-import java.time.Instant;
 import lombok.Builder;
 import lombok.Getter;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
+
+import java.time.Instant;
 
 @Getter
 @Builder

@@ -167,7 +167,7 @@ class AuthManager {
         if (!this.token) return false;
 
         try {
-            const response = await fetch('/api/v1/members/me', {
+            const response = await fetch('/api/members/me', {
                 headers: this.getAuthHeaders()
             });
             

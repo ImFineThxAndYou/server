@@ -38,8 +38,6 @@ public class MemberVocabulary {
         private String dictionaryType;  //en or ko
 
         private String chatRoomUuid;   // 단어가 분석된 채팅방
-        private List<String> chatMessageId;   //단어가 쓰인 chatMessageId
-        private List<String> example;         // 단어가 쓰인 원문
         private Instant analyzedAt;    // 분석된 시점
     }
 }

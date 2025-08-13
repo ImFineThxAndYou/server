@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -74,6 +75,12 @@ public class MemberCacheService {
             
         } catch (Exception e) {
             log.error("멤버 캐싱 중 오류 발생: {}", memberId, e);
+            // 캐시 오류 발생 시 해당 캐시 삭제
+            try {
+                delete(memberId);
+            } catch (Exception deleteException) {
+                log.debug("캐시 삭제 중 오류 발생: {} - {}", memberId, deleteException.getMessage());
+            }
         }
     }
 
@@ -145,7 +152,12 @@ public class MemberCacheService {
             Object cached = ops.get(key);
             
             if (cached instanceof MemberCache) {
-                return Optional.of((MemberCache) cached);
+                MemberCache memberCache = (MemberCache) cached;
+                // interests 필드가 null이면 빈 Set으로 초기화
+                if (memberCache.getInterests() == null) {
+                    memberCache.setInterests(new HashSet<>());
+                }
+                return Optional.of(memberCache);
             } else if (cached != null) {
                 // LinkedHashMap으로 deserialized된 경우 처리
                 log.debug("캐시된 객체가 MemberCache가 아님: {} (memberId: {})", cached.getClass().getSimpleName(), memberId);

@@ -1,28 +1,31 @@
 package org.example.howareyou.domain.chat.service;
 
 import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
-import org.example.howareyou.domain.chat.dto.ChatRequestSummaryResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomResponse;
-import org.example.howareyou.domain.chat.entity.*;
+import org.example.howareyou.domain.chat.entity.ChatRoom;
+import org.example.howareyou.domain.chat.entity.ChatRoomMember;
+import org.example.howareyou.domain.chat.entity.ChatRoomMemberStatus;
+import org.example.howareyou.domain.chat.entity.ChatRoomStatus;
 import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
+import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.chat.websocket.service.ChatRedisService;
 import org.example.howareyou.domain.member.entity.Member;
-import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.member.repository.MemberRepository;
+import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,7 @@ public class ChatRoomService {
   private final ChatRoomMemberRepository chatRoomMemberRepository;
   private final ChatMessageDocumentRepository chatMessageDocumentRepository;
   private final MemberRepository memberRepository;
+  private final MemberService memberService;
   private final ChatRedisService chatRedisService;
 
   /**
@@ -39,7 +43,7 @@ public class ChatRoomService {
    */
   @Transactional
   public CreateChatRoomResponse createChatRoom(CreateChatRoomRequest request, Long senderId) {
-    Long receiverId = request.getReceiverId();
+    Long receiverId = memberService.getIdByMembername(request.getMemberName());
 
     Member sender = memberRepository.findById(senderId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
@@ -47,7 +51,7 @@ public class ChatRoomService {
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
     // 이미 둘 사이에 존재하는 채팅방 확인
-    ChatRoom existingRoom = chatRoomRepository.findByMembers(senderId, receiverId);
+    ChatRoom existingRoom = chatRoomRepository.findByMembers(sender, receiver);
     if (existingRoom != null) {
       return new CreateChatRoomResponse(existingRoom.getUuid());
     }
@@ -58,8 +62,8 @@ public class ChatRoomService {
     chatRoomRepository.save(chatRoom);
 
     // 참여자 추가 (초기 상태는 PENDING)
-    ChatRoomMember senderEntry = new ChatRoomMember(chatRoom, sender, ChatRoomMemberStatus.SENDER);
-    ChatRoomMember receiverEntry = new ChatRoomMember(chatRoom, receiver, ChatRoomMemberStatus.RECEIVER);
+    ChatRoomMember senderEntry = new ChatRoomMember(chatRoom, sender, ChatRoomMemberStatus.PENDING);
+    ChatRoomMember receiverEntry = new ChatRoomMember(chatRoom, receiver, ChatRoomMemberStatus.PENDING);
 
     chatRoomMemberRepository.save(senderEntry);
     chatRoomMemberRepository.save(receiverEntry);
@@ -72,88 +76,58 @@ public class ChatRoomService {
    */
   @Transactional
   public void acceptChatRoom(String roomUuid, Long receiverId) {
-    ChatRoom room = chatRoomRepository.findByUuid(roomUuid)
+    ChatRoom chatRoom = chatRoomRepository.findByUuid(roomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    // 이미 처리된 방
-    if (room.getStatus() == ChatRoomStatus.ACCEPTED) return;
-    if (room.getStatus() == ChatRoomStatus.REJECTED)
-      throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE);
-
-    // 수락자 검증 (방 참가자 + RECEIVER 여야 함)
+    // 요청자 확인
     memberRepository.findById(receiverId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-    List<ChatRoomMember> entries = chatRoomMemberRepository.findByChatRoom(room);
-    ChatRoomMember me = entries.stream()
-        .filter(e -> e.getMember().getId().equals(receiverId))
-        .findFirst()
-        .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS));
+    // ChatRoomMember 2명 상태 확인 및 변경
+    List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom(chatRoom);
 
-    if (me.getStatus() != ChatRoomMemberStatus.RECEIVER)
-      throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE);
-
-    // 두 명 모두 JOINED로 전환
-    LocalDateTime now = LocalDateTime.now();
-    for (ChatRoomMember e : entries) {
-      if (e.getStatus() == ChatRoomMemberStatus.SENDER || e.getStatus() == ChatRoomMemberStatus.RECEIVER) {
-        e.setStatus(ChatRoomMemberStatus.JOINED);
-        e.setJoinedAt(now);
+    for (ChatRoomMember member : members) {
+      if (member.getStatus() != ChatRoomMemberStatus.JOINED) {
+        member.setStatus(ChatRoomMemberStatus.JOINED);
+        member.setJoinedAt(LocalDateTime.now());
       }
     }
 
-    room.setStatus(ChatRoomStatus.ACCEPTED);
+    // 채팅방 전체 상태도 변경
+    chatRoom.setStatus(ChatRoomStatus.ACCEPTED);
   }
 
-
+  /**
+   *  채팅 요청 거절
+   */
   @Transactional
   public void rejectChatRoom(String roomUuid, Long receiverId) {
-    ChatRoom room = chatRoomRepository.findByUuid(roomUuid)
+    ChatRoom chatRoom = chatRoomRepository.findByUuid(roomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    // 상태 검증
-    if (room.getStatus() == ChatRoomStatus.ACCEPTED) {
-      throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE); // 이미 수락된 방 거절 불가
-    }
-    if (room.getStatus() == ChatRoomStatus.REJECTED) {
-      return;
-    }
-
-    // 참가자 및 역할 검증
+    // 요청자 확인
     memberRepository.findById(receiverId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-    if (!room.hasParticipant(receiverId)) {
-      throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS);
-    }
+    List<ChatRoomMember> members = chatRoomMemberRepository.findByChatRoom(chatRoom);
 
-    List<ChatRoomMember> entries = chatRoomMemberRepository.findByChatRoom(room);
-    ChatRoomMember myEntry = entries.stream()
-        .filter(e -> e.getMember().getId().equals(receiverId))
-        .findFirst()
-        .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS));
-
-    // RECEIVER만 거절 허용
-    if (myEntry.getStatus() != ChatRoomMemberStatus.RECEIVER) {
-      throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE);
-    }
-
-    // 상태 전환
-    for (ChatRoomMember e : entries) {
-      switch (e.getStatus()) {
-        case SENDER, RECEIVER -> {
-          e.setStatus(ChatRoomMemberStatus.REJECTED);
-        }
-        case JOINED -> throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE);
-        case REJECTED -> {} // no-op
+    for (ChatRoomMember member : members) {
+      if (member.getMember().getId().equals(receiverId)) {
+        member.setStatus(ChatRoomMemberStatus.REJECTED);
+        member.setJoinedAt(LocalDateTime.now());
+      } else {
+        // 상대방 상태도 PENDING → REJECTED 처리
+        member.setStatus(ChatRoomMemberStatus.REJECTED);
       }
     }
-    room.setStatus(ChatRoomStatus.REJECTED);
 
-    chatRoomMemberRepository.deleteAll(entries);
-    chatRoomRepository.delete(room);
+    chatRoom.setStatus(ChatRoomStatus.REJECTED);
 
+    // 삭제 처리 (REJECTED 후 다시 요청 가능하도록 DB에서 제거)
+    chatRoomMemberRepository.deleteAll(members);
+    chatRoomRepository.delete(chatRoom);
   }
+
 
   /**
    *  uuid 채팅방 단 건 조회
@@ -259,38 +233,5 @@ public class ChatRoomService {
             .collect(Collectors.toSet());
   }
 
-  /**
-   * 매칭 수락 되지 않은 대기 방 조회
-   */
-  private List<ChatRequestSummaryResponse> getRequestsByStatus(Long myId, ChatRoomMemberStatus status) {
-    return chatRoomMemberRepository
-        .findByMemberIdAndStatusAndRoomStatusOrderByRoomCreatedDesc(
-            myId,
-            status,
-            ChatRoomStatus.PENDING // 요청 상태인 방만
-        )
-        .stream()
-        .map(cm -> {
-          ChatRoom room = cm.getChatRoom();
-          Member opponent = room.getOtherParticipant(myId);
-          return new ChatRequestSummaryResponse(
-              room.getUuid(),
-              opponent.getId(),
-              opponent.getMembername(),
-              room.getStatus().name(),
-              room.getCreatedAt()
-          );
-        })
-        .toList();
-  }
 
-  /** 내가 보낸 요청 리스트 (SENDER + PENDING) */
-  public List<ChatRequestSummaryResponse> getSentRequests(Long myId) {
-    return getRequestsByStatus(myId, ChatRoomMemberStatus.SENDER);
-  }
-
-  /** 내가 받은 요청 리스트 (RECEIVER + PENDING) */
-  public List<ChatRequestSummaryResponse> getReceivedRequests(Long myId) {
-    return getRequestsByStatus(myId, ChatRoomMemberStatus.RECEIVER);
-  }
 }

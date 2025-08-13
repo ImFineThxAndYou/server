@@ -1,3 +1,45 @@
 package org.example.howareyou.domain.member.entity;
 
-public enum Category { SPORTS, MUSIC, MOVIE, GAME, IT }
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+public enum Category {
+    LANGUAGE_LEARNING,
+    TRAVEL,
+    CULTURE,
+    BUSINESS,
+    EDUCATION,
+    TECHNOLOGY,
+    SPORTS,
+    MUSIC,
+    FOOD,
+    ART,
+    SCIENCE,
+    HISTORY,
+    MOVIES,
+    GAMES,
+    LITERATURE,
+    PHOTOGRAPHY,
+    NATURE,
+    FITNESS,
+    FASHION,
+    VOLUNTEERING,
+    ANIMALS,
+    CARS,
+    DIY,
+    FINANCE;
+
+    @JsonValue
+    public String getValue() {
+        return this.name();
+    }
+
+    @JsonCreator
+    public static Category fromValue(String value) {
+        try {
+            return Category.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown category: " + value);
+        }
+    }
+}
