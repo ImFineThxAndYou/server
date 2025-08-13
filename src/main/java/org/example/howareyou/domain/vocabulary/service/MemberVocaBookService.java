@@ -7,11 +7,13 @@ import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.MemberVocabulary;
+import org.example.howareyou.domain.vocabulary.dto.AggregatedWordEntry;
 import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
 import org.example.howareyou.domain.vocabulary.repository.MemberVocabularyRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -215,6 +217,20 @@ public class MemberVocaBookService {
         String docId = membername + "_" + date.toString();
         return memberVocabularyRepository.findById(docId)
                 .orElseThrow(() -> new CustomException(ErrorCode.VOCABULARY_NOT_FOUND));
+    }
+
+    //난이도별 조회
+    public List<AggregatedWordEntry> getAllByLevelAgg(
+            String membername, String level, String lang, Integer limit) {
+
+        List<AggregatedWordEntry> list = memberVocabularyRepository.aggregateByLevel(membername, level, lang);
+
+        if (limit != null && limit > 0 && list.size() > limit) {
+            list = list.subList(0, limit);
+        }
+
+        log.info("✅ [레포지토리 집계] member={}, level={}, lang={}, count={}", membername, level, lang, list.size());
+        return list;
     }
 
 }
