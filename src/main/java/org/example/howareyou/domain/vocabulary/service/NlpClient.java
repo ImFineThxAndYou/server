@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeBatchRequest;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -16,10 +17,13 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NlpClient {
 
     private final WebClient nlpWebClient;
+
+    public NlpClient(@Qualifier("nlpWebClient") WebClient webClient) {
+        this.nlpWebClient = webClient;
+    }
 
     /** 단일 텍스트 분석*/
     public Mono<List<AnalyzedResponseWord>> analyzeReactive(String text) {
