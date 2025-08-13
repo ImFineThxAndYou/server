@@ -7,7 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.global.entity.BaseEntity;
 
 @Entity
@@ -23,7 +23,7 @@ public class MemberTagScore extends BaseEntity {
   private Long memberId;
 
   @Column(nullable = false, length = 100)
-  private Category category;
+  private MemberTag memberTag;
 
   @Column(nullable=false)
   private double score;
