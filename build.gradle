@@ -74,6 +74,10 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     // (선택) resilient
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+
+    //Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
 }
 
 tasks.named('test') {
