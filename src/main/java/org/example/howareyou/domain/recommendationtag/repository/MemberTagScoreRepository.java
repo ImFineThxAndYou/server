@@ -8,6 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MemberTagScoreRepository extends JpaRepository<MemberTagScore, Long> {
   List<MemberTagScore> findByMemberId(Long memberId);
-  Optional<MemberTagScore> findByMemberIdAndCategory(Long memberId, MemberTag memberTag);
-  void deleteByMemberIdAndCategoryNotIn(Long memberId, List<MemberTag> categories);
+  Optional<MemberTagScore> findByMemberIdAndMemberTag(Long memberId, MemberTag memberTag);
+  void deleteByMemberIdAndMemberTagNotIn(Long memberId, List<MemberTag> MemberTags);
 }
