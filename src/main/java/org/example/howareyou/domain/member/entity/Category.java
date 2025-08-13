@@ -1,5 +1,8 @@
 package org.example.howareyou.domain.member.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum Category {
     LANGUAGE_LEARNING,
     TRAVEL,
@@ -24,5 +27,19 @@ public enum Category {
     ANIMALS,
     CARS,
     DIY,
-    FINANCE
+    FINANCE;
+
+    @JsonValue
+    public String getValue() {
+        return this.name();
+    }
+
+    @JsonCreator
+    public static Category fromValue(String value) {
+        try {
+            return Category.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown category: " + value);
+        }
+    }
 }

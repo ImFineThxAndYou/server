@@ -215,7 +215,7 @@
 
         // 인증된 사용자 정보로 SSE 연결
         const token = window.authManager.getToken();
-        const url = `/api/v1/notify/sse?token=${encodeURIComponent(token)}`;
+        const url = `/api/notify/sse?token=${encodeURIComponent(token)}`;
 
         // EventSource는 기본적으로 쿠키를 포함하지만, 명시적으로 설정
         eventSource = new EventSource(url, {
@@ -256,7 +256,7 @@
 
             // 하트비트 응답 전송 (인증된 요청 사용)
             try {
-                const response = await window.authManager.authenticatedFetch(`/api/v1/notify/heartbeat`, {
+                const response = await window.authManager.authenticatedFetch(`/api/notify/heartbeat`, {
                     method: 'POST'
                 });
 

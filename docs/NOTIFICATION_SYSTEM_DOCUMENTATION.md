@@ -102,8 +102,8 @@ public class RedisEmitter {
 
 #### NotificationController.java
 **엔드포인트:**
-- `GET /api/v1/notify/sse`: SSE 연결 구독
-- `POST /api/v1/notify/heartbeat`: 하트비트 응답
+- `GET /api/notify/sse`: SSE 연결 구독
+- `POST /api/notify/heartbeat`: 하트비트 응답
 
 **연결 프로세스:**
 1. 인증된 사용자 확인
@@ -148,10 +148,10 @@ public void pingAll() {
 
 ### 2. SSE 연결 및 하트비트
 ```
-1. 클라이언트: GET /api/v1/notify/sse 요청
+1. 클라이언트: GET /api/notify/sse 요청
 2. 서버: SseEmitter 생성, RedisEmitter에 등록
 3. 서버: 즉시 ping 전송으로 연결 확인
-4. 클라이언트: ping 수신 시 POST /api/v1/notify/heartbeat 응답
+4. 클라이언트: ping 수신 시 POST /api/notify/heartbeat 응답
 5. 서버: Redis TTL 갱신 (2분)
 6. 스케줄러: 15초마다 ping 전송
 7. 클라이언트: 25초마다 하트비트 응답
@@ -190,7 +190,7 @@ sse:online:{memberId} = "1" (TTL: 2분)
 
 ### SSE 연결
 ```
-GET /api/v1/notify/sse
+GET /api/notify/sse
 Authorization: Bearer {token}
 Content-Type: text/event-stream
 
@@ -203,7 +203,7 @@ Response:
 
 ### 하트비트
 ```
-POST /api/v1/notify/heartbeat
+POST /api/notify/heartbeat
 Authorization: Bearer {token}
 
 Response: 200 OK
@@ -261,7 +261,7 @@ services:
 ```bash
 # SSE 연결
 curl -N -H "Authorization: Bearer {token}" \
-     http://localhost:8080/api/v1/notify/sse
+     http://localhost:8080/api/notify/sse
 
 # 채팅 알림 발송
 curl -X POST http://localhost:8080/api/test/notifications/send-chat \

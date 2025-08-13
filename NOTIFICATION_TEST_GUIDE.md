@@ -71,10 +71,10 @@ docker-compose up -d
 ## 🔧 API 엔드포인트
 
 ### SSE 연결
-- `GET /api/v1/notifications/sse/{memberName}`
+- `GET /api/notifications/sse/{memberName}`
 
 ### 하트비트
-- `POST /api/v1/notifications/heartbeat/{memberName}` - 하트비트 응답
+- `POST /api/notifications/heartbeat/{memberName}` - 하트비트 응답
 
 ### 테스트 API
 - `POST /api/test/notifications/send-chat` - 채팅 알림 발송
