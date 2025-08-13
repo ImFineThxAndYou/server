@@ -26,12 +26,13 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
-  session:
-    store-type: redis
-    redis:
-      namespace: spring:session
-      flush-mode: on_save
-    timeout: 30m
+  # JWT 기반 인증을 사용하므로 세션 비활성화
+  # session:
+  #   store-type: redis
+  #   redis:
+  #     namespace: spring:session
+  #     flush-mode: on_save
+  #   timeout: 30m
 
   security:
     oauth2:

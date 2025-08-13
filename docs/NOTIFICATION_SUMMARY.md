@@ -50,8 +50,8 @@ SSE 연결 → 15초마다 ping → 25초마다 하트비트 → Redis TTL 갱�
 
 | 메서드 | 엔드포인트 | 설명 |
 |--------|-----------|------|
-| GET | `/api/v1/notify/sse` | SSE 연결 구독 |
-| POST | `/api/v1/notify/heartbeat` | 하트비트 응답 |
+| GET | `/api/notify/sse` | SSE 연결 구독 |
+| POST | `/api/notify/heartbeat` | 하트비트 응답 |
 | POST | `/api/test/notifications/send-chat` | 채팅 알림 테스트 |
 | POST | `/api/test/notifications/send-system` | 시스템 알림 테스트 |
 
