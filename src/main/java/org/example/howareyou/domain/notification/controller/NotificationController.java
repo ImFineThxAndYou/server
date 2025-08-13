@@ -63,7 +63,7 @@ public class NotificationController {
                     .data("{}"));
             log.debug("즉시 ping 전송 완료: memberId={}", memberId);
         } catch (IOException e) {
-            log.warn("즉시 ping 전송 실패: memberId={}", memberId);
+            log.debug("즉시 ping 전송 실패 (클라이언트 연결 끊김): memberId={}, error={}", memberId, e.getMessage());
             emitters.remove(memberId);
             throw new CustomException(ErrorCode.SSE_CONNECTION_FAILED, 
                     String.format("SSE 연결 실패: memberId=%d, error=%s", memberId, e.getMessage()));
