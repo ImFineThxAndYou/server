@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.chat.controller;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import java.util.List;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.howareyou.domain.chat.dto.ChatRequestSummaryResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
@@ -115,4 +117,31 @@ public class ChatRoomController {
     Long myId = memberDetails.getId();
     chatRoomService.disconnectFromChatRoom(myId, roomUuid);
   }
+
+  @Operation(summary = "내가 보낸 채팅 요청 목록", description = "현재 로그인한 사용자가 보낸(발신자) 채팅 요청 목록을 조회합니다.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "조회 성공")
+  })
+  @GetMapping("/requests/sent")
+  public List<ChatRequestSummaryResponse> getMySentChatRequests(
+      @Parameter(hidden = true)
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
+  ) {
+    Long myId = memberDetails.getId();
+    return chatRoomService.getSentRequests(myId);
+  }
+
+  @Operation(summary = "내가 받은 채팅 요청 목록", description = "현재 로그인한 사용자가 받은(수신자) 채팅 요청 목록을 조회합니다.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "조회 성공")
+  })
+  @GetMapping("/requests/received")
+  public List<ChatRequestSummaryResponse> getMyReceivedChatRequests(
+      @Parameter(hidden = true)
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
+  ) {
+    Long myId = memberDetails.getId();
+    return chatRoomService.getReceivedRequests(myId);
+  }
+
 }

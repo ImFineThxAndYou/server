@@ -1,5 +1,6 @@
 package org.example.howareyou.global.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -13,10 +14,15 @@ public class WebClientConfig {
     }
 
     // NLP 분석용 WebClient
-    @Bean
-    public WebClient nlpWebClient() {
-        return WebClient.builder()
-                .baseUrl("http://localhost:8000")
-                .build();
+    @Bean(name = "nlpWebClient") // 8000용 (기존)
+    public WebClient nlpWebClient(@Value("${nlp.base-url}") String baseUrl,
+        WebClient.Builder builder) {
+        return builder.baseUrl(baseUrl).build();
+    }
+
+    @Bean(name = "taggingNlpWebClient") // 8001용 (신규)
+    public WebClient taggingNlpWebClient(@Value("${tagging-nlp.base-url}") String baseUrl,
+        WebClient.Builder builder) {
+        return builder.baseUrl(baseUrl).build();
     }
 }

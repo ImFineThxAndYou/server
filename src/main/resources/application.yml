@@ -12,8 +12,8 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb+srv://howruname:howrupass@howru.ywfyiyp.mongodb.net/?retryWrites=true&w=majority&appName=howru
-      database: howrudb
+      uri: ${MONGO_URI}
+      database: ${MONGO_DB}
 
     redis:
       host: ${REDIS_HOST}
@@ -86,3 +86,8 @@ front:
 logging:
   level:
     org.springframework.boot.context.config: DEBUG
+
+nlp:
+  base-url: http://localhost:8000         # 기존 분석 서비스(NlpClient)
+tagging-nlp:
+  base-url: http://localhost:8001         # 새 태깅 서비스(FastAPI analysisTag.py)

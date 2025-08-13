@@ -2,16 +2,24 @@ package org.example.howareyou.domain.vocabulary.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.example.howareyou.domain.chat.service.ChatRoomService;
 import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.MemberVocabulary;
+import org.example.howareyou.domain.vocabulary.dto.AggregatedWordEntry;
 import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
 import org.example.howareyou.domain.vocabulary.repository.MemberVocabularyRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.*;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -39,6 +47,7 @@ public class MemberVocaBookService {
     private final ChatRoomService chatRoomService;
     private final ChatRoomVocabularyRepository chatRoomVocabularyRepository;
     private final MemberVocabularyRepository memberVocabularyRepository;
+    private final MongoTemplate mongoTemplate;
 
     /**
      * 한 번에 전체 유저를 불러온다.
@@ -138,12 +147,9 @@ public class MemberVocaBookService {
                                         .chatMessageId(new ArrayList<>(w.getMessageIds()))
                                         .example(new ArrayList<>(w.getUsedInMessages()))
                                         .analyzedAt(analyzedAt)
-                                        .frequency(1)
                                         .build(),
                                 //이미 있던 값과 새 값 병합하는 함수
                                 (exist, inc) -> {
-                                    // 빈도 합산
-                                    exist.setFrequency(exist.getFrequency() + 1);
 
                                     // 최신 채팅방 정보로 교체
                                     exist.setChatRoomUuid(roomUuid);
@@ -199,22 +205,112 @@ public class MemberVocaBookService {
     /** 문서 생성 범위/날짜 전달용 */
     private record TimeRange(Instant start, Instant end, LocalDate yesterLocalDate) {}
 
+    /* -------------------- 사용자 별 단어장 조회용 -------------------- */
 
     /*
-    * 사용자 별 단어장 조회용
+    * 전체 사용자의 전체 단어장 보기
     * */
     public List<MemberVocabulary> findAll() {
         return memberVocabularyRepository.findAll();
     }
-// 멤버 이름별로 단어장
-    public List<MemberVocabulary> findByMembername(String membername) {
-        return memberVocabularyRepository.findByMembername(membername);
+
+    //가장 최신 단어들만 뽑아서 중복없이 전체 조회
+    public Page<AggregatedWordEntry> findLatestUniqueWordsPaged(String membername,
+                                                                String lang,
+                                                                String pos,
+                                                                int page,
+                                                                int size) {
+        int skip = Math.max(page, 0) * Math.max(size, 1);
+
+        // items
+        List<AggregatedWordEntry> items =
+                memberVocabularyRepository.findLatestUniqueWords(membername, lang, pos, skip, size);
+
+        // total
+        long total = 0L;
+        List<MemberVocabularyRepository.CountOnly> cnt =
+                memberVocabularyRepository.countLatestUniqueWords(membername, lang, pos);
+        if (cnt != null && !cnt.isEmpty() && cnt.get(0).getTotal() != null) {
+            total = cnt.get(0).getTotal();
+        }
+
+        return new PageImpl<>(items, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "analyzedAt")), total);
     }
-// 멤버 별로 단어장 + 날짜 지정까지
-    public MemberVocabulary findByMembernameAndDate(String membername, LocalDate date) {
-        String docId = membername + "_" + date.toString();
-        return memberVocabularyRepository.findById(docId)
+
+    //사용자 + 날짜별
+    public Page<MemberVocabulary.MemberWordEntry> findWordsByMemberAndDatePaged(
+            String membername,
+            LocalDate date,
+            int page,
+            int size,
+            String sortBy,
+            String direction
+    ) {
+        String docId = membername + "_" + date;
+        MemberVocabulary doc = memberVocabularyRepository.findById(docId)
                 .orElseThrow(() -> new CustomException(ErrorCode.VOCABULARY_NOT_FOUND));
+
+        List<MemberVocabulary.MemberWordEntry> words = new ArrayList<>(doc.getWords());
+        if (words.isEmpty()) {
+            return new PageImpl<>(List.of(), PageRequest.of(page, size), 0);
+        }
+
+        // 정렬
+        Comparator<MemberVocabulary.MemberWordEntry> cmp = buildComparator(sortBy);
+        if ("desc".equalsIgnoreCase(direction)) cmp = cmp.reversed();
+        words.sort(cmp);
+
+        // 페이징 슬라이스
+        int from = Math.min(page * size, words.size());
+        int to   = Math.min(from + size, words.size());
+        List<MemberVocabulary.MemberWordEntry> slice = words.subList(from, to);
+
+        return new PageImpl<>(slice, PageRequest.of(page, size), words.size());
+    }
+
+    private Comparator<MemberVocabulary.MemberWordEntry> buildComparator(String sortBy) {
+        // 허용 필드: word|analyzedAt (기본 analyzedAt)
+        return switch (sortBy == null ? "" : sortBy) {
+            case "word"      -> Comparator.comparing(w -> safeLower(w.getWord()));
+            case "analyzedAt", "" -> Comparator.comparing(MemberVocabulary.MemberWordEntry::getAnalyzedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+            default          -> Comparator.comparing(MemberVocabulary.MemberWordEntry::getAnalyzedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+        };
+    }
+    private String safeLower(String s) { return s == null ? "" : s.toLowerCase(); }
+
+
+    //난이도별 조회
+    public Page<AggregatedWordEntry> findLatestUniqueWordsByLevelPaged(
+            String membername,
+            String lang,
+            String pos,
+            String level,
+            int page,
+            int size
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+        int skip = safePage * safeSize;
+
+        // items
+        List<AggregatedWordEntry> items =
+                memberVocabularyRepository.findLatestUniqueWordsByLevel(membername, lang, pos, level, skip, safeSize);
+
+        // total
+        long total = 0L;
+        List<MemberVocabularyRepository.CountOnly> cnt =
+                memberVocabularyRepository.countLatestUniqueWordsByLevel(membername, lang, pos, level);
+        if (cnt != null && !cnt.isEmpty() && cnt.get(0).getTotal() != null) {
+            total = cnt.get(0).getTotal();
+        }
+
+        return new PageImpl<>(
+                items,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "analyzedAt")),
+                total
+        );
     }
 
 }
