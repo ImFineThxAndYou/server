@@ -1,6 +1,5 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,8 +12,7 @@ import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
-import org.example.howareyou.domain.member.entity.Member;
-import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.notification.service.NotificationPushService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;

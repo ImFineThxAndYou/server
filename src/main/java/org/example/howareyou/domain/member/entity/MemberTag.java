@@ -1,6 +1,6 @@
 package org.example.howareyou.domain.member.entity;
 
-<<<<<<<< HEAD:src/main/java/org/example/howareyou/domain/member/entity/MemberTag.java
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -44,6 +44,3 @@ public enum MemberTag {
         }
     }
 }
-========
-public enum Category { SPORTS, MUSIC, MOVIE, GAME, IT }
->>>>>>>> f3fa66f9ae3bd6e81cb88d41e78a357f6f36c27a:src/main/java/org/example/howareyou/domain/member/entity/Category.java
