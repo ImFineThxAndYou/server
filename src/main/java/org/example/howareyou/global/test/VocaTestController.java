@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
-import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+
+import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
 import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
