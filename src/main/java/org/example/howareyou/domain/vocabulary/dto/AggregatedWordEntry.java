@@ -16,7 +16,6 @@ public class AggregatedWordEntry {
     private String pos;
     private String lang;
     private String level;
-    private Integer frequency;
     private Instant analyzedAt;
     private String chatRoomUuid;
     private List<String> chatMessageId;
