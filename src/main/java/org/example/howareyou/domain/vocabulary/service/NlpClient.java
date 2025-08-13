@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -12,12 +13,15 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NlpClient {
 
     private final WebClient nlpWebClient;
 
-    public List<AnalyzedResponseWord> analyze(String text) {
+    public NlpClient(@Qualifier("nlpWebClient") WebClient webClient) {
+        this.nlpWebClient = webClient;
+    }
+
+  public List<AnalyzedResponseWord> analyze(String text) {
         try {
             Mono<List<AnalyzedResponseWord>> response = nlpWebClient.post()
                     .uri("/analyze/mixed")
