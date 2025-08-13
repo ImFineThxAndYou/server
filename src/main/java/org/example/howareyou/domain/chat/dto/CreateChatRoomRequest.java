@@ -8,5 +8,5 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class CreateChatRoomRequest {
-  private Long receiverId;
+  private String memberName;
 }

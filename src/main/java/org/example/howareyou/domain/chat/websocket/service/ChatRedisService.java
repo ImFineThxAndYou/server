@@ -1,11 +1,11 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
-import java.time.Duration;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.example.howareyou.domain.chat.websocket.dto.ChatNotificationDTO;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor

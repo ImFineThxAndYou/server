@@ -1,6 +1,5 @@
 package org.example.howareyou.domain.vocabulary.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.vocabulary.service.CsvImportService;
 import org.springframework.web.bind.annotation.PostMapping;

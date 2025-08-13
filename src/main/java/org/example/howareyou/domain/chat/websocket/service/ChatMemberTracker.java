@@ -1,8 +1,6 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 

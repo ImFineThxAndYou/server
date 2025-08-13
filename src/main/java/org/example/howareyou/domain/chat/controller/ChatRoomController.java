@@ -1,8 +1,5 @@
 package org.example.howareyou.domain.chat.controller;
 
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import java.util.List;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,10 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.howareyou.domain.chat.dto.ChatRequestSummaryResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomResponse;
 import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
@@ -22,6 +17,8 @@ import org.example.howareyou.domain.chat.service.ChatRoomService;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -57,9 +54,9 @@ public class ChatRoomController {
       @PathVariable String roomUuid,
 
       @Parameter(description = "수락하는 사용자 ID", required = true)
-      @RequestParam Long receiverId
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
   ) {
-    chatRoomService.acceptChatRoom(roomUuid, receiverId);
+    chatRoomService.acceptChatRoom(roomUuid, memberDetails.getId());
   }
 
   @Operation(summary = "채팅방 거절", description = "상대방의 채팅 요청을 거절합니다.")
@@ -69,9 +66,9 @@ public class ChatRoomController {
       @PathVariable String roomUuid,
 
       @Parameter(description = "거절하는 사용자 ID", required = true)
-      @RequestParam Long receiverId
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
   ) {
-    chatRoomService.rejectChatRoom(roomUuid, receiverId);
+    chatRoomService.rejectChatRoom(roomUuid, memberDetails.getId());
   }
 
   @Operation(summary = "단일 채팅방 조회", description = "특정 채팅방의 상세 정보를 조회합니다.")
@@ -117,31 +114,4 @@ public class ChatRoomController {
     Long myId = memberDetails.getId();
     chatRoomService.disconnectFromChatRoom(myId, roomUuid);
   }
-
-  @Operation(summary = "내가 보낸 채팅 요청 목록", description = "현재 로그인한 사용자가 보낸(발신자) 채팅 요청 목록을 조회합니다.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "조회 성공")
-  })
-  @GetMapping("/requests/sent")
-  public List<ChatRequestSummaryResponse> getMySentChatRequests(
-      @Parameter(hidden = true)
-      @AuthenticationPrincipal CustomMemberDetails memberDetails
-  ) {
-    Long myId = memberDetails.getId();
-    return chatRoomService.getSentRequests(myId);
-  }
-
-  @Operation(summary = "내가 받은 채팅 요청 목록", description = "현재 로그인한 사용자가 받은(수신자) 채팅 요청 목록을 조회합니다.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "조회 성공")
-  })
-  @GetMapping("/requests/received")
-  public List<ChatRequestSummaryResponse> getMyReceivedChatRequests(
-      @Parameter(hidden = true)
-      @AuthenticationPrincipal CustomMemberDetails memberDetails
-  ) {
-    Long myId = memberDetails.getId();
-    return chatRoomService.getReceivedRequests(myId);
-  }
-
 }
