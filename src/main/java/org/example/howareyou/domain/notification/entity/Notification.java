@@ -2,6 +2,7 @@ package org.example.howareyou.domain.notification.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.howareyou.domain.notification.entity.NotificationType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -49,8 +50,8 @@ public class Notification {
         Map<String, Object> payload = new HashMap<>();
         payload.put("chatRoomId", roomId);
         payload.put("senderId", senderId);
-        payload.put("messageId", messageId);
-        payload.put("message", message);
+        payload.put("massageId", messageId);
+        payload.put("massage", message);
         
         return Notification.builder()
                 .receiverId(receiverId)

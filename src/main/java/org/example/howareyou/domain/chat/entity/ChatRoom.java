@@ -1,6 +1,9 @@
 package org.example.howareyou.domain.chat.entity;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -8,10 +11,6 @@ import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.global.config.BaseTime;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Getter
