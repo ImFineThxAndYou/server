@@ -2,7 +2,6 @@ package org.example.howareyou.domain.quiz.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.quiz.dto.ClientQuizQuestion;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
@@ -36,71 +35,84 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     private static final SecureRandom RND = new SecureRandom();
 
-    private final MemberService memberService;               // id -> membername
+    private final MemberService memberService;               // membername -> memberId 변환용
     private final MemberVocaBookService vocaBookService;     // 단어장 조회
     private final QuizResultRepository quizResultRepository; // 퀴즈 결과 저장
-    private final QuizWordRepository quizWordRepository; // 만든 퀴즈 저장
+    private final QuizWordRepository quizWordRepository;     // 문항 저장
 
-    // ====================== 공개 API (배치 전용) ======================
+    // ====================== 공개 API ======================
 
+    /** 랜덤 퀴즈: membername + 보기언어(language=meaningLang)만 받음, 문항수 자동(5~30) */
     @Override
-    public ClientStartResponse startRandomQuiz(Long memberId, String meaningLang, int count) {
-        validateCount(count);
+    public ClientStartResponse startRandomQuiz(String membername, String language /*= meaningLang*/) {
+        // 내부 저장/시도 제한은 memberId 기준
+        Long memberId = memberService.getIdByMembername(membername);
 
-        String membername = getMembernameById(memberId);
+        // 1) 전체 문서에서 후보(원문) 개수 집계
+        List<MemberVocabulary> docs = safeList(vocaBookService.findByMembername(membername));
+        int unique = (int) docs.stream()
+                .flatMap(d -> d.getWords().stream())
+                .filter(w -> matchesMeaningLang(w, language))
+                .map(MemberVocabulary.MemberWordEntry::getWord)
+                .filter(this::nonBlank)
+                .distinct()
+                .count();
 
-        // 1) 타깃 word 뽑기(유니크)
-        List<Target> targets = collectAllTargets(membername, meaningLang, count);
+        if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
 
-        // 2) 문항 생성
+        // 2) 문항 수 자동 결정 (최소 5, 최대 30, 후보 수 초과 금지)
+        int count = Math.min(30, Math.max(5, unique));
+
+        // 3) 타깃/문항 생성
+        List<Target> targets = collectAllTargets(membername, language, count);
         List<QuizQuestion> questions = buildQuestionsFromTargets(
                 targets,
-                /*dailyPool*/ null,
-                /*allPool*/ collectAllMeanings(membername, meaningLang)
+                null,
+                collectAllMeanings(membername, language)
         );
 
-        // 3) 원본 생성/시도 제한/저장
+        // 4) 원본 생성/시도 제한/저장 (모두 memberId 기준)
         QuizResult original = findOrCreateOriginal(memberId, QuizType.RANDOM, null);
-        enforceAttemptLimit(memberId, original.getId());
+        enforceAttemptLimit(original.getId());
         persistOriginalIfNew(original, QuizType.RANDOM, null, questions, memberId);
 
-        // 4) 응답 매핑
+        // 5) 응답
         return toClientStartResponse(original, questions);
     }
 
+    /** 데일리 퀴즈: membername + date + 보기언어(language=meaningLang), 문항수 자동(5~30) */
     @Override
-    public ClientStartResponse startDailyQuiz(Long memberId, LocalDate date, String meaningLang, int count) {
-        validateCount(count);
+    public ClientStartResponse startDailyQuiz(String membername, LocalDate date, String language /*= meaningLang*/) {
+        Long memberId = memberService.getIdByMembername(membername);
 
-        String membername = getMembernameById(memberId);
+        MemberVocabulary doc = vocaBookService.findByMembernameAndDate(membername, date);
+        if (doc == null || doc.getWords() == null) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
 
-        // 1) 타깃 word 뽑기(유니크) — 해당 날짜 문서에서만
-        List<Target> targets = collectDailyTargets(membername, date, meaningLang, count);
+        int unique = (int) doc.getWords().stream()
+                .filter(w -> matchesMeaningLang(w, language))
+                .map(MemberVocabulary.MemberWordEntry::getWord)
+                .filter(this::nonBlank)
+                .distinct()
+                .count();
 
-        // 2) 해당 날짜 의미 풀 + 전체 의미 풀
-        Set<String> dailyPool = collectDailyMeanings(membername, date, meaningLang);
-        Set<String> allPool   = collectAllMeanings(membername, meaningLang);
+        if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
 
-        // 3) 문항 생성(부족 시 전체 보강)
+        int count = Math.min(30, Math.max(5, unique));
+
+        List<Target> targets  = collectDailyTargets(membername, date, language, count);
+        Set<String> dailyPool = collectDailyMeanings(membername, date, language);
+        Set<String> allPool   = collectAllMeanings(membername, language);
+
         List<QuizQuestion> questions = buildQuestionsFromTargets(targets, dailyPool, allPool);
 
-        // 4) 원본 생성/시도 제한/저장
-        // (필요하면 dailyKeyUtc 넣어도 됨. 현 구조에선 null 유지)
-        QuizResult original = findOrCreateOriginal(memberId, QuizType.DAILY, null);
-        enforceAttemptLimit(memberId, original.getId());
+        QuizResult original = findOrCreateOriginal(memberId, QuizType.DAILY, null /* 필요하면 날짜 키 사용 */);
+        enforceAttemptLimit(original.getId());
         persistOriginalIfNew(original, QuizType.DAILY, null, questions, memberId);
 
-        // 5) 응답 매핑
         return toClientStartResponse(original, questions);
     }
 
     // ====================== 내부 로직 ======================
-
-    private void validateCount(int count) {
-        if (count < 5 || count > 30) {
-            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
-        }
-    }
 
     // 타깃 한 건(문항의 질문에 쓰일 word + 정답 meaning)
     private record Target(String word, String meaning) {}
@@ -108,8 +120,12 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     // 해당 날짜 문서에서 lang 일치하는 word만 유니크 추출
     private List<Target> collectDailyTargets(String membername, LocalDate date, String meaningLang, int count) {
         MemberVocabulary doc = vocaBookService.findByMembernameAndDate(membername, date);
+        if (doc == null || doc.getWords() == null) {
+            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        }
+
         Map<String, String> byWord = doc.getWords().stream()
-                .filter(w -> meaningLang.equalsIgnoreCase(safe(w.getLang())))
+                .filter(w -> matchesMeaningLang(w, meaningLang))
                 .collect(Collectors.toMap(
                         MemberVocabulary.MemberWordEntry::getWord,
                         MemberVocabulary.MemberWordEntry::getMeaning,
@@ -127,10 +143,11 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     // 전체 문서에서 lang 일치하는 word만 유니크 추출
     private List<Target> collectAllTargets(String membername, String meaningLang, int count) {
-        List<MemberVocabulary> docs = vocaBookService.findByMembername(membername);
+        List<MemberVocabulary> docs = safeList(vocaBookService.findByMembername(membername));
+
         Map<String, String> byWord = docs.stream()
                 .flatMap(d -> d.getWords().stream())
-                .filter(w -> meaningLang.equalsIgnoreCase(safe(w.getLang())))
+                .filter(w -> matchesMeaningLang(w, meaningLang))
                 .collect(Collectors.toMap(
                         MemberVocabulary.MemberWordEntry::getWord,
                         MemberVocabulary.MemberWordEntry::getMeaning,
@@ -150,8 +167,9 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private Set<String> collectDailyMeanings(String membername, LocalDate date, String meaningLang) {
         try {
             MemberVocabulary doc = vocaBookService.findByMembernameAndDate(membername, date);
+            if (doc == null || doc.getWords() == null) return Collections.emptySet();
             return doc.getWords().stream()
-                    .filter(w -> meaningLang.equalsIgnoreCase(safe(w.getLang())))
+                    .filter(w -> matchesMeaningLang(w, meaningLang))
                     .map(MemberVocabulary.MemberWordEntry::getMeaning)
                     .filter(this::nonBlank)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -163,12 +181,10 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     // 전체 의미 풀 수집 (meaning만)
     private Set<String> collectAllMeanings(String membername, String meaningLang) {
-        List<MemberVocabulary> docs = vocaBookService.findByMembername(membername);
-        if (docs == null || docs.isEmpty()) return Collections.emptySet();
-
+        List<MemberVocabulary> docs = safeList(vocaBookService.findByMembername(membername));
         return docs.stream()
                 .flatMap(doc -> doc.getWords().stream())
-                .filter(w -> meaningLang.equalsIgnoreCase(safe(w.getLang())))
+                .filter(w -> matchesMeaningLang(w, meaningLang))
                 .map(MemberVocabulary.MemberWordEntry::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -222,43 +238,47 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     // ====================== 공용 유틸/저장 ======================
 
-    private String getMembernameById(Long memberId) {
-        Member m = memberService.getMemberById(memberId);
-        String membername = m.getMembername();
-        if (membername == null || membername.isBlank()) {
-            // 별도 에러코드 안 쓰기로 하셨으니 BAD_REQUEST 계열로 재사용
-            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
-        }
-        return membername;
+    private List<MemberVocabulary> safeList(List<MemberVocabulary> in) {
+        return in == null ? Collections.emptyList() : in;
     }
 
     private boolean nonBlank(String s) { return s != null && !s.isBlank(); }
 
     private String safe(String s) { return s == null ? "" : s; }
 
+    /** 원본 퀴즈 찾기/생성은 memberId 기준(엔티티가 memberId를 가짐) */
     private QuizResult findOrCreateOriginal(Long memberId, QuizType type, Instant dailyKeyUtc) {
-        Optional<QuizResult> found = (type == QuizType.RANDOM)
-                ? quizResultRepository.findLatestOriginal(memberId, QuizType.RANDOM, null)
-                : quizResultRepository.findLatestOriginal(memberId, QuizType.DAILY, dailyKeyUtc);
+        Optional<QuizResult> found;
+
+        if (type == QuizType.RANDOM) {
+            found = quizResultRepository.findLatestOriginalRandom(memberId, QuizType.RANDOM);
+        } else { // DAILY
+            if (dailyKeyUtc == null) {
+                // 지금 구조가 dailyKeyUtc를 null로 두는 설계라면 이 메서드 사용
+                found = quizResultRepository.findLatestOriginalDailyIsNull(memberId, QuizType.DAILY);
+            } else {
+                found = quizResultRepository.findLatestOriginalDaily(memberId, QuizType.DAILY, dailyKeyUtc);
+            }
+        }
 
         return found.orElseGet(() -> QuizResult.builder()
                 .memberId(memberId)
                 .quizType(type)
-                .dailyQuiz(dailyKeyUtc)
+                .dailyQuiz(dailyKeyUtc)   // null이면 null로 저장
                 .isRequiz(Boolean.FALSE)
                 .createdAt(Instant.now())
                 .quiz_count(0)
                 .build());
     }
 
-    private void enforceAttemptLimit(Long memberId, Long originalId) {
+    /** 시도 횟수 제한(5회) — memberId + originalId 기준 */
+    private void enforceAttemptLimit(Long originalId) {
         if (originalId == null) return;
-        long attempt = quizResultRepository.countAttempts(memberId, originalId);
-        if (attempt >= 5) {
-            throw new CustomException(NORETRY);
-        }
+        long attempt = quizResultRepository.countAttempts(originalId);
+        if (attempt >= 5) throw new CustomException(ErrorCode.NORETRY);
     }
 
+    /** original 신규 저장 및 QuizWord 배치 저장, 시도수 업데이트 — memberId 필요 */
     private void persistOriginalIfNew(QuizResult original,
                                       QuizType type,
                                       Instant dailyKeyUtc,
@@ -272,11 +292,10 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
             original.setCreatedAt(Instant.now());
             original.setIsRequiz(Boolean.FALSE);
             original = quizResultRepository.save(original);
-
-            saveQuizWords(original,questions);
+            saveQuizWords(original, questions);
         }
 
-        long attempt = quizResultRepository.countAttempts(memberId, original.getId());
+        long attempt = quizResultRepository.countAttempts(original.getId());
         original.setQuiz_count((int) attempt);
         quizResultRepository.save(original);
     }
@@ -305,40 +324,49 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .build();
     }
 
+    /** 보기 언어(meaningLang) 판단: ko(보기=한글) → 원문은 en, en(보기=영어) → 원문은 ko */
+    private boolean matchesMeaningLang(MemberVocabulary.MemberWordEntry w, String meaningLang) {
+        String dt = safe(w.getDictionaryType()); // "enko" or "koen" or null
+        String wl = safe(w.getLang());           // "en" or "ko"
+
+        if ("ko".equalsIgnoreCase(meaningLang)) {
+            // 보기=한글 → 원문은 영어(en)이어야 함
+            if ("enko".equalsIgnoreCase(dt)) return true;   // 명시적 방향
+            return "en".equalsIgnoreCase(wl);
+        } else { // meaningLang = "en"
+            // 보기=영어 → 원문은 한국어(ko)여야 함
+            if ("koen".equalsIgnoreCase(dt)) return true;
+            return "ko".equalsIgnoreCase(wl);
+        }
+    }
+
+    /* QuizWord 배치 저장 */
     private void saveQuizWords(QuizResult original, List<QuizQuestion> questions) {
-        // 1) QuizQuestion -> 내부 DTO(QuizWordCreate)로 정규화
         List<QuizWordCreate> creates = new ArrayList<>(questions.size());
 
         for (int i = 0; i < questions.size(); i++) {
             QuizQuestion q = questions.get(i);
-
-            String word = q.getQuestion();
             List<String> choices = q.getChoices();
             int answerIndex = q.getAnswerIndex();
 
-            // 방어 로직
-            if (choices == null || choices.size() < 4) {
+            if (choices == null || choices.size() < 4)
                 throw new IllegalStateException("퀴즈 보기가 4개 미만입니다.");
-            }
-            if (answerIndex < 0 || answerIndex >= choices.size()) {
+            if (answerIndex < 0 || answerIndex >= choices.size())
                 throw new CustomException(ErrorCode.INVALID_SELECTION_INDEX);
-            }
 
             creates.add(QuizWordCreate.builder()
-                    .word(word)
-                    // 보기 4개만 보존 (혹시 4개 초과가 올 수도 있으니 0~3만)
+                    .word(q.getQuestion())
                     .choices(List.of(choices.get(0), choices.get(1), choices.get(2), choices.get(3)))
-                    .answerIndex(answerIndex)                // 0~3
-                    .questionNo(i + 1)                       // 1..N
-                    .meaning(choices.get(answerIndex))       // 정답 의미
+                    .answerIndex(answerIndex)
+                    .questionNo(i + 1)
+                    .meaning(choices.get(answerIndex))
                     .build());
         }
 
-        // 2) DTO -> 엔티티 변환 후 배치 insert
         List<QuizWord> batch = new ArrayList<>(creates.size());
         for (QuizWordCreate c : creates) {
             batch.add(QuizWord.builder()
-                    .quizResult(original)                    // 영속 부모 참조 → 추가 SELECT 없음
+                    .quizResult(original)
                     .questionNo(c.getQuestionNo())
                     .word(c.getWord())
                     .meaning(c.getMeaning())
@@ -346,7 +374,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                     .choice2(c.getChoices().get(1))
                     .choice3(c.getChoices().get(2))
                     .choice4(c.getChoices().get(3))
-                    .correctAnswer(c.getAnswerIndex() + 1)   // 0~3 → 1~4 저장
+                    .correctAnswer(c.getAnswerIndex() + 1)   // 1~4 저장
                     .userAnswer(null)
                     .isCorrect(null)
                     .createdAt(Instant.now())

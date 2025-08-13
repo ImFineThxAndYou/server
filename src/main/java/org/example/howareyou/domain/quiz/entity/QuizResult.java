@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "quiz_result")
@@ -74,5 +75,17 @@ public class QuizResult {
     @OneToMany(mappedBy = "quizResult", cascade = CascadeType.ALL)
     @OrderBy("questionNo ASC") // 문항번호대로 정렬
     private List<QuizWord> quizWords = new ArrayList<>();
+
+    /** 저장 직전에 기본값 보정 */
+    @PrePersist
+    private void prePersist() {
+        if (this.uuid == null || this.uuid.isBlank()) {
+            this.uuid = UUID.randomUUID().toString(); // 36자, length 40 컬럼에 충분
+        }
+        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.isRequiz == null) this.isRequiz = Boolean.FALSE;
+        if (this.completed == null) this.completed = Boolean.FALSE;
+        // quiz_count 기본 0은 필드 기본값으로 충분
+    }
 }
 

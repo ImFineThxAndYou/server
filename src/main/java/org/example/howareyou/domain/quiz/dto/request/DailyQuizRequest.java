@@ -2,31 +2,22 @@ package org.example.howareyou.domain.quiz.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.format.annotation.DateTimeFormat;
+import lombok.*;
 
 import java.time.LocalDate;
 
-@Getter @Setter
+@Getter @Setter @Builder
+@NoArgsConstructor @AllArgsConstructor
 public class DailyQuizRequest {
-    @NotNull
-    private Long memberId;
+    @NotBlank
+    private String memberName;
 
-    /** yyyy-MM-dd */
     @NotNull
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate date;
 
-    /** 보기 언어: "ko" 또는 "en" */
-    @NotBlank
-    private String meaningLang;
+    // 보기 언어를 덮어쓸 때만 보내는 선택값 ("ko" or "en")
+    private String language;
 
-    /** 문제로 사용할 단어/뜻 */
-    @NotNull
     @Valid
-    private String vocab;
-
-    /** 문항수 */
-    @Min(5) @Max(30) private int count;
+    private RandomQuizRequest.MemberProfilePart memberProfile; // 선택
 }

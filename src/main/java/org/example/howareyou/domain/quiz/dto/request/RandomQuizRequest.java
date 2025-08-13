@@ -2,25 +2,23 @@ package org.example.howareyou.domain.quiz.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter @Setter @Builder
+@NoArgsConstructor @AllArgsConstructor
 public class RandomQuizRequest {
-    @NotNull
-    private Long memberId;
 
-    /** 보기 언어: "ko" 또는 "en" */
     @NotBlank
-    private String meaningLang;
+    private String memberName;           // 필수
 
-    /** 문제로 사용할 단어/뜻 */
-    @NotNull
-    @Valid
-    private String vocab;
+    // 보기 언어를 강제로 덮어쓸 때만 보내는 선택값 ("ko" or "en")
+    private String language;
 
-    /** 문항 수 */
-    @Min(5) @Max(30)
-    private int count;
+    // 예전 클라이언트 호환용(선택). 없으면 null일 수 있음.
+    private MemberProfilePart memberProfile;
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class MemberProfilePart {
+        private String language;         // "ko" or "en"
+    }
 }
