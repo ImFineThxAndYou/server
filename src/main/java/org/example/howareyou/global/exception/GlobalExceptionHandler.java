@@ -63,22 +63,22 @@ public class GlobalExceptionHandler {
     /* ── 4) SSE 관련 예외 처리 ────────────────────────────────────────── */
     @ExceptionHandler({AsyncRequestNotUsableException.class, IOException.class})
     protected ResponseEntity<ErrorResponse> handleSseException(Exception ex) {
-        
+
         // SSE 연결이 끊어진 경우 (클라이언트가 브라우저를 닫거나 네트워크 문제)
-        if (ex instanceof AsyncRequestNotUsableException || 
-            (ex instanceof IOException && ex.getMessage() != null && 
+        if (ex instanceof AsyncRequestNotUsableException ||
+            (ex instanceof IOException && ex.getMessage() != null &&
              (ex.getMessage().contains("Broken pipe") || ex.getMessage().contains("Connection reset")))) {
-            
+
             log.debug("[SSE] Client disconnected: {}", ex.getMessage());
-            
+
             // SSE 연결 끊김은 정상적인 상황이므로 에러로 로깅하지 않음
             // 빈 응답을 반환하여 추가 에러 로그 방지
             return ResponseEntity.noContent().build();
         }
-        
+
         // 기타 SSE 관련 예외
         log.warn("[SSE] SSE error: {}", ex.getMessage());
-        
+
         ErrorResponse body = ErrorResponse.builder()
                 .code("SSE_ERROR")
                 .message("실시간 연결에 문제가 발생했습니다.")
@@ -86,7 +86,7 @@ public class GlobalExceptionHandler {
                 .detail("SSE connection error")
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         return ResponseEntity.status(500).body(body);
     }
 
@@ -123,7 +123,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus()).body(body);
     }
 
-    /* ── 6) 예상 못한 모든 예외(Fallback) ─────────────────────────────── */
+    /* ── 5) 예상 못한 모든 예외(Fallback) ─────────────────────────────── */
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<ErrorResponse> handleException(Exception ex) {
 
