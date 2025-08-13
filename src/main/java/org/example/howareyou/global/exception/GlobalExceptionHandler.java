@@ -2,12 +2,11 @@ package org.example.howareyou.global.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.data.redis.RedisSystemException;
-import org.springframework.session.data.redis.RedisSessionRepository;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;

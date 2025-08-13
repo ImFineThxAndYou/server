@@ -1,7 +1,6 @@
 package org.example.howareyou.domain.member.repository;
 
 import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
-import org.example.howareyou.domain.member.dto.response.ProfileResponse;
 import org.example.howareyou.domain.member.entity.Category;
 import org.example.howareyou.domain.member.entity.Member;
 import org.springframework.data.domain.Page;

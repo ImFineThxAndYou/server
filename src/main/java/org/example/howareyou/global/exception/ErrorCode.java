@@ -61,7 +61,6 @@ public enum ErrorCode {
     CHAT_ROOM_NOT_FOUND (HttpStatus.NOT_FOUND, "CR001", "채팅방을 찾을 수 없습니다."),
     FORBIDDEN_CHAT_ROOM_ACCESS (HttpStatus.UNAUTHORIZED, "CR002", "채팅방 접근 권한이 없습니다."),
     INVALID_CHAT_ROOM_UUID (HttpStatus.NOT_FOUND, "CR003", "기존 채팅방의 UUID가 유효하지 않습니다."),
-    INVALID_CHAT_ROOM_STATE (HttpStatus.NOT_FOUND, "CR004", "채팅방의 상태가 올바르지 않습니다."),
 
     /* ───────────[LiberTranslate 서버/번역]─────────── */
     LT_CONNECTION_FAILURE(HttpStatus.BAD_GATEWAY, "LT001", "번역 서버와 연결할 수 없습니다."),

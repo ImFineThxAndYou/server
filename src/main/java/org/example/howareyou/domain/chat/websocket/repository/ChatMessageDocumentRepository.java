@@ -1,13 +1,14 @@
-package org.example.howareyou.domain.member.repository;
+package org.example.howareyou.domain.chat.websocket.repository;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 public interface ChatMessageDocumentRepository extends MongoRepository<ChatMessageDocument, String> {
 

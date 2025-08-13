@@ -33,8 +33,8 @@ public class ChatRoomVocabulary {
         private String level;
         private String dictionaryType;
 
-        private List<String> messageIds;     // 단어가 사용된 채팅 메시지 ID들
-        private List<String> usedInMessages; // 단어가 사용된 원문 문장들
+        //단어가 사용된 문장
+        private List<String> usedInMessages;
 
     }
 }

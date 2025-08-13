@@ -3,19 +3,22 @@ package org.example.howareyou.domain.notification.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.member.service.MemberService;
-import org.example.howareyou.domain.notification.entity.Notification;
+import org.example.howareyou.domain.notification.dto.NotifyDto;
 import org.example.howareyou.domain.notification.redis.RedisEmitter;
-import org.example.howareyou.domain.notification.repository.NotificationRepository;
 import org.example.howareyou.domain.notification.service.NotificationPushService;
+import org.example.howareyou.domain.notification.service.NotificationService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.example.howareyou.global.security.CustomMemberDetails;
-import org.springframework.http.MediaType;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @RestController @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class NotificationController {
     private final RedisEmitter emitters;
     private final MemberService memberService;           // name ↔ id
     private final NotificationPushService pushService;
+    private final NotificationService notificationService;
 
     /** 클라이언트 구독 엔드포인트 */
     @GetMapping("/sse")
@@ -75,4 +79,27 @@ public class NotificationController {
     public void heartbeat(@AuthenticationPrincipal CustomMemberDetails memberDetails) {
         emitters.touch(memberDetails.getId());  // Redis TTL 연장
     }
+
+
+    @GetMapping
+    public Page<NotifyDto> list(
+            @AuthenticationPrincipal CustomMemberDetails me,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return notificationService.getNotifications(me.getId(), page, size);
+    }
+
+    @GetMapping("/unread-count")
+    public Map<String, Long> unreadCount(@AuthenticationPrincipal CustomMemberDetails memberDetails) {
+        return Map.of("unread", notificationService.unreadCount(memberDetails.getId()));
+    }
+
+    @PatchMapping("/{id}/read")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markRead(@AuthenticationPrincipal CustomMemberDetails memberDetails, @PathVariable String id) {
+        UUID uuid = UUID.fromString(id);
+        notificationService.markRead(memberDetails.getId(), uuid);
+    }
+
 }
