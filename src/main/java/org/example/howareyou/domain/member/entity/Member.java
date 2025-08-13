@@ -90,7 +90,7 @@ public class Member extends BaseEntity {
             String nickname,
             String avatarUrl,
             String statusMessage,
-            Set<Category> interests,
+            Set<MemberTag> interests,
             LocalDate birthDate,
             String country,
             String region,

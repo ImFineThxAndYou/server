@@ -3,7 +3,7 @@ package org.example.howareyou.domain.member.dto.request;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 
 import java.util.Set;
 
@@ -11,5 +11,5 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 public class FilterRequest {
-    private Set<Category> interests;
+    private Set<MemberTag> interests;
 }

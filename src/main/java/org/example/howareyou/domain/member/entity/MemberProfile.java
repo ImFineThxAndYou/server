@@ -16,7 +16,7 @@ import java.util.*;
 /**
  * 통합 회원 프로필 엔티티
  * ──────────────────────────────────────────────────────
- * • 닉네임 / 아바타 / 상태메시지 / 관심사(Set<Category>)
+ * • 닉네임 / 아바타 / 상태메시지 / 관심사(Set<MemberTag>)
  * • 언어·시간대(기존 MemberSettings 통합)
  * • 생년월일 → 나이 계산 (getAge())
  * • 거주지 : country(ISO-3166 alpha-2) + region(주·도·시 등)
@@ -54,7 +54,7 @@ public class MemberProfile extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "interest")
     @Builder.Default
-    private Set<Category> interests = new HashSet<>();// 관심사
+    private Set<MemberTag> interests = new HashSet<>();// 관심사
 
     /* ==================== 라이프스타일 & 로케일 ==================== */
 
@@ -86,7 +86,7 @@ public class MemberProfile extends BaseEntity {
             String nickname,
             String avatarUrl,
             String bio,
-            Set<Category> interests
+            Set<MemberTag> interests
     ) {
         return MemberProfile.builder()
                 .nickname(nickname)
@@ -119,7 +119,7 @@ public class MemberProfile extends BaseEntity {
             String nickname,
             String bio,
             String avatarUrl,
-            Set<Category> interests,
+            Set<MemberTag> interests,
             LocalDate birthDate,
             String country,
             String region,

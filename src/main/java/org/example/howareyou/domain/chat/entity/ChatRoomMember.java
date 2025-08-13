@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.global.entity.BaseEntity;
 
 import java.time.LocalDateTime;
 
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ChatRoomMember {
+public class ChatRoomMember extends BaseEntity {
 
   @Id
   @GeneratedValue
@@ -28,9 +29,6 @@ public class ChatRoomMember {
 
   @Enumerated(EnumType.STRING)
   private ChatRoomMemberStatus status;
-
-  @Column(updatable = false)
-  private LocalDateTime joinedAt;
 
   public ChatRoomMember(ChatRoom chatRoom, Member member, ChatRoomMemberStatus status) {
     this.chatRoom = chatRoom;
