@@ -18,8 +18,9 @@ import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.service.ChatRedisService;
 import org.example.howareyou.domain.member.entity.Member;
-import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.member.repository.MemberRepository;
+import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -33,13 +34,13 @@ public class ChatRoomService {
   private final ChatMessageDocumentRepository chatMessageDocumentRepository;
   private final MemberRepository memberRepository;
   private final ChatRedisService chatRedisService;
-
+  private final MemberService memberService;
   /**
    *  채팅방 생성
    */
   @Transactional
   public CreateChatRoomResponse createChatRoom(CreateChatRoomRequest request, Long senderId) {
-    Long receiverId = request.getReceiverId();
+    Long receiverId = memberService.getIdByMembername(request.getMembername());
 
     Member sender = memberRepository.findById(senderId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
@@ -98,7 +99,7 @@ public class ChatRoomService {
     for (ChatRoomMember e : entries) {
       if (e.getStatus() == ChatRoomMemberStatus.SENDER || e.getStatus() == ChatRoomMemberStatus.RECEIVER) {
         e.setStatus(ChatRoomMemberStatus.JOINED);
-        e.setJoinedAt(now);
+//        e.setJoinedAt(now);
       }
     }
 
