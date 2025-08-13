@@ -257,7 +257,7 @@
                 showLoading(true);
                 
                 // 1. Membername 설정
-                const membernameResponse = await fetch('/api/members/membername', {
+                const membernameResponse = await fetch('/api/v1/members/membername', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -279,7 +279,7 @@
                     birthYear: birthYear ? parseInt(birthYear) : null
                 };
                 
-                const profileResponse = await fetch('/api/members/me', {
+                const profileResponse = await fetch('/api/v1/members/me', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

@@ -488,7 +488,7 @@
             }
 
             try {
-                const response = await fetch('/api/members/me', {
+                const response = await fetch('/api/v1/members/me', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${currentAccessToken}`
@@ -545,17 +545,17 @@
         async function testMemberStatus() {
             // 현재 사용자의 membername을 사용하거나 기본값 사용
             const membername = currentUser?.membername || 'test';
-            await testAPI(`/api/members/${membername}/status`, '회원 상태 조회');
+            await testAPI(`/api/v1/members/${membername}/status`, '회원 상태 조회');
         }
 
         async function testMemberProfile() {
             // 현재 사용자의 membername을 사용하거나 기본값 사용
             const membername = currentUser?.membername || 'test';
-            await testAPI(`/api/members/${membername}`, '공개 프로필 조회');
+            await testAPI(`/api/v1/members/${membername}`, '공개 프로필 조회');
         }
 
         async function testMyProfile() {
-            await testAPI('/api/members/me', '내 프로필 조회');
+            await testAPI('/api/v1/members/me', '내 프로필 조회');
         }
 
         async function testProtectedEndpoint() {

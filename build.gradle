@@ -70,6 +70,10 @@ dependencies {
 
     // CSV 변환을 위함
     implementation 'com.opencsv:opencsv:5.7.1'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // (선택) resilient
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 }
 
 tasks.named('test') {

@@ -2,15 +2,13 @@ package org.example.howareyou.global.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.RedisSystemException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.data.redis.RedisSystemException;
+import org.springframework.session.data.redis.RedisSessionRepository;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
@@ -60,37 +58,7 @@ public class GlobalExceptionHandler {
         return makeValidationErrorResponse(detail); // 기존 헬퍼 재사용
     }
 
-    /* ── 4) SSE 관련 예외 처리 ────────────────────────────────────────── */
-    @ExceptionHandler({AsyncRequestNotUsableException.class, IOException.class})
-    protected ResponseEntity<ErrorResponse> handleSseException(Exception ex) {
-
-        // SSE 연결이 끊어진 경우 (클라이언트가 브라우저를 닫거나 네트워크 문제)
-        if (ex instanceof AsyncRequestNotUsableException ||
-            (ex instanceof IOException && ex.getMessage() != null &&
-             (ex.getMessage().contains("Broken pipe") || ex.getMessage().contains("Connection reset")))) {
-
-            log.debug("[SSE] Client disconnected: {}", ex.getMessage());
-
-            // SSE 연결 끊김은 정상적인 상황이므로 에러로 로깅하지 않음
-            // 빈 응답을 반환하여 추가 에러 로그 방지
-            return ResponseEntity.noContent().build();
-        }
-
-        // 기타 SSE 관련 예외
-        log.warn("[SSE] SSE error: {}", ex.getMessage());
-
-        ErrorResponse body = ErrorResponse.builder()
-                .code("SSE_ERROR")
-                .message("실시간 연결에 문제가 발생했습니다.")
-                .status(500)
-                .detail("SSE connection error")
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        return ResponseEntity.status(500).body(body);
-    }
-
-    /* ── 5) Redis/Session 관련 예외 ───────────────────────────────────── */
+    /* ── 4) Redis/Session 관련 예외 ───────────────────────────────────── */
     @ExceptionHandler({RedisSystemException.class, IllegalStateException.class})
     protected ResponseEntity<ErrorResponse> handleRedisSessionException(Exception ex) {
         
