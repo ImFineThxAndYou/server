@@ -1,4 +1,4 @@
-package org.example.howareyou.domain.chat.websocket.repository;
+package org.example.howareyou.domain.member.repository;
 
 import java.time.Instant;
 import java.util.List;

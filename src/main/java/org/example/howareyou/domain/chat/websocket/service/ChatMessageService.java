@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,12 +8,13 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
+import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
-import org.example.howareyou.domain.chat.service.ChatRoomService;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
-import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
 import org.example.howareyou.domain.notification.service.NotificationPushService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
@@ -27,6 +29,7 @@ public class ChatMessageService {
   private final ChatMessageDocumentRepository mongoRepository;
   private final ChatRedisService chatRedisService;
   private final ChatRoomRepository chatRoomRepository;
+  private final ChatRoomMemberRepository chatRoomMemberRepository;
   private final NotificationPushService notificationPushService;
 
   /**
@@ -77,6 +80,7 @@ public class ChatMessageService {
     log.debug("채팅 메시지 저장 완료 - chatRoom={}, sender={}, receiverOnline={}, redis+mongo 저장됨",
         chatRoomId, senderId, isReceiverInRoom);
   }
+
 
   /**
    * Redis에서 최근 메시지 30개 조회
@@ -152,7 +156,6 @@ public class ChatMessageService {
   }
 
   /**
-   *
    * 이전 메시지 페이징
   */
   public List<ChatMessageDocumentResponse> getPreviousMessages(String chatRoomId, Instant before, int size) {
@@ -170,5 +173,9 @@ public class ChatMessageService {
         .map(ChatMessageDocumentResponse::from)
         .toList();
   }
+
+  /**
+   * 대기중인 사용자 조회
+   */
 
 }
