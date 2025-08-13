@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.example.howareyou.domain.chat.entity.ChatRoom;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatEnterDTO;
@@ -12,9 +13,9 @@ import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.service.ChatMemberTracker;
 import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
 import org.example.howareyou.domain.chat.websocket.service.ChatRedisService;
-import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
+
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -31,7 +32,6 @@ public class ChatController {
   private final ChatRedisService chatRedisService;
   private final ChatRoomRepository chatRoomRepository;
   private final ChatMemberTracker chatMemberTracker;
-  private final MemberService memberService;
 
   /**
    * 채팅 메시지 송신 (WebSocket STOMP)
@@ -70,28 +70,28 @@ public class ChatController {
       @Parameter(description = "입장 DTO (userId, chatRoomId 포함)", required = true)
       @Payload ChatEnterDTO dto
   ) {
-    Long memberId = memberService.getIdByMembername(dto.getMembername());
-    String memberIdToString = memberId.toString();
+    String userId = dto.getUserId();
     String chatRoomId = dto.getChatRoomId();
 
     // 입장 제한 로직
     ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomId)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
+    Long memberId = Long.parseLong(userId);
 
     if (!chatRoom.hasParticipant(memberId)) {
       throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS);
     }
 
     // 채팅방 접속 멤버 등록
-    chatMemberTracker.addUserToRoom(chatRoomId, memberIdToString);
+    chatMemberTracker.addUserToRoom(chatRoomId, userId);
 
     // 유저가 현재 접속 중인 채팅방 ID Redis에 저장
-    chatRedisService.setCurrentChatRoom(memberIdToString, chatRoomId);
+    chatRedisService.setCurrentChatRoom(userId, chatRoomId);
 
     // 채팅방 읽음 처리
-    chatMessageService.markMessagesAsRead(chatRoomId, memberIdToString);
+    chatMessageService.markMessagesAsRead(chatRoomId, userId);
 
-    log.info("유저 입장: userId={}, chatRoomId={}", memberId, chatRoomId);
+    log.info("유저 입장: userId={}, chatRoomId={}", userId, chatRoomId);
   }
 }

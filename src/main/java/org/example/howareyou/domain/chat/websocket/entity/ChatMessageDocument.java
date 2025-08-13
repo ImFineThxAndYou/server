@@ -1,18 +1,16 @@
 package org.example.howareyou.domain.chat.websocket.entity;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.jackson.Jacksonized;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.time.Instant;
 
 @Getter
 @Setter
 @Builder
-@Jacksonized
 @Document(collection = "chat_message")
 public class ChatMessageDocument {
 

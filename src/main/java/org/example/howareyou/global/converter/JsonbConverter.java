@@ -1,12 +1,18 @@
 package org.example.howareyou.global.converter;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 import org.example.howareyou.domain.notification.entity.NotificationType;
 import org.example.howareyou.domain.notification.entity.payload.ChatPayload;
 import org.example.howareyou.domain.notification.entity.payload.NotificationPayload;
+import org.example.howareyou.domain.notification.entity.payload.SystemPayload;
 
 public class JsonbConverter implements AttributeConverter<NotificationPayload, String> {
 

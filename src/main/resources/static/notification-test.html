@@ -118,339 +118,323 @@
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>🔔 알림 시스템 테스트</h1>
-
-    <!-- SSE 연결 섹션 -->
-    <div class="section">
-        <h2>📡 SSE 연결</h2>
-        <div class="form-group">
-            <label for="memberName">현재 사용자:</label>
-            <input type="text" id="memberName" readonly style="background-color: #f8f9fa; cursor: not-allowed;" placeholder="로그인 후 자동으로 설정됩니다">
+    <div class="container">
+        <h1>🔔 알림 시스템 테스트</h1>
+        
+        <!-- SSE 연결 섹션 -->
+        <div class="section">
+            <h2>📡 SSE 연결</h2>
+            <div class="form-group">
+                <label for="memberName">현재 사용자:</label>
+                <input type="text" id="memberName" readonly style="background-color: #f8f9fa; cursor: not-allowed;" placeholder="로그인 후 자동으로 설정됩니다">
+            </div>
+            <button onclick="connectSSE()" id="connectBtn">연결</button>
+            <button onclick="disconnectSSE()" id="disconnectBtn" disabled>연결 해제</button>
+            <div id="connectionStatus" class="status info" style="display: none;">
+                연결 대기 중...
+            </div>
         </div>
-        <button onclick="connectSSE()" id="connectBtn">연결</button>
-        <button onclick="disconnectSSE()" id="disconnectBtn" disabled>연결 해제</button>
-        <div id="connectionStatus" class="status info" style="display: none;">
-            연결 대기 중...
+
+        <!-- 알림 발송 테스트 섹션 -->
+        <div class="section">
+            <h2>📤 알림 발송 테스트</h2>
+            <div class="form-group">
+                <label for="receiverName">수신자:</label>
+                <input type="text" id="receiverName" placeholder="예: testuser1" value="testuser1">
+            </div>
+            <div class="form-group">
+                <label for="roomId">채팅방 ID:</label>
+                <input type="number" id="roomId" placeholder="예: 1" value="1">
+            </div>
+            <div class="form-group">
+                <label for="senderId">발신자 ID:</label>
+                <input type="number" id="senderId" placeholder="예: 2" value="2">
+            </div>
+            <div class="form-group">
+                <label for="preview">메시지 미리보기:</label>
+                <textarea id="preview" placeholder="안녕하세요! 새로운 메시지가 도착했습니다." rows="3">안녕하세요! 새로운 메시지가 도착했습니다.</textarea>
+            </div>
+            <button onclick="sendChatNotification()">채팅 알림 발송</button>
+            <button onclick="sendSystemNotification()">시스템 알림 발송</button>
+        </div>
+
+        <!-- 수신된 알림 섹션 -->
+        <div class="section">
+            <h2>📨 수신된 알림</h2>
+            <button onclick="clearNotifications()">알림 목록 지우기</button>
+            <div id="notifications"></div>
+        </div>
+
+        <!-- 로그 섹션 -->
+        <div class="section">
+            <h2>📋 로그</h2>
+            <button onclick="clearLog()">로그 지우기</button>
+            <div id="log" class="log"></div>
         </div>
     </div>
 
-    <!-- 알림 발송 테스트 섹션 -->
-    <div class="section">
-        <h2>📤 알림 발송 테스트</h2>
-        <div class="form-group">
-            <label for="receiverName">수신자:</label>
-            <input type="text" id="receiverName" placeholder="예: testuser1" value="testuser1">
-        </div>
-        <div class="form-group">
-            <label for="roomId">채팅방 ID:</label>
-            <input type="number" id="roomId" placeholder="예: 1" value="1">
-        </div>
-        <div class="form-group">
-            <label for="senderId">발신자 ID:</label>
-            <input type="number" id="senderId" placeholder="예: 2" value="2">
-        </div>
-        <!-- 추가: 메시지 ID -->
-        <div class="form-group">
-            <label for="messageId">메시지 ID</label>
-            <input type="text" id="messageId" placeholder="예: 4d2f2b90-... 또는 ULID">
-        </div>
-        <!-- 기존 preview는 UI 그대로 유지, 전송 시 message로 매핑 -->
-        <div class="form-group">
-            <label for="preview">메시지 미리보기:</label>
-            <textarea id="preview" placeholder="안녕하세요! 새로운 메시지가 도착했습니다." rows="3">안녕하세요! 새로운 메시지가 도착했습니다.</textarea>
-        </div>
-        <button onclick="sendChatNotification()">채팅 알림 발송</button>
-        <button onclick="sendSystemNotification()">시스템 알림 발송</button>
-    </div>
+    <script>
+        let eventSource = null;
+        let isConnected = false;
 
-    <!-- 수신된 알림 섹션 -->
-    <div class="section">
-        <h2>📨 수신된 알림</h2>
-        <button onclick="clearNotifications()">알림 목록 지우기</button>
-        <div id="notifications"></div>
-    </div>
-
-    <!-- 로그 섹션 -->
-    <div class="section">
-        <h2>📋 로그</h2>
-        <button onclick="clearLog()">로그 지우기</button>
-        <div id="log" class="log"></div>
-    </div>
-</div>
-
-<script>
-    let eventSource = null;
-    let isConnected = false;
-
-    // 로그 출력 함수
-    function log(message, type = 'info') {
-        const logDiv = document.getElementById('log');
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = document.createElement('div');
-        logEntry.innerHTML = `[${timestamp}] ${message}`;
-        logDiv.appendChild(logEntry);
-        logDiv.scrollTop = logDiv.scrollHeight;
-    }
-
-    // 상태 메시지 출력 함수
-    function showStatus(message, type = 'info') {
-        const statusDiv = document.getElementById('connectionStatus');
-        statusDiv.textContent = message;
-        statusDiv.className = `status ${type}`;
-        statusDiv.style.display = 'block';
-    }
-
-    // SSE 연결
-    function connectSSE() {
-        if (eventSource) {
-            eventSource.close();
+        // 로그 출력 함수
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
 
-        // 인증 토큰이 있는지 확인
-        if (!window.authManager || !window.authManager.isLoggedIn()) {
-            alert('로그인이 필요합니다. 먼저 로그인해주세요.');
-            return;
+        // 상태 메시지 출력 함수
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
         }
 
-        // 인증된 사용자 정보로 SSE 연결
-        const token = window.authManager.getToken();
-        const url = `/api/notify/sse?token=${encodeURIComponent(token)}`;
-
-        // EventSource는 기본적으로 쿠키를 포함하지만, 명시적으로 설정
-        eventSource = new EventSource(url, {
-            withCredentials: true
-        });
-
-        eventSource.onopen = function(event) {
-            isConnected = true;
-            document.getElementById('connectBtn').disabled = true;
-            document.getElementById('disconnectBtn').disabled = false;
-
-            // 인증된 사용자 정보 표시
-            const user = window.authManager.getCurrentUser();
-            const userName = user ? user.membername : '인증된 사용자';
-            showStatus(`SSE 연결됨: ${userName}`, 'success');
-            log(`SSE 연결 성공: ${userName}`, 'success');
-        };
-
-        eventSource.onmessage = function(event) {
-            log(`메시지 수신: ${event.data}`, 'info');
-        };
-
-        eventSource.addEventListener('chat', function(event) {
-            const data = JSON.parse(event.data);
-            addNotification('chat', data, event.id);
-            log(`채팅 알림 수신: ${JSON.stringify(data)}`, 'success');
-        });
-
-        eventSource.addEventListener('system', function(event) {
-            const data = JSON.parse(event.data);
-            addNotification('system', data, event.id);
-            log(`시스템 알림 수신: ${JSON.stringify(data)}`, 'success');
-        });
-
-        eventSource.addEventListener('ping', async function(event) {
-            addNotification('ping', { message: 'Ping received' }, event.id);
-            log('Ping 수신', 'info');
-
-            // 하트비트 응답 전송 (인증된 요청 사용)
-            try {
-                const response = await window.authManager.authenticatedFetch(`/api/notify/heartbeat`, {
-                    method: 'POST'
-                });
-
-                if (response.ok) {
-                    log('하트비트 응답 전송 성공', 'success');
-                } else {
-                    log('하트비트 응답 전송 실패', 'error');
-                }
-            } catch (error) {
-                log(`하트비트 응답 전송 오류: ${error.message}`, 'error');
+        // SSE 연결
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
             }
-        });
 
-        eventSource.onerror = function(event) {
+            // 인증 토큰이 있는지 확인
+            if (!window.authManager || !window.authManager.isLoggedIn()) {
+                alert('로그인이 필요합니다. 먼저 로그인해주세요.');
+                return;
+            }
+
+            // 인증된 사용자 정보로 SSE 연결
+            const token = window.authManager.getToken();
+            const url = `/api/v1/notify/sse?token=${encodeURIComponent(token)}`;
+            
+            // EventSource는 기본적으로 쿠키를 포함하지만, 명시적으로 설정
+            eventSource = new EventSource(url, {
+                withCredentials: true
+            });
+
+            eventSource.onopen = function(event) {
+                isConnected = true;
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                
+                // 인증된 사용자 정보 표시
+                const user = window.authManager.getCurrentUser();
+                const userName = user ? user.membername : '인증된 사용자';
+                showStatus(`SSE 연결됨: ${userName}`, 'success');
+                log(`SSE 연결 성공: ${userName}`, 'success');
+            };
+
+            eventSource.onmessage = function(event) {
+                log(`메시지 수신: ${event.data}`, 'info');
+            };
+
+            eventSource.addEventListener('chat', function(event) {
+                const data = JSON.parse(event.data);
+                addNotification('chat', data, event.id);
+                log(`채팅 알림 수신: ${JSON.stringify(data)}`, 'success');
+            });
+
+            eventSource.addEventListener('system', function(event) {
+                const data = JSON.parse(event.data);
+                addNotification('system', data, event.id);
+                log(`시스템 알림 수신: ${JSON.stringify(data)}`, 'success');
+            });
+
+            eventSource.addEventListener('ping', async function(event) {
+                addNotification('ping', { message: 'Ping received' }, event.id);
+                log('Ping 수신', 'info');
+                
+                // 하트비트 응답 전송 (인증된 요청 사용)
+                try {
+                    const response = await window.authManager.authenticatedFetch(`/api/v1/notify/heartbeat`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        log('하트비트 응답 전송 성공', 'success');
+                    } else {
+                        log('하트비트 응답 전송 실패', 'error');
+                    }
+                } catch (error) {
+                    log(`하트비트 응답 전송 오류: ${error.message}`, 'error');
+                }
+            });
+
+            eventSource.onerror = function(event) {
+                isConnected = false;
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                showStatus('SSE 연결 오류', 'error');
+                log('SSE 연결 오류', 'error');
+            };
+        }
+
+        // SSE 연결 해제
+        function disconnectSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
             isConnected = false;
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('disconnectBtn').disabled = true;
-            showStatus('SSE 연결 오류', 'error');
-            log('SSE 연결 오류', 'error');
-        };
-    }
-
-    // SSE 연결 해제
-    function disconnectSSE() {
-        if (eventSource) {
-            eventSource.close();
-            eventSource = null;
+            showStatus('SSE 연결 해제됨', 'info');
+            log('SSE 연결 해제', 'info');
         }
-        isConnected = false;
-        document.getElementById('connectBtn').disabled = false;
-        document.getElementById('disconnectBtn').disabled = true;
-        showStatus('SSE 연결 해제됨', 'info');
-        log('SSE 연결 해제', 'info');
-    }
 
-    // 알림 추가
-    function addNotification(type, data, id) {
-        const notificationsDiv = document.getElementById('notifications');
-        const notificationDiv = document.createElement('div');
-        notificationDiv.className = `notification-item ${type}`;
-
-        const timestamp = new Date().toLocaleTimeString();
-        let content = '';
-
-        switch(type) {
-            case 'chat': {
-                const chatRoomId = data.chatRoomId || data.roomId;
-                const senderId = data.senderId;
-                const messageId = data.messageId;
-                const message = data.message || data.preview || '';
-                content = `💬 채팅 알림 (${timestamp})<br>
-                              ${chatRoomId !== undefined ? `채팅방: ${chatRoomId}<br>` : ''}
-                              ${senderId !== undefined ? `발신자: ${senderId}<br>` : ''}
-                              ${messageId ? `메시지ID: ${messageId}<br>` : ''}
-                              내용: ${message}`;
-                break;
+        // 알림 추가
+        function addNotification(type, data, id) {
+            const notificationsDiv = document.getElementById('notifications');
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = `notification-item ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let content = '';
+            
+            switch(type) {
+                case 'chat':
+                    content = `💬 채팅 알림 (${timestamp})<br>
+                              채팅방: ${data.chatRoomId}<br>
+                              발신자: ${data.senderId}<br>
+                              내용: ${data.preview}`;
+                    break;
+                case 'system':
+                    content = `🔔 시스템 알림 (${timestamp})<br>
+                              내용: ${JSON.stringify(data)}`;
+                    break;
+                case 'ping':
+                    content = `📡 Ping (${timestamp})`;
+                    break;
             }
-            case 'system':
-                content = `🔔 시스템 알림 (${timestamp})<br>
-                              내용: ${typeof data === 'string' ? data : JSON.stringify(data)}`;
-                break;
-            case 'ping':
-                content = `📡 Ping (${timestamp})`;
-                break;
+            
+            notificationDiv.innerHTML = content;
+            notificationsDiv.appendChild(notificationDiv);
         }
 
-        notificationDiv.innerHTML = content;
-        notificationsDiv.appendChild(notificationDiv);
-    }
-
-    // 알림 목록 지우기
-    function clearNotifications() {
-        document.getElementById('notifications').innerHTML = '';
-        log('알림 목록 지움', 'info');
-    }
-
-    // 로그 지우기
-    function clearLog() {
-        document.getElementById('log').innerHTML = '';
-    }
-
-    // 채팅 알림 발송 (컨트롤러 규격에 맞춰 수정)
-    async function sendChatNotification() {
-        const receiverName = document.getElementById('receiverName').value.trim();
-        const roomId = document.getElementById('roomId').value;
-        const senderId = document.getElementById('senderId').value;
-        const messageId = document.getElementById('messageId').value.trim(); // 추가 필수값
-        const preview = document.getElementById('preview').value.trim();     // UI 유지, 서버 전송은 message로
-
-        if (!receiverName || !roomId || !senderId || !messageId || !preview) {
-            alert('receiverName, roomId, senderId, messageId, message(=preview) 모두 입력해주세요.');
-            return;
+        // 알림 목록 지우기
+        function clearNotifications() {
+            document.getElementById('notifications').innerHTML = '';
+            log('알림 목록 지움', 'info');
         }
 
-        try {
-            // 인증된 요청 사용
-            const response = await window.authManager.authenticatedFetch('/api/test/notifications/send-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    receiverName: receiverName,
-                    roomId: parseInt(roomId, 10),
-                    senderId: parseInt(senderId, 10),
-                    messageId: messageId,
-                    message: preview
-                })
-            });
+        // 로그 지우기
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
 
-            const result = await response.json();
+        // 채팅 알림 발송
+        async function sendChatNotification() {
+            const receiverName = document.getElementById('receiverName').value.trim();
+            const roomId = document.getElementById('roomId').value;
+            const senderId = document.getElementById('senderId').value;
+            const preview = document.getElementById('preview').value.trim();
 
-            if (result.success) {
-                log(`채팅 알림 발송 성공: ${result.message}`, 'success');
-            } else {
-                log(`채팅 알림 발송 실패: ${result.message}`, 'error');
+            if (!receiverName || !roomId || !senderId || !preview) {
+                alert('모든 필드를 입력해주세요.');
+                return;
             }
-        } catch (error) {
-            log(`채팅 알림 발송 오류: ${error.message}`, 'error');
-        }
-    }
 
-    // 시스템 알림 발송 (그대로 유지)
-    async function sendSystemNotification() {
-        const receiverName = document.getElementById('receiverName').value.trim();
-        const message = document.getElementById('preview').value.trim();
-
-        if (!receiverName || !message) {
-            alert('수신자와 메시지를 입력해주세요.');
-            return;
-        }
-
-        try {
-            // 인증된 요청 사용
-            const response = await window.authManager.authenticatedFetch('/api/test/notifications/send-system', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    receiverName: receiverName,
-                    message: message
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                log(`시스템 알림 발송 성공: ${result.message}`, 'success');
-            } else {
-                log(`시스템 알림 발송 실패: ${result.message}`, 'error');
-            }
-        } catch (error) {
-            log(`시스템 알림 발송 오류: ${error.message}`, 'error');
-        }
-    }
-
-    // 페이지 로드 시 초기화
-    document.addEventListener('DOMContentLoaded', async function() {
-        log('알림 시스템 테스트 페이지 로드됨', 'info');
-
-        // 로그인된 사용자 정보 확인 및 설정
-        if (window.authManager && window.authManager.isLoggedIn()) {
             try {
-                // 토큰 유효성 검사 및 사용자 정보 업데이트
-                const isValid = await window.authManager.validateToken();
-                if (isValid) {
-                    const user = window.authManager.getCurrentUser();
-                    if (user && user.membername) {
-                        document.getElementById('memberName').value = user.membername;
-                        document.getElementById('receiverName').value = user.membername;
-                        log(`로그인된 사용자: ${user.membername}`, 'success');
+                // 인증된 요청 사용
+                const response = await window.authManager.authenticatedFetch('/api/test/notifications/send-chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        receiverName: receiverName,
+                        roomId: parseInt(roomId),
+                        senderId: parseInt(senderId),
+                        preview: preview
+                    })
+                });
 
-                        // 자동으로 SSE 연결 시도
-                        setTimeout(() => {
-                            if (confirm('로그인된 사용자로 자동 연결하시겠습니까?')) {
-                                connectSSE();
-                            }
-                        }, 1000);
-                    } else {
-                        log('사용자 정보를 가져올 수 없습니다.', 'error');
-                    }
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`채팅 알림 발송 성공: ${result.message}`, 'success');
                 } else {
-                    log('토큰이 만료되었습니다. 다시 로그인해주세요.', 'error');
-                    alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
-                    window.location.href = '/test-login.html';
+                    log(`채팅 알림 발송 실패: ${result.message}`, 'error');
                 }
             } catch (error) {
-                log(`사용자 정보 로드 실패: ${error.message}`, 'error');
+                log(`채팅 알림 발송 오류: ${error.message}`, 'error');
             }
-        } else {
-            log('로그인이 필요합니다. 먼저 로그인해주세요.', 'warning');
         }
-    });
-</script>
 
-<!-- 공통 스크립트 포함 -->
-<script src="/js/auth-common.js"></script>
-<script src="/js/common-header.js"></script>
+        // 시스템 알림 발송
+        async function sendSystemNotification() {
+            const receiverName = document.getElementById('receiverName').value.trim();
+            const message = document.getElementById('preview').value.trim();
+
+            if (!receiverName || !message) {
+                alert('수신자와 메시지를 입력해주세요.');
+                return;
+            }
+
+            try {
+                // 인증된 요청 사용
+                const response = await window.authManager.authenticatedFetch('/api/test/notifications/send-system', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        receiverName: receiverName,
+                        message: message
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`시스템 알림 발송 성공: ${result.message}`, 'success');
+                } else {
+                    log(`시스템 알림 발송 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`시스템 알림 발송 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', async function() {
+            log('알림 시스템 테스트 페이지 로드됨', 'info');
+            
+            // 로그인된 사용자 정보 확인 및 설정
+            if (window.authManager && window.authManager.isLoggedIn()) {
+                try {
+                    // 토큰 유효성 검사 및 사용자 정보 업데이트
+                    const isValid = await window.authManager.validateToken();
+                    if (isValid) {
+                        const user = window.authManager.getCurrentUser();
+                        if (user && user.membername) {
+                            document.getElementById('memberName').value = user.membername;
+                            document.getElementById('receiverName').value = user.membername;
+                            log(`로그인된 사용자: ${user.membername}`, 'success');
+                            
+                            // 자동으로 SSE 연결 시도
+                            setTimeout(() => {
+                                if (confirm('로그인된 사용자로 자동 연결하시겠습니까?')) {
+                                    connectSSE();
+                                }
+                            }, 1000);
+                        } else {
+                            log('사용자 정보를 가져올 수 없습니다.', 'error');
+                        }
+                    } else {
+                        log('토큰이 만료되었습니다. 다시 로그인해주세요.', 'error');
+                        alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+                        window.location.href = '/test-login.html';
+                    }
+                } catch (error) {
+                    log(`사용자 정보 로드 실패: ${error.message}`, 'error');
+                }
+            } else {
+                log('로그인이 필요합니다. 먼저 로그인해주세요.', 'warning');
+            }
+        });
+    </script>
+
+    <!-- 공통 스크립트 포함 -->
+    <script src="/js/auth-common.js"></script>
+    <script src="/js/common-header.js"></script>
 </body>
-</html>
+</html> 

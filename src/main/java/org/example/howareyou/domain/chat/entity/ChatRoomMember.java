@@ -1,13 +1,12 @@
 package org.example.howareyou.domain.chat.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.global.entity.BaseEntity;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
