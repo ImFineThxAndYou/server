@@ -3,7 +3,7 @@ package org.example.howareyou.domain.member.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
-public enum Category {
+public enum MemberTag {
     LANGUAGE_LEARNING,
     TRAVEL,
     CULTURE,
@@ -35,9 +35,9 @@ public enum Category {
     }
 
     @JsonCreator
-    public static Category fromValue(String value) {
+    public static MemberTag fromValue(String value) {
         try {
-            return Category.valueOf(value);
+            return MemberTag.valueOf(value);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Unknown category: " + value);
         }

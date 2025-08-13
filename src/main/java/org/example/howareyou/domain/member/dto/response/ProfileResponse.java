@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 
@@ -22,7 +22,7 @@ public class ProfileResponse {
     private String          nickname;
     private String          avatarUrl;
     private String          bio;
-    private Set<Category>   interests;
+    private Set<MemberTag>   interests;
 
     /* 로케일 · 사용자 정보 */
     private boolean   completed;

@@ -2,6 +2,7 @@ package org.example.howareyou.global.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
 
@@ -11,6 +12,7 @@ import java.time.Instant;
  * updatedAt : INSERT · UPDATE 마다 변경
  */
 @Getter
+@Setter
 @MappedSuperclass
 public abstract class BaseEntity {
 

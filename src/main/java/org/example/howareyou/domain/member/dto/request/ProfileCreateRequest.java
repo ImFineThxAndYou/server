@@ -3,7 +3,7 @@ package org.example.howareyou.domain.member.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -21,7 +21,7 @@ public class ProfileCreateRequest {
     /* 선택 */
     private String statusMessage;
     private String avatarUrl;
-    private Set<Category> interests;
+    private Set<MemberTag> interests;
 
     /* 추가 정보 */
     private LocalDate birthDate;

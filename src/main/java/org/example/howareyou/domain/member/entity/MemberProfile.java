@@ -54,7 +54,7 @@ public class MemberProfile extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "interest")
     @Builder.Default
-    private Set<Category> interests = new HashSet<>();// 관심사
+    private Set<MemberTag> interests = new HashSet<>();// 관심사
 
     /* ==================== 라이프스타일 & 로케일 ==================== */
 
@@ -86,7 +86,7 @@ public class MemberProfile extends BaseEntity {
             String nickname,
             String avatarUrl,
             String bio,
-            Set<Category> interests
+            Set<MemberTag> interests
     ) {
         return MemberProfile.builder()
                 .nickname(nickname)
@@ -119,7 +119,7 @@ public class MemberProfile extends BaseEntity {
             String nickname,
             String bio,
             String avatarUrl,
-            Set<Category> interests,
+            Set<MemberTag> interests,
             LocalDate birthDate,
             String country,
             String region,

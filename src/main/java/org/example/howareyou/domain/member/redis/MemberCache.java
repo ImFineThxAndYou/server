@@ -2,11 +2,10 @@ package org.example.howareyou.domain.member.redis;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 
@@ -28,7 +27,7 @@ public class MemberCache implements Serializable {
     private String          nickname;
     private String          avatarUrl;
     private String          bio;
-    private Set<Category> interests;
+    private Set<MemberTag> interests;
     private boolean         completed;
     private String          language;
     private String          timezone;
@@ -85,7 +84,7 @@ public class MemberCache implements Serializable {
      * 다양한 형태로 저장된 interests를 Set<Category>로 변환
      */
     @SuppressWarnings("unchecked")
-    private Set<Category> parseInterests(Object interests) {
+    private Set<MemberTag> parseInterests(Object interests) {
         if (interests == null) {
             return new HashSet<>();
         }
@@ -93,24 +92,24 @@ public class MemberCache implements Serializable {
         // 이미 Set<Category>인 경우
         if (interests instanceof Set) {
             Set<?> set = (Set<?>) interests;
-            if (!set.isEmpty() && set.iterator().next() instanceof Category) {
-                return (Set<Category>) interests;
+            if (!set.isEmpty() && set.iterator().next() instanceof MemberTag) {
+                return (Set<MemberTag>) interests;
             }
         }
         
         // Set<String> 또는 List<String>인 경우 Category로 변환
-        Set<Category> result = new HashSet<>();
+        Set<MemberTag> result = new HashSet<>();
         if (interests instanceof Iterable) {
             for (Object item : (Iterable<?>) interests) {
                 if (item instanceof String) {
                     try {
-                        result.add(Category.valueOf((String) item));
+                        result.add(MemberTag.valueOf((String) item));
                     } catch (IllegalArgumentException e) {
                         // 알 수 없는 카테고리는 무시
                         continue;
                     }
-                } else if (item instanceof Category) {
-                    result.add((Category) item);
+                } else if (item instanceof MemberTag) {
+                    result.add((MemberTag) item);
                 }
             }
         }
@@ -123,7 +122,7 @@ public class MemberCache implements Serializable {
         MemberProfile p = m.getProfile();
         
         // interests를 안전하게 처리 (Lazy Loading 방지)
-        Set<Category> interests = null;
+        Set<MemberTag> interests = null;
         if (p != null && p.getInterests() != null) {
             try {
                 // Lazy Loading이 발생할 수 있으므로 새로운 HashSet으로 복사
