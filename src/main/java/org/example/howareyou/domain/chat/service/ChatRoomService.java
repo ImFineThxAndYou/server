@@ -166,7 +166,7 @@ public class ChatRoomService {
     ChatRoom chatRoom = chatRoomRepository.findByUuid(uuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    if (!chatRoom.hasParticipant(myId)) {
+    if (chatRoom.hasParticipant(myId)) {
       throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS);
     }
 
