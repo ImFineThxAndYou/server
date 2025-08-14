@@ -52,11 +52,9 @@ spring:
 
   kafka: # kafka 공통 부분
     producer:
-       bootstrap-servers: localhost:9094
        key-serializer: org.apache.kafka.common.serialization.StringSerializer
        value-serializer: org.apache.kafka.common.serialization.StringSerializer
     consumer:
-       bootstrap-servers: localhost:9094
        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
        value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
