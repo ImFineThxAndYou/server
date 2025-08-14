@@ -1,28 +1,29 @@
 package org.example.howareyou.global.test;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.CountDownLatch;
+
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.CountDownLatch;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Getter
 @Slf4j
 public class TestConsumer {
 
-    private String payload;
     private CountDownLatch latch = new CountDownLatch(1);
+    private String payload;
 
-    @KafkaListener(topics = "test-topic", groupId = "group_1")
-    public void listener(Object data) {
-        log.info("Received payload='{}'", data);
+    @KafkaListener(topics = "test-topic", groupId = "test-group")
+    public void receive(String message) {
+        log.info("received message='{}'", message);
+        payload = message;
+        latch.countDown();
     }
 
-    public String getPayload() {
-        return payload;
-    }
-
-    public CountDownLatch getLatch() {
-        return latch;
+    public void reset() {
+        latch = new CountDownLatch(1);
     }
 }
