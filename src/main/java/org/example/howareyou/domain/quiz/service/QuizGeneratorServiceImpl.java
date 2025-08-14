@@ -6,10 +6,7 @@ import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.quiz.dto.ClientQuizQuestion;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.QuizQuestion;
-import org.example.howareyou.domain.quiz.entity.QuizLevel;
-import org.example.howareyou.domain.quiz.entity.QuizResult;
-import org.example.howareyou.domain.quiz.entity.QuizType;
-import org.example.howareyou.domain.quiz.entity.QuizWord;
+import org.example.howareyou.domain.quiz.entity.*;
 import org.example.howareyou.domain.quiz.repository.QuizResultRepository;
 import org.example.howareyou.domain.quiz.repository.QuizVocaRepository;
 import org.example.howareyou.domain.quiz.repository.QuizWordRepository;
@@ -70,7 +67,9 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 ));
 
         int unique = byWord.size();
-        if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        if (unique < 5) {
+            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        }
 
         int count = pickQuestionCount(unique);
 
@@ -214,6 +213,9 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                                               QuizType type,
                                               Instant dailyKeyUtc,
                                               List<GeneratedItem> generated) {
+        if (generated == null || generated.isEmpty()) { // ★ 추가
+            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        }
         QuizResult result = QuizResult.builder()
                 .memberId(memberId)
                 .quizType(type)
@@ -222,6 +224,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .score(0L)
                 .correctCount(0L)
                 .totalQuestions((long) generated.size())
+                .quizStatus(QuizStatus.PENDING)
                 .build();
 
         result = quizResultRepository.save(result);
@@ -349,13 +352,29 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         return new PageImpl<>(items, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "analyzedAt")), total);
     }
     //퀴즈레벨 변환메서드
+    // 퀴즈레벨 변환메서드: a1/a2 -> A, b1/b2 -> B, c1/c2 -> C
     private QuizLevel toEnumLevel(String level) {
-        if (level == null || level.isBlank()) return null; // null 저장 허용
-        try {
-            return QuizLevel.valueOf(level.trim().toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            log.warn("Unknown quiz level '{}', storing as null.", level);
-            return null; // 모르는 값이면 저장 안 함(원하면 기본값으로 바꿔도 OK)
+        if (level == null || level.isBlank()) return null;
+
+        String norm = level.trim()
+                .toUpperCase(java.util.Locale.ROOT)
+                .replace("-", "")
+                .replace("_", "")
+                .replace(" ", "");
+
+        switch (norm) {
+            // A 계열
+            case "A1": case "A2": case "A":
+                return QuizLevel.A;
+            // B 계열
+            case "B1": case "B2": case "B":
+                return QuizLevel.B;
+            // C 계열
+            case "C1": case "C2": case "C":
+                return QuizLevel.C;
+            default:
+                log.warn("Unknown quiz level '{}', storing as null.", level);
+                return null;
         }
     }
 }

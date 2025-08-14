@@ -64,6 +64,7 @@ public class QuizResult {
 
     // 퀴즈 상태
     @Enumerated(EnumType.STRING)
+    @Column(name="quiz_status")
     private QuizStatus quizStatus; // 제출전/채점후 - PENDING/GRADE
 
     @OneToMany(mappedBy = "quizResult", cascade = CascadeType.ALL)

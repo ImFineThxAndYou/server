@@ -1,7 +1,5 @@
 package org.example.howareyou.domain.quiz.dto.request;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
 import lombok.*;
 import org.example.howareyou.domain.quiz.entity.QuizLevel;
 

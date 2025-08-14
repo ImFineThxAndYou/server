@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
 import org.example.howareyou.domain.quiz.entity.QuizResult;
+import org.example.howareyou.domain.quiz.entity.QuizStatus;
 import org.example.howareyou.domain.quiz.repository.QuizResultRepository;
 import org.example.howareyou.domain.quiz.repository.QuizWordRepository;
 import org.example.howareyou.global.exception.CustomException;
@@ -69,11 +70,11 @@ public class QuizServiceImpl implements QuizService {
         long score = Math.round(correct * 100.0 / total);
 
         // 4) 결과 집계 업데이트 (uuid 기반)
-        quizResultRepository.finalizeGradingByUuid(quizUuid, correct, total, score, Instant.now());
+        quizResultRepository.finalizeGradingByUuid(quizUuid, correct, total, score, Instant.now(), QuizStatus.SUBMIT);
 
         // 5) 응답
         return SubmitResponse.builder()
-                .quizUUID(quizUuid)               // 내부 PK는 노출 X, 공개용 uuid만
+                .quizUUID(quizUuid)
                 .correctCount(correct)
                 .totalQuestions((int) total)
                 .score(score)

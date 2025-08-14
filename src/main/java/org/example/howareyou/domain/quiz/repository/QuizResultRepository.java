@@ -2,6 +2,7 @@ package org.example.howareyou.domain.quiz.repository;
 
 import org.example.howareyou.domain.quiz.dto.response.QuizResponse;
 import org.example.howareyou.domain.quiz.entity.QuizResult;
+import org.example.howareyou.domain.quiz.entity.QuizStatus;
 import org.example.howareyou.domain.quiz.entity.QuizType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,14 +33,16 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
                qr.totalQuestions = :total,
                qr.score          = :score,
                qr.completed      = true,
-               qr.completedAt    = :completedAt
+               qr.completedAt    = :completedAt,
+               qr.quizStatus     = :quiz_status
          where qr.uuid = :uuid
     """)
     int finalizeGradingByUuid(@Param("uuid") String uuid,
                               @Param("correct") long correct,
                               @Param("total") long total,
                               @Param("score") long score,
-                              @Param("completedAt") Instant completedAt);
+                              @Param("completedAt") Instant completedAt,
+                              @Param("quiz_status") QuizStatus quizStatus);
 
     /* */
     Page<QuizResult> findByMemberId(Long memberId, Pageable pageable);
