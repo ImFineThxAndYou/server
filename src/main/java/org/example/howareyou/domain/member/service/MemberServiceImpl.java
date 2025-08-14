@@ -11,7 +11,7 @@ import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.example.howareyou.domain.member.redis.MemberCache;
@@ -174,7 +174,7 @@ public class MemberServiceImpl implements MemberService {
         }
 
         // 예: 관심사(카테고리)를 기준으로 다른 사용자 찾기
-        Set<Category> interests = myProfile.getInterests(); //
+        Set<MemberTag> interests = myProfile.getInterests(); //
         List<ProfileResponse> members =   memberRepository.findDistinctByProfileInterestsInAndIdNot(interests, requesterId)
                 .stream()
                 .map(ProfileResponse::from)
@@ -185,7 +185,7 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public List<ProfileResponse> findOthersWithFilter(FilterRequest filter,Long requesterId){
-        Set<Category> interestsEnums = new HashSet<>(filter.getInterests());
+        Set<MemberTag> interestsEnums = new HashSet<>(filter.getInterests());
         Set<String> interests = interestsEnums.stream()
                 .map(Enum::name)
                 .collect(Collectors.toSet());

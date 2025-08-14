@@ -1,19 +1,18 @@
 package org.example.howareyou.domain.chat.entity;
 
 import jakarta.persistence.*;
-
-import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.global.entity.BaseEntity;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
-public class ChatRoomMember {
+public class ChatRoomMember extends BaseEntity {
 
   @Id
   @GeneratedValue
@@ -29,9 +28,6 @@ public class ChatRoomMember {
 
   @Enumerated(EnumType.STRING)
   private ChatRoomMemberStatus status;
-
-  @Column(updatable = false)
-  private Instant joinedAt;
 
   public ChatRoomMember(ChatRoom chatRoom, Member member, ChatRoomMemberStatus status) {
     this.chatRoom = chatRoom;

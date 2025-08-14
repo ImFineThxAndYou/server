@@ -71,6 +71,4 @@ public class NlpClient {
                 .doOnNext(list -> log.info("✅ NLP 배치 분석 완료 - tokens={}", list.size()))
                 .doOnError(e -> log.error("NLP 배치 분석 실패", e));
     }
-
-
 }

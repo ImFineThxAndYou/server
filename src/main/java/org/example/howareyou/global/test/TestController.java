@@ -1,5 +1,7 @@
 package org.example.howareyou.global.test;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.auth.entity.Auth;
@@ -19,15 +21,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 개발 환경에서 사용하는 테스트용 컨트롤러
+ * 개발/테스트용 컨트롤러
+ * 
+ * 제공 기능:
  * - 테스트 계정 생성
- * - 캐시 관리
+ * - 기본 테스트 계정들 생성
  * - 데이터베이스 상태 확인
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/test")
+@Tag(name = "테스트", description = "개발 및 테스트용 API (개발 환경에서만 사용)")
 public class TestController {
 
     private final MemberRepository memberRepository;
@@ -35,9 +40,11 @@ public class TestController {
     private final PasswordEncoder passwordEncoder;
     private final MemberCacheService memberCacheService;
 
-    /**
-     * 테스트 계정 생성
-     */
+    @Operation(
+        summary = "테스트 계정 생성",
+        description = "개발 및 테스트를 위한 임시 계정을 생성합니다. " +
+                     "email, password, membername이 모두 필요합니다."
+    )
     @PostMapping("/create-account")
     public ResponseEntity<Map<String, Object>> createTestAccount(@RequestBody Map<String, String> request) {
         Map<String, Object> result = new HashMap<>();
@@ -110,9 +117,11 @@ public class TestController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * 기본 테스트 계정들 생성
-     */
+    @Operation(
+        summary = "기본 테스트 계정들 생성",
+        description = "개발 및 테스트를 위한 기본 테스트 계정들을 일괄 생성합니다. " +
+                     "testuser, testuser2, testuser3 계정이 생성됩니다."
+    )
     @PostMapping("/create-default-accounts")
     public ResponseEntity<Map<String, Object>> createDefaultAccounts() {
         Map<String, Object> result = new HashMap<>();

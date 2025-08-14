@@ -70,7 +70,6 @@ tag_descriptions = {
     "문구 & 디자인": "Stationery & Design: stationery, pen, paper, notebook, illustration, graphic design, drawing, sketch, typography",
     "비즈니스 & 스타트업": "Business & Startups: business, startup, entrepreneurship, entrepreneur, marketing, sales, management, company, corporate",
     "SNS & 커뮤니티": "SNS & Communities: social media, sns, facebook, instagram, twitter, tiktok, linkedin, chat, forum, community, post, profile, messaging",
-    "여행 음식": "Travel Food: local food, street food, world cuisine, traditional food, regional dishes",
     "재테크": "Personal Finance: personal finance, saving, savings, side job, income, passive income, budgeting, money management",
     "자기계발 & 목표관리": "Self-Development & Goal Management: self development, self-improvement, productivity, habit, habit building, goal, planning, motivation"
 }
@@ -79,7 +78,6 @@ tag_descriptions = {
 tag_keywords = {
     "문화 & 예술": ["culture", "art", "museum", "painting", "literature", "exhibition", "theater", "festival"],
     "음식 & 요리": ["cooking", "recipe", "chef", "ingredient", "cuisine", "meal", "ramen", "sushi", "pizza"],
-    "디저트 & 음료": ["coffee", "tea", "cake", "dessert", "latte", "smoothie", "bread", "chocolate"],
     "여행 & 관광": ["travel", "trip", "tour", "destination", "beach", "mountain", "hiking", "sightseeing"],
     "기술 & IT": ["technology", "software", "hardware", "AI", "robot", "coding", "programming", "gadget"],
     "모바일 & 앱": ["app", "smartphone", "android", "ios", "ux", "ui", "application"],

@@ -1,5 +1,7 @@
 package org.example.howareyou.global.test;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.member.service.MemberService;
@@ -14,24 +16,30 @@ import java.util.Map;
 
 /**
  * 알림 시스템 테스트용 컨트롤러
- * - SSE 연결 테스트
- * - 알림 발송 테스트
- * - 온라인 상태 확인
+ * 
+ * 제공 기능:
+ * - 채팅 알림 발송 테스트
+ * - 채팅 요청 알림 발송 테스트
+ * - 시스템 알림 발송 테스트
+ * - 알림 목록 조회 테스트
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/test/notifications")
+@Tag(name = "알림 테스트", description = "알림 시스템 테스트용 API (개발 환경에서만 사용)")
 public class NotificationTestController {
 
     private final NotificationPushService notificationPushService;
     private final MemberService memberService;
     private final org.example.howareyou.domain.notification.redis.RedisEmitter emitters;
 
-    /**
-     * 채팅 알림 발송 테스트
-     */
-        @PostMapping("/send-chat")
+    @Operation(
+        summary = "채팅 알림 발송 테스트",
+        description = "채팅 메시지 알림을 특정 사용자에게 발송합니다. " +
+                     "receiverName, roomId, senderId, messageId, message가 모두 필요합니다."
+    )
+    @PostMapping("/send-chat")
     public ResponseEntity<Map<String, Object>> sendChatNotification(
             @RequestBody Map<String, Object> request) {
         
@@ -82,9 +90,11 @@ public class NotificationTestController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * 채팅 요청 알림 발송 테스트
-     */
+    @Operation(
+        summary = "채팅 요청 알림 발송 테스트",
+        description = "채팅 요청 알림을 특정 사용자에게 발송합니다. " +
+                     "receiverName, requesterId, requesterName, message가 모두 필요합니다."
+    )
     @PostMapping("/send-chatreq")
     public ResponseEntity<Map<String, Object>> sendChatReqNotification(
             @RequestBody Map<String, Object> request) {
