@@ -13,7 +13,8 @@ public class ChatMessageReadModel {
     @Id
     private final String id;
     private final String chatRoomUuid;
-    private final String sender;
+    private final String senderId;
+    private final String senderName;
     private final String content;
     private final Instant messageTime;
 }

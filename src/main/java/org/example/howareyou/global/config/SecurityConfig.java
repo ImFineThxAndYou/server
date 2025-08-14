@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,21 +24,28 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityConfig {
-
-
 
     /* ──────────── Dependencies ──────────── */
     private final JwtAuthFilter jwtAuthFilter;
     private final OAuth2SuccessHandler successHandler;
     private final Environment environment;
 
-    /* ──────────── CORS Origins (@Value 로 yml 주입 가능) ──────────── */
+    /* ──────────── CORS Origins (prod에서 사용) ────────────
+       application.yml (또는 ENV) 예:
+       front:
+         cors:
+           allowed-origins:
+             - "https://your-prod-frontend.com"
+             - "https://another-allowed-site.com"
+    */
     @Value("${front.cors.allowed-origins:http://localhost:3000}")
     private List<String> allowedOrigins;
 
@@ -48,24 +55,27 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger 허용
+                        // 프리플라이트(OPTIONS) 전역 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger & 정적 리소스
                         .requestMatchers(
-                                "/**", //나중에 지워야함
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
-                                "/webjars/**"
+                                "/webjars/**",
+                                "/favicon.ico",
+                                "/error"
                         ).permitAll()
 
                         // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // 개발 환경에서만 테스트 및 개발 도구 허용
+                        // 개발 환경 전용 허용 경로
                         .requestMatchers(isDevProfile() ? new String[]{
                                 "/",
                                 "/index.html",
@@ -80,52 +90,48 @@ public class SecurityConfig {
                                 "/debug/**",
                                 "/h2-console/**",
                                 "/actuator/**",
-                                "/error",
-                                "/favicon.ico",
                                 "/upload-csv"
                         } : new String[]{}).permitAll()
 
-                        // 읽기 전용 API (공개)
+                        // 읽기 전용 공개 API
                         .requestMatchers(HttpMethod.GET,
                                 "/api/members/*",
                                 "/api/members/*/status",
                                 "/api/members/membername/*"
                         ).permitAll()
 
-                        // SSE 엔드포인트는 인증 필요
+                        // SSE 는 인증 필요
                         .requestMatchers("/api/notify/sse").authenticated()
 
-                        // ✅ CSV 업로드 API 허용
-//                        .requestMatchers("/upload-csv").permitAll()
-
-                        // 나머지는 인증 필요
+                        // 그 외는 인증
                         .anyRequest().authenticated()
                 )
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(successHandler)
-                )
+
+                .oauth2Login(oauth2 -> oauth2.successHandler(successHandler))
+
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler())
                 )
+
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // 개발 환경에서 H2 콘솔 프레임 허용
+        // 개발(h2-console 등 frame 허용)
         if (isDevProfile()) {
             http.headers(headers -> headers.frameOptions().disable());
-            log.info("🔧 개발 환경: 테스트 및 개발 도구 경로가 활성화되었습니다.");
+            log.info("🔧 개발 환경: 무제한 CORS / dev 허용 경로 / H2 콘솔 프레임 허용");
         } else {
-            log.info("🚀 프로덕션 환경: 보안 강화 모드로 실행됩니다.");
+            log.info("🚀 운영 환경: 제한된 CORS (화이트리스트 기반)");
         }
 
         return http.build();
     }
 
-
-
     /* ──────────── Beans ──────────── */
     @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
@@ -141,11 +147,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(allowedOrigins);   // yml 또는 ENV 로 관리
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(true);
-        cfg.setExposedHeaders(List.of("Authorization"));
+
+        if (isDevProfile()) {
+            // ✅ 개발: 모든 Origin/메서드/헤더 허용
+            cfg.addAllowedOriginPattern("*");
+            cfg.addAllowedMethod(CorsConfiguration.ALL);
+            cfg.addAllowedHeader(CorsConfiguration.ALL);
+            cfg.setAllowCredentials(true);
+            // 노출할 헤더
+            cfg.addExposedHeader("Authorization");
+        } else {
+            // ✅ 운영: 화이트리스트 기반
+            // allowCredentials(true)일 때는 addAllowedOriginPattern("*") 사용 불가
+            cfg.setAllowedOrigins(allowedOrigins);
+            cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+            cfg.setAllowedHeaders(List.of("*"));
+            cfg.setAllowCredentials(true);
+            cfg.setExposedHeaders(List.of("Authorization"));
+        }
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
@@ -160,12 +179,8 @@ public class SecurityConfig {
         res.getWriter().write("{\"message\": \"" + msg + "\"}");
     }
 
-    /**
-     * 개발 환경인지 확인
-     */
     private boolean isDevProfile() {
-        String[] activeProfiles = environment.getActiveProfiles();
-        return activeProfiles.length == 0 ||
-               java.util.Arrays.asList(activeProfiles).contains("dev");
+        String[] profiles = environment.getActiveProfiles();
+        return profiles.length == 0 || Arrays.asList(profiles).contains("dev");
     }
 }
