@@ -170,7 +170,7 @@ public class ChatMessageService {
 
     // 2. MongoDB에서 해당 채팅방의 해당 유저가 안 읽은 메시지를 모두 읽음 처리
     List<ChatMessageDocument> unreadMessages = mongoRepository
-        .findByChatRoomUuidAndSenderNotAndChatMessageStatus(chatRoomId, userId, ChatMessageStatus.UNREAD);
+        .findByChatRoomUuidAndSenderNameNotAndChatMessageStatus(chatRoomId, userId, ChatMessageStatus.UNREAD);
 
     unreadMessages.forEach(msg -> msg.setChatMessageStatus(ChatMessageStatus.READ));
 
