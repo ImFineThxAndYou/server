@@ -8,19 +8,12 @@ import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.request.DailyQuizRequest;
 import org.example.howareyou.domain.quiz.dto.request.RandomQuizRequest;
-import org.example.howareyou.domain.quiz.dto.response.PageResponse;
-import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
-import org.example.howareyou.domain.quiz.dto.submit.SubmitQuizRequest;
-import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
+import org.example.howareyou.domain.quiz.entity.QuizLevel;
 import org.example.howareyou.domain.quiz.service.QuizGeneratorService;
 import org.example.howareyou.domain.quiz.service.QuizService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.example.howareyou.global.security.CustomMemberDetails;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -72,6 +65,7 @@ public class QuizController {
         if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
 
         String memberName = member.getMembername();
+
         String meaningLang = firstNonBlank(
                 req.getLanguage(),
                 Optional.ofNullable(memberService.getMemberByMembername(memberName))
@@ -79,9 +73,9 @@ public class QuizController {
                         .map(p -> p.getLanguage())
                         .orElse("ko")
         );
+
         ClientStartResponse res =
                 quizGeneratorService.startRandomQuiz(memberName, meaningLang, req.getQuizLevel());
-
         return ResponseEntity.ok(res);
     }
 
@@ -91,38 +85,17 @@ public class QuizController {
             로그인 사용자의 특정 날짜 단어장에서 5~30문항을 자동 생성합니다.
             - 요청 바디의 `date`는 yyyy-dd-MM(연-일-월) 문자열입니다. 예) "2025-11-08" (= 2025년 08월 11일)
             - 보기 언어는 프로필 language를 기본으로, `language`로 덮어쓸 수 있습니다.
-            """,
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    required = true,
-                    content = @Content(
-                            schema = @Schema(implementation = DailyQuizRequest.class),
-                            examples = {
-                                    @ExampleObject(name="기본(프로필 언어 사용)", value="""
-                        {
-                          "date": "2025-11-08"
-                        }
-                    """),
-                                    @ExampleObject(name="언어 덮어쓰기(예: 영어보기)", value="""
-                        {
-                          "date": "2025-11-08",
-                          "language": "en"
-                        }
-                    """)
-                            }
-                    )
-            )
+            """
     )
     @PostMapping("/daily/start")
     public ResponseEntity<ClientStartResponse> startDaily(
             @AuthenticationPrincipal CustomMemberDetails member,
-            @RequestParam("date") String dateStr,  // yyyy-MM-dd 형식 문자열
-            @RequestBody @Valid DailyQuizRequest req
+            @RequestParam("date") String dateStr,              // yyyy-MM-dd
+            @RequestParam(value = "language", required = false) String language,
+            @RequestParam(value = "quizLevel", required = false) QuizLevel quizLevel
     ) {
-        if (member == null) {
-            throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
-        }
+        if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
 
-        // ✅ yyyy-MM-dd 문자열을 LocalDate로 변환
         LocalDate date;
         try {
             date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -131,9 +104,8 @@ public class QuizController {
         }
 
         String memberName = member.getMembername();
-
         String meaningLang = firstNonBlank(
-                req.getLanguage(),
+                language,
                 Optional.ofNullable(memberService.getMemberByMembername(memberName))
                         .map(m -> m.getProfile())
                         .map(p -> p.getLanguage())
@@ -141,7 +113,7 @@ public class QuizController {
         );
 
         ClientStartResponse res =
-                quizGeneratorService.startDailyQuiz(memberName, date, meaningLang, req.getQuizLevel());
+                quizGeneratorService.startDailyQuiz(memberName, date, meaningLang, quizLevel);
 
         return ResponseEntity.ok(res);
     }

@@ -9,7 +9,6 @@ import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.vocabulary.document.ChatRoomVocabulary;
 import org.example.howareyou.domain.vocabulary.document.MemberVocabulary;
 import org.example.howareyou.domain.vocabulary.dto.AggregatedWordEntry;
-import org.example.howareyou.domain.vocabulary.quiz.VocaDTO;
 import org.example.howareyou.domain.vocabulary.repository.ChatRoomVocabularyRepository;
 import org.example.howareyou.domain.vocabulary.repository.MemberVocabularyRepository;
 import org.example.howareyou.global.exception.CustomException;
@@ -312,33 +311,6 @@ public class MemberVocaBookService {
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "analyzedAt")),
                 total
         );
-    }
-    /* ---------------- quiz --------------------*/
-    //최신 단어들만 뽑아서 중복없이 전체 조회 - quiz 에서 사용
-    public Page<VocaDTO> findAllWordsPaged(String membername,
-                                           String lang,
-                                           String pos,
-                                           int page,
-                                           int size) {
-        int safePage = Math.max(page, 0);
-        int safeSize = Math.max(size, 1);
-
-        int skip = Math.max(page, 0) * Math.max(size, 1);
-
-        // items
-        List<AggregatedWordEntry> items =
-                memberVocabularyRepository.findLatestUniqueWords(membername, lang, pos, skip, size);
-
-        // total
-        long total = 0L;
-        List<MemberVocabularyRepository.CountOnly> cnt =
-                memberVocabularyRepository.countLatestUniqueWords(membername, lang, pos);
-        if (cnt != null && !cnt.isEmpty() && cnt.get(0).getTotal() != null) {
-            total = cnt.get(0).getTotal();
-        }
-
-        return new PageImpl<>(items, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "analyzedAt")), total);
-        }
     }
 
 }

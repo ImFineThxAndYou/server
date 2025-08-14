@@ -1,4 +1,4 @@
-package org.example.howareyou.domain.vocabulary.quiz;
+package org.example.howareyou.domain.quiz.dto;
 
 import lombok.*;
 

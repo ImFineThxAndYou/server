@@ -10,8 +10,6 @@ import java.time.LocalDate;
 @Getter @Setter @Builder
 @NoArgsConstructor @AllArgsConstructor
 public class DailyQuizRequest {
-    @NotBlank
-    private String membername;
 
     @NotNull
     private String date; //yyyy-mm-dd 형식으로 받자

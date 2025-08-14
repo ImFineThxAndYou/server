@@ -11,14 +11,18 @@ import org.example.howareyou.domain.quiz.entity.QuizResult;
 import org.example.howareyou.domain.quiz.entity.QuizType;
 import org.example.howareyou.domain.quiz.entity.QuizWord;
 import org.example.howareyou.domain.quiz.repository.QuizResultRepository;
+import org.example.howareyou.domain.quiz.repository.QuizVocaRepository;
 import org.example.howareyou.domain.quiz.repository.QuizWordRepository;
 import org.example.howareyou.domain.vocabulary.document.MemberVocabulary;
-import org.example.howareyou.domain.vocabulary.dto.AggregatedWordEntry;
-import org.example.howareyou.domain.vocabulary.quiz.VocaDTO;
+import org.example.howareyou.domain.quiz.dto.VocaDTO;
+import org.example.howareyou.domain.vocabulary.repository.MemberVocabularyRepository;
 import org.example.howareyou.domain.vocabulary.service.MemberVocaBookService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +45,8 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private final MemberVocaBookService vocaBookService;
     private final QuizResultRepository quizResultRepository;
     private final QuizWordRepository quizWordRepository;
+    private final QuizVocaRepository quizVocaRepository;
+    private final MemberVocabularyRepository memberVocabularyRepository;
 
     /* ====================== 공개 API ====================== */
 
@@ -51,10 +57,10 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         // 최신 유니크 단어 집계 1페이지 크게 가져오기
         Page<VocaDTO> page =
-                vocaBookService.findAllWordsPaged(membername, /*lang*/ null, /*pos*/ null, 0, 1000);
+                findAllWordsPaged(membername, /*lang*/ null, /*pos*/ null, 0, 1000);
 
         // 후보 집계 (언어 + 레벨 동시 필터)
-        Map<String, AggregatedWordEntry> byWord = page.getContent().stream()
+        Map<String, VocaDTO> byWord = page.getContent().stream()
                 .filter(w -> matchesMeaningLangAgg(w, language))
                 .filter(w -> matchesLevel(quizLevel, w.getLevel()))
                 .collect(Collectors.toMap(
@@ -83,7 +89,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         // 보기 풀(의미) 수집
         Set<String> allPool = page.getContent().stream()
                 .filter(w -> matchesMeaningLangAgg(w, language))
-                .map(AggregatedWordEntry::getMeaning)
+                .map(VocaDTO::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
@@ -139,10 +145,10 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // 전체 보기 풀(최신 유니크에서)
-        Page<AggregatedWordEntry> all = vocaBookService.findLatestUniqueWordsPaged(membername, null, null, 0, 1000);
+        Page<VocaDTO> all = findAllWordsPaged(membername, null, null, 0, 1000);
         Set<String> allPool = all.getContent().stream()
                 .filter(w -> matchesMeaningLangAgg(w, language))
-                .map(AggregatedWordEntry::getMeaning)
+                .map(VocaDTO::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
@@ -247,7 +253,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                     .choice3(choices.get(2))
                     .choice4(choices.get(3))
                     .correctAnswer(answerIndex + 1)     // 1~4
-                    .level(QuizLevel.valueOf(gi.level()))                  // 문자열 그대로 저장 (A1/A2 등)
+                    .level(toEnumLevel(gi.level()))                 // 문자열 그대로 저장 (A1/A2 등)
                     .pos(gi.pos())
                     .createdAt(Instant.now())
                     .build());
@@ -315,5 +321,41 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         int max = Math.min(30, unique);
         int min = Math.min(5, max); // unique < 5는 호출 전 예외 처리됨
         return min + RND.nextInt(max - min + 1);
+    }
+    /* ---------------- quiz --------------------*/
+    //최신 단어들만 뽑아서 중복없이 전체 조회 - quiz 에서 사용
+    public Page<VocaDTO> findAllWordsPaged(String membername,
+                                           String lang,
+                                           String pos,
+                                           int page,
+                                           int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
+
+        int skip = Math.max(page, 0) * Math.max(size, 1);
+
+        // items
+        List<VocaDTO> items =
+                quizVocaRepository.findWords(membername, lang, pos, skip, size);
+
+        // total
+        long total = 0L;
+        List<MemberVocabularyRepository.CountOnly> cnt =
+                memberVocabularyRepository.countLatestUniqueWords(membername, lang, pos);
+        if (cnt != null && !cnt.isEmpty() && cnt.get(0).getTotal() != null) {
+            total = cnt.get(0).getTotal();
+        }
+
+        return new PageImpl<>(items, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "analyzedAt")), total);
+    }
+    //퀴즈레벨 변환메서드
+    private QuizLevel toEnumLevel(String level) {
+        if (level == null || level.isBlank()) return null; // null 저장 허용
+        try {
+            return QuizLevel.valueOf(level.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Unknown quiz level '{}', storing as null.", level);
+            return null; // 모르는 값이면 저장 안 함(원하면 기본값으로 바꿔도 OK)
+        }
     }
 }
