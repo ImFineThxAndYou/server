@@ -23,7 +23,7 @@ public class VocaScheduler {
         Instant now = Instant.now();
         Instant oneHourAgo = now.minus(1, ChronoUnit.HOURS);
 
-        log.info("[VocaScheduler] 단어장 생성 시작 - {} ~ {}", oneHourAgo, now);
+        log.info("채팅방 별 단어장 생성 시작 - {} ~ {}", oneHourAgo, now);
 
         chatVocaBookService.generateVocabularyForRangeReactive(oneHourAgo, now)
                 .subscribe(

@@ -101,7 +101,8 @@ public class ChatVocaBookService {
                         .map(m -> new MessageItem(
                                 m.getId(),
                                 m.getContent(),
-                                m.getSender(),
+                                m.getSenderId(),
+                                m.getSenderName(),
                                 m.getMessageTime().toString()
                         ))
                         .toList()
