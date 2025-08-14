@@ -18,5 +18,4 @@ public class QuizWordCreate {
     private final String meaning;       // 정답 의미(choices.get(answerIndex))
     private final String pos; // 품사
     private final String level; // 레벨
-    private final String vocabOriginId; // 단어장 원본id
 }

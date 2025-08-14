@@ -1,6 +1,8 @@
 package org.example.howareyou.domain.chat.service;
 
 import jakarta.transaction.Transactional;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -95,7 +97,7 @@ public class ChatRoomService {
       throw new CustomException(ErrorCode.INVALID_CHAT_ROOM_STATE);
 
     // 두 명 모두 JOINED로 전환
-    LocalDateTime now = LocalDateTime.now();
+    Instant now = Instant.now();
     for (ChatRoomMember e : entries) {
       if (e.getStatus() == ChatRoomMemberStatus.SENDER || e.getStatus() == ChatRoomMemberStatus.RECEIVER) {
         e.setStatus(ChatRoomMemberStatus.JOINED);

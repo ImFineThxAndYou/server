@@ -24,7 +24,8 @@ public class QuizWord {
     private QuizResult quizResult;
 
     // 단어 레벨 A1~C1 (C1가 가장어려움), 한국어는 A,B,C
-    private String level;
+    @Enumerated(EnumType.STRING)
+    private QuizLevel level;
 
     // 단어 원문
     private String word;
@@ -35,9 +36,6 @@ public class QuizWord {
     // 단어 뜻
     private String meaning;
 
-
-    @Column(name = "vocab_origin_id")
-    private String vocabOriginId; // MongoDB 단어장 ID (ObjectId.toString())
 
     // 문항 번호
     @Column(name = "question_no", nullable = false)

@@ -26,10 +26,6 @@ public class QuizResult {
     @Column(name = "member_id", nullable = false)
     private Long memberId;
 
-    // 원본퀴즈id (재응시일경우 필요)
-    @Column(name = "original_quiz_id",nullable = true)
-    private Long originalQuizId;
-
     // 퀴즈 타입 'daily' or 'random'
     @Enumerated(EnumType.STRING)
     @Column(name = "quiz_type")
@@ -51,17 +47,11 @@ public class QuizResult {
     @Column(name = "daily_quiz")
     private Instant dailyQuiz;
 
-    // 재응시여부 기본 f
-    @Column(name = "is_requiz")
-    private Boolean isRequiz;
 
     // 응시 시각
     @Column(name = "created_at")
     private Instant createdAt;
 
-    // 재응시 횟수 - 최대 5번
-    @Column(name = "quiz_count")
-    private int quiz_count;
 
     /** 중복제출 방지 위해서 추가 */
     // 제출 완료 여부
@@ -71,6 +61,10 @@ public class QuizResult {
     // 제출 완료 시각
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    // 퀴즈 상태
+    @Enumerated(EnumType.STRING)
+    private QuizStatus quizStatus; // 제출전/채점후 - PENDING/GRADE
 
     @OneToMany(mappedBy = "quizResult", cascade = CascadeType.ALL)
     @OrderBy("questionNo ASC") // 문항번호대로 정렬
@@ -83,9 +77,7 @@ public class QuizResult {
             this.uuid = UUID.randomUUID().toString(); // 36자, length 40 컬럼에 충분
         }
         if (this.createdAt == null) this.createdAt = Instant.now();
-        if (this.isRequiz == null) this.isRequiz = Boolean.FALSE;
         if (this.completed == null) this.completed = Boolean.FALSE;
-        // quiz_count 기본 0은 필드 기본값으로 충분
     }
 }
 

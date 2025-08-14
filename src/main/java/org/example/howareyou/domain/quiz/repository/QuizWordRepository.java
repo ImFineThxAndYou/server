@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.*;
 import java.util.List;
 
 /**
- * 내부 PK 로 조인해 사용
+ * 채점
  * */
 public interface QuizWordRepository extends JpaRepository<QuizWord, Long> {
 

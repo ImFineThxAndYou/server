@@ -114,8 +114,7 @@ public enum ErrorCode {
     VOCABULARY_NOT_FOUND(HttpStatus.NOT_FOUND, "V001", "단어장을 찾을 수 없습니다."),
 
     /* ───────────[퀴즈]─────────── */
-    /* ───────────[퀴즈]─────────── */
-    NORETRY(HttpStatus.TOO_MANY_REQUESTS, "Q001", "재응시 가능횟수는 최대 5번입니다."), // 429: 시도 한도 초과
+    INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "Q001", "잘못된 날짜 형식입니다. yyyy-dd-MM 형식으로 보내주세요."),
     INSUFFICIENT_DISTRACTORS(HttpStatus.UNPROCESSABLE_ENTITY, "Q002", "오답 선택지가 부족합니다."),
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "Q003", "퀴즈를 찾을 수 없습니다."),
     QUIZ_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "Q004", "이미 채점된 퀴즈입니다."),
@@ -123,7 +122,8 @@ public enum ErrorCode {
     INVALID_SELECTION_INDEX(HttpStatus.BAD_REQUEST, "Q006", "답안 인덱스가 보기 범위를 벗어났습니다."),
     QUIZ_FORBIDDEN(HttpStatus.FORBIDDEN, "Q007", "해당 퀴즈에 접근 권한이 없습니다."),
     DAILY_VOCAB_NOT_FOUND(HttpStatus.NOT_FOUND, "Q008", "해당 날짜의 단어장을 찾을 수 없습니다."),
-    QUIZ_BUILD_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Q009", "퀴즈 생성에 실패했습니다. 단어장을 좀 더 생성한뒤 다시 시도해주세요.");
+    QUIZ_BUILD_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Q009", "퀴즈 생성에 실패했습니다. 단어장을 좀 더 생성한 뒤 다시 시도해주세요.");
+
 
     /* Getter ― 럼북을 안 쓴 예시 */
     /* 필드 정의 */
