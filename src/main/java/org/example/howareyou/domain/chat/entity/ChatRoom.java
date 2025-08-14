@@ -22,7 +22,7 @@ public class ChatRoom extends BaseTime {
   @GeneratedValue
   private Long id;
 
-  @Column(unique = true, nullable = false)
+  @Column(columnDefinition = "uuid", unique = true, nullable = false)
   private String uuid;
 
   @Enumerated(EnumType.STRING)
@@ -60,10 +60,5 @@ public class ChatRoom extends BaseTime {
         .filter(member -> !member.getId().equals(myId))
         .findFirst()
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-  }
-
-  public void addMember(ChatRoomMember member) {
-    members.add(member);
-    member.setChatRoom(this);
   }
 }
