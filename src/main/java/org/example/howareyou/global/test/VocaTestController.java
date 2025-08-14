@@ -82,19 +82,19 @@ public class VocaTestController {
         try {
             for (Map<String, Object> req : requests) {
                 String chatRoomUuid = (String) req.get("chatRoomUuid");
-                String sender = (String) req.get("sender");
+                String senderName = (String) req.get("senderName");
                 String content = (String) req.get("content");
                 String status = (String) req.getOrDefault("status", "UNREAD");
                 String isoTime = (String) req.getOrDefault("messageTime", Instant.now().toString());
 
-                if (chatRoomUuid == null || sender == null || content == null) {
+                if (chatRoomUuid == null || senderName == null || content == null) {
                     log.warn("필수값 누락으로 건너뜀: {}", req);
                     continue;
                 }
 
                 ChatMessageDocument message = ChatMessageDocument.builder()
                         .chatRoomUuid(chatRoomUuid)
-                        .sender(sender)
+                        .senderName(senderName)
                         .content(content)
                         .messageTime(Instant.parse(isoTime))
                         .chatMessageStatus(ChatMessageStatus.valueOf(status))
