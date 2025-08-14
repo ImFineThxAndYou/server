@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatEnterDTO;
+import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.service.ChatMemberTracker;
 import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
@@ -46,11 +47,11 @@ public class ChatController {
   @MessageMapping("/chat.send")
   public void sendMessage(
       @Parameter(description = "채팅 메시지 문서", required = true)
-      @Payload ChatMessageDocument chatMessageDocument
+      @Payload CreateChatMessageRequest chatMessageRequest
   ) {
-    chatMessageService.saveChatMessage(chatMessageDocument); // 저장
+    chatMessageService.saveChatMessage(chatMessageRequest); // 저장
     messagingTemplate.convertAndSend(
-        "/topic/chatroom/" + chatMessageDocument.getChatRoomUuid(), chatMessageDocument
+        "/topic/chatroom/" + chatMessageRequest.getChatRoomUuid(), chatMessageRequest
     );
   }
 
