@@ -49,7 +49,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     /** 전체 랜덤 퀴즈 (레벨 필터 가능) */
     @Override
-    public ClientStartResponse startRandomQuiz(String membername, String language, QuizLevel quizLevel) {
+    public ClientStartResponse startRandomQuiz(String membername, QuizLevel quizLevel) {
         Long memberId = memberService.getIdByMembername(membername);
 
         // 최신 유니크 단어 집계 1페이지 크게 가져오기
@@ -58,7 +58,6 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         // 후보 집계 (언어 + 레벨 동시 필터)
         Map<String, VocaDTO> byWord = page.getContent().stream()
-                .filter(w -> matchesMeaningLangAgg(w, language))
                 .filter(w -> matchesLevel(quizLevel, w.getLevel()))
                 .collect(Collectors.toMap(
                         e -> safe(e.getWord()), // word 기준 유니크
@@ -87,7 +86,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         // 보기 풀(의미) 수집
         Set<String> allPool = page.getContent().stream()
-                .filter(w -> matchesMeaningLangAgg(w, language))
+
                 .map(VocaDTO::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -101,7 +100,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     /** 데일리 퀴즈 (레벨 필터 가능) */
     @Override
-    public ClientStartResponse startDailyQuiz(String membername, LocalDate date, String language, QuizLevel quizLevel) {
+    public ClientStartResponse startDailyQuiz(String membername, LocalDate date) {
         Long memberId = memberService.getIdByMembername(membername);
 
         // 해당 날짜 문서의 단어(페이지 크게)
@@ -112,8 +111,6 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         // 후보 집계 (언어 + 레벨 동시 필터)
         Map<String, MemberVocabulary.MemberWordEntry> byWord = page.getContent().stream()
-                .filter(w -> matchesMeaningLang(w, language))
-                .filter(w -> matchesLevel(quizLevel, w.getLevel()))
                 .collect(Collectors.toMap(
                         MemberVocabulary.MemberWordEntry::getWord,
                         w -> w,
@@ -138,7 +135,6 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         // 당일 보기 풀
         Set<String> dailyPool = page.getContent().stream()
-                .filter(w -> matchesMeaningLang(w, language))
                 .map(MemberVocabulary.MemberWordEntry::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -146,7 +142,6 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         // 전체 보기 풀(최신 유니크에서)
         Page<VocaDTO> all = findAllWordsPaged(membername, null, null, 0, 1000);
         Set<String> allPool = all.getContent().stream()
-                .filter(w -> matchesMeaningLangAgg(w, language))
                 .map(VocaDTO::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -278,6 +273,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         return ClientStartResponse.builder()
                 .quizResultId(result.getId())
+                .quizUUID(result.getUuid())
                 .quizQuestions(clientQs)
                 .build();
     }
@@ -290,13 +286,21 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     /** 보기 언어(meaningLang) 판단 - MemberWordEntry */
     private boolean matchesMeaningLang(MemberVocabulary.MemberWordEntry w, String meaningLang) {
-        String dt = safe(w.getDictionaryType()); // "enko" or "koen" or null
-        String wl = safe(w.getLang());           // "en" or "ko"
+        String dt = safe(w.getDictionaryType()); // enko | koen | null
+        String wl = safe(w.getLang());           // en | ko
+
+        // 1) 사전 방향이 명확하면 그 방향에 맞는 meaning만 허용
+        if ("enko".equalsIgnoreCase(dt)) {
+            return meaningLang == null || meaningLang.isBlank() || "ko".equalsIgnoreCase(meaningLang);
+        }
+        if ("koen".equalsIgnoreCase(dt)) {
+            return meaningLang == null || meaningLang.isBlank() || "en".equalsIgnoreCase(meaningLang);
+        }
+
+        // 2) dt가 없을 때만 기존 휴리스틱
         if ("ko".equalsIgnoreCase(meaningLang)) {
-            if ("enko".equalsIgnoreCase(dt)) return true;
             return "en".equalsIgnoreCase(wl);
-        } else {
-            if ("koen".equalsIgnoreCase(dt)) return true;
+        } else { // null 또는 "en"
             return "ko".equalsIgnoreCase(wl);
         }
     }
@@ -305,11 +309,17 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private boolean matchesMeaningLangAgg(VocaDTO w, String meaningLang) {
         String dt = safe(w.getDictionaryType());
         String wl = safe(w.getLang());
+
+        if ("enko".equalsIgnoreCase(dt)) {
+            return meaningLang == null || meaningLang.isBlank() || "ko".equalsIgnoreCase(meaningLang);
+        }
+        if ("koen".equalsIgnoreCase(dt)) {
+            return meaningLang == null || meaningLang.isBlank() || "en".equalsIgnoreCase(meaningLang);
+        }
+
         if ("ko".equalsIgnoreCase(meaningLang)) {
-            if ("enko".equalsIgnoreCase(dt)) return true;
             return "en".equalsIgnoreCase(wl);
         } else {
-            if ("koen".equalsIgnoreCase(dt)) return true;
             return "ko".equalsIgnoreCase(wl);
         }
     }

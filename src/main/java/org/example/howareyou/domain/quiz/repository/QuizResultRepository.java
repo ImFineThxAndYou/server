@@ -28,22 +28,31 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-        update QuizResult qr
-           set qr.correctCount   = :correct,
-               qr.totalQuestions = :total,
-               qr.score          = :score,
-               qr.completed      = true,
-               qr.completedAt    = :completedAt,
-               qr.quizStatus     = :quiz_status
-         where qr.uuid = :uuid
-    """)
+    update QuizResult qr
+       set qr.correctCount   = :correct,
+           qr.totalQuestions = :total,
+           qr.score          = :score,
+           qr.completed      = true,
+           qr.completedAt    = :completedAt,
+           qr.quizStatus     = :quizStatus
+     where qr.uuid = :uuid
+""")
     int finalizeGradingByUuid(@Param("uuid") String uuid,
                               @Param("correct") long correct,
                               @Param("total") long total,
                               @Param("score") long score,
                               @Param("completedAt") Instant completedAt,
-                              @Param("quiz_status") QuizStatus quizStatus);
+                              @Param("quizStatus") QuizStatus quizStatus);
 
-    /* */
-    Page<QuizResult> findByMemberId(Long memberId, Pageable pageable);
+    @Query("""
+        select qr
+          from QuizResult qr
+         where qr.memberId = :memberId
+           and (:status is null or qr.quizStatus = :status)
+    """)
+    Page<QuizResult> findByMemberIdAndOptionalStatus(
+            @Param("memberId") Long memberId,
+            @Param("status") QuizStatus status,
+            Pageable pageable
+    );
 }

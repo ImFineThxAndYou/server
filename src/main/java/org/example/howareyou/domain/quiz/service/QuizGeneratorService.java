@@ -11,9 +11,9 @@ import java.util.List;
 
 public interface QuizGeneratorService {
     // 1. 전체랜덤 퀴즈
-    ClientStartResponse startRandomQuiz(String membername, String language, QuizLevel quizLevel);
+    ClientStartResponse startRandomQuiz(String membername,  QuizLevel quizLevel);
     // 2. 날짜별 퀴즈
-    ClientStartResponse startDailyQuiz(String membername, LocalDate date, String language, QuizLevel quizLevel);
+    ClientStartResponse startDailyQuiz(String membername, LocalDate date);
 
 
 }

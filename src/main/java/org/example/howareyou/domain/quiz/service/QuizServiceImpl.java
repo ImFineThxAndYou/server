@@ -82,8 +82,8 @@ public class QuizServiceImpl implements QuizService {
     }
     /* 멤버벌 퀴즈 조회 (전체)*/
     @Override
-    public Page<QuizResultResponse> getQuizResultsByMember(Long memberId, Pageable pageable) {
-        return quizResultRepository.findByMemberId(memberId, pageable)
+    public Page<QuizResultResponse> getQuizResultsByMember(Long memberId,QuizStatus status, Pageable pageable) {
+        return quizResultRepository.findByMemberIdAndOptionalStatus(memberId,status, pageable)
                 .map(QuizResultResponse::fromEntity);
     }
     /* 단건조회 */
