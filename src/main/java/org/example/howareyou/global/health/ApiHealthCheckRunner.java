@@ -17,35 +17,38 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
 
     private final WebClient nlpWebClient;
     private final WebClient taggingNlpWebClient;
+    private final WebClient translateWebClient;
+    private final WebClient geminiWebClient;
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Performing health checks for external APIs. The application will not start if any API is down.");
+        log.info("🔍 Performing health checks for external APIs. The application will not start if any API is down.");
 
-        Mono<String> spacyApiHealth = nlpWebClient.get()
-                .uri("/health")
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(java.time.Duration.ofSeconds(5));
-
-        Mono<String> fastApiHealth = taggingNlpWebClient.get()
-                .uri("/health")
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(java.time.Duration.ofSeconds(5));
+        // Define each API check
+        Mono<String> spacyApiHealth = checkHealth(nlpWebClient, "/health", "Spacy API (port 8000)");
+        Mono<String> fastApiHealth = checkHealth(taggingNlpWebClient, "/health", "FastAPI (port 8001)");
+        Mono<String> libreTranslateHealth = checkHealth(translateWebClient, "/languages", "LibreTranslate API");
+        Mono<String> geminiApiHealth = checkHealth(geminiWebClient, "", "Gemini API");
 
         try {
-            Mono.zip(spacyApiHealth, fastApiHealth)
+            Mono.zip(spacyApiHealth, fastApiHealth, libreTranslateHealth, geminiApiHealth)
                     .doOnSuccess(results -> {
-                        log.info("Spacy API (port 8000) health check successful: {}", results.getT1());
-                        log.info("FastAPI (port 8001) health check successful: {}", results.getT2());
-                        log.info("All external APIs are healthy. Proceeding with application startup.");
+                        log.info("✅ All external APIs are healthy. Proceeding with application startup.");
                     })
-                    .block(); // Block and wait for the result, will throw exception on error
+                    .block(); // block until all health checks complete
         } catch (Exception e) {
-            log.error("External API health check failed. Application startup will be aborted.", e);
-            // Re-throw the exception to stop the application context from loading
+            log.error("❌ One or more external API health checks failed. Aborting application startup.", e);
             throw new RuntimeException("External API health check failed", e);
         }
+    }
+
+    private Mono<String> checkHealth(WebClient client, String uri, String apiName) {
+        return client.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(java.time.Duration.ofSeconds(5))
+                .doOnSuccess(res -> log.info("✅ {} health check successful: {}", apiName, res))
+                .doOnError(err -> log.error("❌ {} health check failed: {}", apiName, err.getMessage()));
     }
 }

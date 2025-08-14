@@ -25,4 +25,21 @@ public class WebClientConfig {
         WebClient.Builder builder) {
         return builder.baseUrl(baseUrl).build();
     }
+
+    @Bean(name = "translateWebClient")
+    public WebClient translateWebClient(@Value("${libretranslate.host}") String host, @Value("${libretranslate.port}") int port,
+                                        WebClient.Builder builder) {
+        String baseUrl = "http://" + host + ":" + port;
+        return builder.baseUrl(baseUrl).build();
+    }
+
+    @Bean(name = "geminiWebClient")
+    public WebClient geminiWebClient(@Value("${gemini.base-url}") String baseUrl,
+                                     @Value("${gemini.model}") String model,
+                                     @Value("${gemini.api-key}") String apiKey,
+                                     WebClient.Builder builder) {
+        return builder.baseUrl(baseUrl+"/models/"+model+"/")
+                .defaultHeader("x-goog-api-key", apiKey)
+                .build();
+    }
 }
