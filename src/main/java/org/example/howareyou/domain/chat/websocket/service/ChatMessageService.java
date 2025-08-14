@@ -4,13 +4,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
-import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
+import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
 import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
@@ -36,14 +35,14 @@ public class ChatMessageService {
   private final MemberRepository memberRepository;
 
   /**
-   * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드.
-   * - 채팅방 및 상대방 정보 확인
-   * - Redis: 최근 메시지 추가, 안읽은 메시지 수 증가
-   * - MongoDB: 메시지 비동기 저장
+   * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드. - 채팅방 및 상대방 정보 확인 - Redis: 최근 메시지 추가, 안읽은 메시지 수
+   * 증가 - MongoDB: 메시지 비동기 저장
+   *
+   * @return
    */
 
   @Transactional
-  public void saveChatMessage(CreateChatMessageRequest request) {
+  public ChatMessageResponse saveChatMessage(CreateChatMessageRequest request) {
 
     final String chatRoomUuid = request.getChatRoomUuid();
 
@@ -104,6 +103,7 @@ public class ChatMessageService {
 
     log.debug("채팅 메시지 저장 완료 - roomUuid={}, roomId={}, senderId={}, receiverOnline={}, redis+mongo 저장",
         chatRoomUuid, chatRoom.getId(), senderId, isReceiverInRoom);
+    return ChatMessageResponse.from(messageForMongo);
   }
 
 
