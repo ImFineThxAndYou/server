@@ -22,5 +22,9 @@ public interface QuizService {
     // 회원별 퀴즈결과 상세조회
     QuizResultResponse getQuizResultDetail(String quizUUID);
 
+    // 퀴즈 status 가 pending 인것만
+    @Transactional(readOnly = true)
+    ClientStartResponse getPendingQuizByUuid(Long memberId, String uuid);
+
 
 }

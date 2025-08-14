@@ -6,7 +6,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
-import org.example.howareyou.domain.quiz.dto.request.RandomQuizRequest;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitQuizRequest;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
@@ -45,7 +44,7 @@ public class QuizController {
         level: A/B/C 또는 미지정(null) → 전체 난이도 랜덤
     """,
             parameters = {
-                    @Parameter(name = "level", description = "A/B/C 또는 전체 난이도 랜덤", example = "A")
+                    @Parameter(name = "level", description = "A/B/C 또는 전체 난이도 랜덤", example = "")
             }
     )
     @PostMapping("/random/start")
@@ -148,7 +147,7 @@ public class QuizController {
             로그인한 사용자의 모든 퀴즈 결과를 최신순으로 반환합니다.
             - page: 0부터 시작
             - size: 페이지 크기 (기본 20)
-            - status(optional): COMPLETED | IN_PROGRESS 필터
+            - status(optional): PENDING | SUBMIT | NULL(널이면 전체조회) 필터
             - type(optional): RANDOM | DAILY 필터
             """,
             parameters = {
@@ -157,26 +156,20 @@ public class QuizController {
                     @Parameter(name = "status", example = "SUBMIT") // (PENDING / SUBMIT)
             }
     )
+    // org.example.howareyou.domain.quiz.controller.QuizController
     @GetMapping("/me")
     public ResponseEntity<?> getMyQuizzes(
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) QuizStatus status
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) QuizStatus status // ★ PENDING | SUBMIT (enum과 일치)
     ) {
         if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
 
         Long memberId = memberService.getIdByMembername(member.getMembername());
+        Pageable pageable = PageRequest.of(Math.max(page,0), Math.max(size,1), Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Pageable pageable = PageRequest.of(
-                Math.max(page, 0),
-                Math.max(size, 1),
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
-
-        return ResponseEntity.ok(
-                quizService.getQuizResultsByMember(memberId, status, pageable)
-        );
+        return ResponseEntity.ok(quizService.getQuizResultsByMember(memberId, status, pageable));
     }
 
     @Operation(
@@ -184,12 +177,13 @@ public class QuizController {
             description = """
             POST /random/start 와 동일 기능이지만, 쿼리스트링으로 간단 호출 가능한 GET 버전입니다.
             - quizLevel(optional): A1|A2|B1|B2|C1|C2
+            - 공백으로 요청하면 /random/start 랑 동일해요 
             """,
             parameters = {
                     @Parameter(name = "quizLevel", example = "A2")
             }
     )
-    @GetMapping("/random/start-level")
+    @PostMapping ("/random/start-level")
     public ResponseEntity<ClientStartResponse> startRandomByLevel(
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestParam(value = "quizLevel", required = false) QuizLevel quizLevel
@@ -203,21 +197,6 @@ public class QuizController {
         return ResponseEntity.ok(res);
     }
 
-//    @Operation(
-//            summary = "미완료(안 푼) 퀴즈 이어 풀기",
-//            description = "가장 최근의 진행중(IN_PROGRESS) 퀴즈를 불러옵니다. 없으면 404 응답."
-//    )
-//    @GetMapping("/unfinished")
-//    public ResponseEntity<ClientStartResponse> getUnfinished(
-//            @AuthenticationPrincipal CustomMemberDetails member
-//    ) {
-//        if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
-//        String memberName = member.getMembername();
-//
-//        return quizService.getUnfinishedQuiz(memberName)
-//                .map(ResponseEntity::ok)
-//                .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
-//    }
     /* ===== 내부 유틸 ===== */
 
     /* 공백 */
@@ -228,7 +207,6 @@ public class QuizController {
         }
         return null;
     }
-
     /** yyyy-dd-MM 형태(연-일-월) 전용 파서 */
     private static LocalDate parseDateYDM(String s) {
         try {

@@ -55,4 +55,8 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
             @Param("status") QuizStatus status,
             Pageable pageable
     );
+
+    Page<QuizResult> findByMemberIdAndQuizStatus(Long memberId, QuizStatus status, Pageable pageable);
+
+    Page<QuizResult> findByMemberId(Long memberId, Pageable pageable);
 }

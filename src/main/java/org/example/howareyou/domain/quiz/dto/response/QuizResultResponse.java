@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.howareyou.domain.quiz.entity.QuizResult;
+import org.example.howareyou.domain.quiz.entity.QuizStatus;
 import org.example.howareyou.domain.quiz.entity.QuizType;
 
 import java.time.Instant;
@@ -19,21 +20,20 @@ import java.util.Objects;
 @AllArgsConstructor
 public class QuizResultResponse {
     private Long quizResultId;
+    private String quizUUID;
     private QuizType quizType;       // RANDOM / DAILY
     private String dailyDate;        // DAILY: YYYY-MM-DD(UTC), RANDOM :  null
     private Instant createdAt;
     private Long totalQuestions;
     private Long correctCount;
     private Long score;
-    private Double accuracy;         // 백분률 (correctCount / totalQuestions) * 100.0
+    private Double accuracy;         // (correctCount / totalQuestions) * 100.0
+    private QuizStatus status;       // ← private 권장
     private List<QuizResponse> words;
 
-    /** 엔티티 → DTO 변환 (퀴즈 단어까지 포함) */
     public static QuizResultResponse fromEntity(QuizResult qr) {
-        String dailyDateStr = null;
-        if (qr.getDailyQuiz() != null) {
-            dailyDateStr = qr.getDailyQuiz().atOffset(ZoneOffset.UTC).toLocalDate().toString();
-        }
+        String dailyDateStr = (qr.getDailyQuiz() == null) ? null
+                : qr.getDailyQuiz().atOffset(ZoneOffset.UTC).toLocalDate().toString();
 
         List<QuizResponse> wordDTOs = qr.getQuizWords().stream()
                 .filter(Objects::nonNull)
@@ -61,6 +61,7 @@ public class QuizResultResponse {
 
         return QuizResultResponse.builder()
                 .quizResultId(qr.getId())
+                .quizUUID(qr.getUuid())
                 .quizType(qr.getQuizType())
                 .dailyDate(dailyDateStr)
                 .createdAt(qr.getCreatedAt())
@@ -68,6 +69,7 @@ public class QuizResultResponse {
                 .correctCount(qr.getCorrectCount())
                 .score(qr.getScore())
                 .accuracy(acc)
+                .status(qr.getQuizStatus())   // ★ 추가됨
                 .words(wordDTOs)
                 .build();
     }

@@ -35,5 +35,5 @@ public interface QuizWordRepository extends JpaRepository<QuizWord, Long> {
                      @Param("selectedIndex") Integer selectedIndex,
                      @Param("isCorrect") Boolean isCorrect);
 
-
+    List<QuizWord> findByQuizResultIdOrderByQuestionNo(Long quizResultId);
 }

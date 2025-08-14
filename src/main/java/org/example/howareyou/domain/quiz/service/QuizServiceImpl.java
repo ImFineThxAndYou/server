@@ -1,10 +1,13 @@
 package org.example.howareyou.domain.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.howareyou.domain.quiz.dto.ClientQuizQuestion;
+import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
 import org.example.howareyou.domain.quiz.entity.QuizResult;
 import org.example.howareyou.domain.quiz.entity.QuizStatus;
+import org.example.howareyou.domain.quiz.entity.QuizWord;
 import org.example.howareyou.domain.quiz.repository.QuizResultRepository;
 import org.example.howareyou.domain.quiz.repository.QuizWordRepository;
 import org.example.howareyou.global.exception.CustomException;
@@ -15,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -83,6 +88,9 @@ public class QuizServiceImpl implements QuizService {
     /* 멤버벌 퀴즈 조회 (전체)*/
     @Override
     public Page<QuizResultResponse> getQuizResultsByMember(Long memberId,QuizStatus status, Pageable pageable) {
+        Page<QuizResult> page = (status == null)
+                ? quizResultRepository.findByMemberId(memberId, pageable)
+                : quizResultRepository.findByMemberIdAndQuizStatus(memberId, status, pageable);
         return quizResultRepository.findByMemberIdAndOptionalStatus(memberId,status, pageable)
                 .map(QuizResultResponse::fromEntity);
     }
@@ -93,5 +101,38 @@ public class QuizServiceImpl implements QuizService {
                 .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
 
         return QuizResultResponse.fromEntity(result);
+    }
+
+    @Override
+    public ClientStartResponse getPendingQuizByUuid(Long memberId, String uuid) {
+        QuizResult qr = quizResultRepository.findByUuid(uuid)
+                .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
+
+        if (!Objects.equals(qr.getMemberId(), memberId)) {
+            throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+        if (qr.getQuizStatus() != QuizStatus.PENDING) {
+            throw new CustomException(ErrorCode.QUIZ_ALREADY_SUBMITTED); // 제출 완료는 재개 불가
+        }
+
+        List<QuizWord> words = quizWordRepository.findByQuizResultIdOrderByQuestionNo(qr.getId());
+
+        List<ClientQuizQuestion> questions = new ArrayList<>(words.size());
+        for (QuizWord w : words) {
+            List<String> choices = List.of(
+                    w.getChoice1(), w.getChoice2(), w.getChoice3(), w.getChoice4()
+            );
+            questions.add(ClientQuizQuestion.builder()
+                    .questionNo(w.getQuestionNo())
+                    .question(w.getWord())
+                    .choices(choices)
+                    .build());
+        }
+
+        return ClientStartResponse.builder()
+                .quizResultId(qr.getId())
+                .quizUUID(qr.getUuid())
+                .quizQuestions(questions)
+                .build();
     }
 }
