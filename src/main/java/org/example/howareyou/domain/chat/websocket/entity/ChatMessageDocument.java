@@ -18,7 +18,10 @@ public class ChatMessageDocument {
   private String id;
 
   private String chatRoomUuid;
-  private String sender;
+  private String senderId;
+  private String senderName;
+  private String receiverId;
+  private String receiverName;
   private String content;
   private Instant messageTime;
   private ChatMessageStatus chatMessageStatus;
