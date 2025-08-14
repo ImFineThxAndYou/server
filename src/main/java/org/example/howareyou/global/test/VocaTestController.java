@@ -82,7 +82,10 @@ public class VocaTestController {
         try {
             for (Map<String, Object> req : requests) {
                 String chatRoomUuid = (String) req.get("chatRoomUuid");
+                String senderId = (String) req.get("senderId");
                 String senderName = (String) req.get("senderName");
+                String receiverId = (String) req.get("receiverId");
+                String receiverName = (String) req.get("receiverName");
                 String content = (String) req.get("content");
                 String status = (String) req.getOrDefault("status", "UNREAD");
                 String isoTime = (String) req.getOrDefault("messageTime", Instant.now().toString());
@@ -94,7 +97,10 @@ public class VocaTestController {
 
                 ChatMessageDocument message = ChatMessageDocument.builder()
                         .chatRoomUuid(chatRoomUuid)
+                        .senderId(senderId)
                         .senderName(senderName)
+                        .receiverId(receiverId)
+                        .receiverName(receiverName)
                         .content(content)
                         .messageTime(Instant.parse(isoTime))
                         .chatMessageStatus(ChatMessageStatus.valueOf(status))
