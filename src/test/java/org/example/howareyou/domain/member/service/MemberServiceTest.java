@@ -44,14 +44,14 @@ class MemberServiceTest {
 
         member2 = Member.builder().build();
         MemberProfile profile2 = MemberProfile.builder()
-                .interests(Set.of(MemberTag.SPORTS, MemberTag.MOVIE))
+                .interests(Set.of(MemberTag.SPORTS, MemberTag.MUSIC))
                 .completed(true)
                 .build();
         member2.setProfile(profile2);
 
         member3 = Member.builder().build();
         MemberProfile profile3 = MemberProfile.builder()
-                .interests(Set.of(MemberTag.GAME, MemberTag.IT))
+                .interests(Set.of(MemberTag.SPORTS, MemberTag.MUSIC))
                 .completed(true)
                 .build();
         member3.setProfile(profile3);
