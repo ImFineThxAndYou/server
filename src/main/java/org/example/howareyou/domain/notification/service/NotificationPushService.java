@@ -38,7 +38,7 @@ public class NotificationPushService {
         // 로컬 메모리에서 SseEmitter 확인
         var emitterOpt = emitters.get(receiverId);
         log.info("SseEmitter 조회 결과: receiverId={}, found={}", receiverId, emitterOpt.isPresent());
-        
+
         emitterOpt.ifPresentOrElse(
                 emitter -> {
                     log.info("SseEmitter 발견, 전송 시도: receiverId={}", receiverId);
@@ -48,7 +48,7 @@ public class NotificationPushService {
                     // Redis에서 온라인 상태 확인
                     boolean isOnlineInRedis = emitters.isOnline(receiverId);
                     log.info("SseEmitter 없음, Redis 상태 확인: receiverId={}, isOnlineInRedis={}", receiverId, isOnlineInRedis);
-                    
+
                     if (isOnlineInRedis) {
                         log.warn("Receiver {} is online in Redis but no local emitter found", receiverId);
                     } else {
@@ -57,7 +57,7 @@ public class NotificationPushService {
                 }
         );
     }
-    
+
     /** 채팅 요청 알림 발송 */
     @Transactional
     public void sendChatReqNotify(Long requesterId, String requesterName, String message, Long receiverId) {
@@ -75,7 +75,7 @@ public class NotificationPushService {
                 }
         );
     }
-    
+
     /** 시스템 알림 발송 (공지사항/이벤트) */
     @Transactional
     public void sendSystemNotify(String title, String content, String category, Long receiverId) {
@@ -104,19 +104,19 @@ public class NotificationPushService {
     /* ---------- 내부 util ---------- */
     private void trySend(Notification n, SseEmitter emitter) {
         try {
-            log.debug("SSE 전송 시도: notificationId={}, type={}, receiverId={}", 
+            log.debug("SSE 전송 시도: notificationId={}, type={}, receiverId={}",
                     n.getId(), n.getType(), n.getReceiverId());
-            
+
             emitter.send(SseEmitter.event()
                     .id(String.valueOf(n.getId()))
                     .name(n.getType().name().toLowerCase())
                     .data(n.getPayload())); // payload는 Map<String, Object>이므로 Jackson이 자동으로 JSON으로 변환
             n.markDelivered();
-            
+
             log.debug("SSE 전송 성공: notificationId={}", n.getId());
         } catch (IOException e) {
             log.warn("SSE send failed, will retry later: notificationId={}, error={}", n.getId(), e.getMessage());
-            throw new CustomException(ErrorCode.NOTIFICATION_SEND_FAILED, 
+            throw new CustomException(ErrorCode.NOTIFICATION_SEND_FAILED,
                     String.format("SSE 전송 실패: notificationId=%s, error=%s", n.getId(), e.getMessage()));
         }
     }

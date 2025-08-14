@@ -2,7 +2,7 @@
 package org.example.howareyou.domain.member.service;
 
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.example.howareyou.domain.member.repository.MemberRepository;
@@ -37,21 +37,21 @@ class MemberServiceTest {
     void setUp() {
         member1 = Member.builder().build();
         MemberProfile profile1 = MemberProfile.builder()
-                .interests(Set.of(Category.SPORTS, Category.MUSIC))
+                .interests(Set.of(MemberTag.SPORTS, MemberTag.MUSIC))
                 .completed(true)
                 .build();
         member1.setProfile(profile1);
 
         member2 = Member.builder().build();
         MemberProfile profile2 = MemberProfile.builder()
-                .interests(Set.of(Category.SPORTS, Category.MOVIE))
+                .interests(Set.of(MemberTag.SPORTS, MemberTag.MUSIC))
                 .completed(true)
                 .build();
         member2.setProfile(profile2);
 
         member3 = Member.builder().build();
         MemberProfile profile3 = MemberProfile.builder()
-                .interests(Set.of(Category.GAME, Category.IT))
+                .interests(Set.of(MemberTag.SPORTS, MemberTag.MUSIC))
                 .completed(true)
                 .build();
         member3.setProfile(profile3);
@@ -62,7 +62,7 @@ class MemberServiceTest {
         // given
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member1));
         when(memberRepository.findDistinctByProfileInterestsInAndIdNot(
-                Set.of(Category.SPORTS, Category.MUSIC), 1L))
+                Set.of(MemberTag.SPORTS, MemberTag.MUSIC), 1L))
                 .thenReturn(List.of(member2));
 
         // when

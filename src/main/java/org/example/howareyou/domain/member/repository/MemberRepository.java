@@ -1,8 +1,7 @@
 package org.example.howareyou.domain.member.repository;
 
 import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
-import org.example.howareyou.domain.member.dto.response.ProfileResponse;
-import org.example.howareyou.domain.member.entity.Category;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +19,7 @@ public interface MemberRepository extends JpaRepository<Member,Long>{
     Optional<Member> findById(Long id);
     Optional<Member> findByMembername(String membername);
     boolean existsByMembername(String Membername);
-    List<Member> findDistinctByProfileInterestsInAndIdNot(Set<Category> interests, Long excludeId);
+    List<Member> findDistinctByProfileInterestsInAndIdNot(Set<MemberTag> interests, Long excludeId);
 
     Long getIdByMembername(String membername);
 

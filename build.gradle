@@ -70,6 +70,16 @@ dependencies {
 
     // CSV 변환을 위함
     implementation 'com.opencsv:opencsv:5.7.1'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // (선택) resilient
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+
+    //Kafka
+    implementation 'org.apache.kafka:kafka-clients:3.8.0'
+    implementation 'org.springframework.kafka:spring-kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+
 }
 
 tasks.named('test') {

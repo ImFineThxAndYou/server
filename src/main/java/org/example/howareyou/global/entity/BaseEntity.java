@@ -2,8 +2,10 @@ package org.example.howareyou.global.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
+import lombok.Setter;
 
 /**
  * 모든 엔티티의 공통 필드 + 수명주기 콜백으로 타임스탬프 관리
@@ -11,10 +13,11 @@ import java.time.Instant;
  * updatedAt : INSERT · UPDATE 마다 변경
  */
 @Getter
+@Setter
 @MappedSuperclass
 public abstract class BaseEntity {
 
-    /* ------------ 공통 PK (UUID) ------------ */
+    /* ------------ 공통 PK ------------ */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -8,17 +8,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
-import org.example.howareyou.domain.chat.service.ChatRoomService;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
+import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
+import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.domain.member.repository.MemberRepository;
 import org.example.howareyou.domain.notification.service.NotificationPushService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,55 +32,80 @@ public class ChatMessageService {
   private final ChatRedisService chatRedisService;
   private final ChatRoomRepository chatRoomRepository;
   private final NotificationPushService notificationPushService;
+  private final MemberRepository memberRepository;
 
   /**
-   * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드.
-   * - 채팅방 및 상대방 정보 확인
-   * - Redis: 최근 메시지 추가, 안읽은 메시지 수 증가
-   * - MongoDB: 메시지 비동기 저장
+   * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드. - 채팅방 및 상대방 정보 확인 - Redis: 최근 메시지 추가, 안읽은 메시지 수
+   * 증가 - MongoDB: 메시지 비동기 저장
+   *
+   * @return
    */
 
-  public void saveChatMessage(ChatMessageDocument chatMessage) {
+  @Transactional
+  public ChatMessageResponse saveChatMessage(CreateChatMessageRequest request) {
 
-    String chatRoomId = chatMessage.getChatRoomUuid();
-    ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomId)
+    final String chatRoomUuid = request.getChatRoomUuid();
+
+    // 채팅방 조회
+    ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    String senderId = chatMessage.getSender();
-    String receiverId = String.valueOf(chatRoom.getOtherParticipant(Long.valueOf(senderId)));
+    // 발신자 조회/검증
+    Long senderId = request.getSenderId();
+    Member sender = memberRepository.findById(senderId)
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-    // MongoDB 저장용 객체
+    // 수신자 산출 (1:1 기준)
+    Member receiver = chatRoom.getOtherParticipant(senderId);
+    Long receiverId = receiver.getId();
+
+    // 표시용 이름 스냅샷 (프로필 닉네임 우선 → membername → email)
+    String senderName   = sender.getMembername();
+    String receiverName = receiver.getMembername();
+
+    // Mongo 저장용 도큐먼트 구성
     ChatMessageDocument messageForMongo = ChatMessageDocument.builder()
-        .chatRoomUuid(chatRoomId)
-        .sender(senderId)
-        .content(chatMessage.getContent())
+        .chatRoomUuid(chatRoomUuid)
+        .senderId(String.valueOf(senderId))
+        .senderName(senderName)
+        .receiverId(String.valueOf(receiverId))
+        .receiverName(receiverName)
+        .content(request.getContent())
         .messageTime(Instant.now())
         .chatMessageStatus(ChatMessageStatus.UNREAD)
         .build();
 
-    // 1. Redis에 최근 메시지 추가 (최대 30개 유지) - 추후 페이징 처리
-    chatRedisService.addRecentMessage(chatRoomId, messageForMongo);
-    chatRedisService.trimRecentMessages(chatRoomId, 30); // 추가된 메서드 (아래 참고)
+    // MongoDB 저장
+    messageForMongo = mongoRepository.save(messageForMongo);
 
-    // 2. 상대방이 접속 중인지 확인
-    String currentRoom = chatRedisService.getCurrentChatRoom(receiverId);
+    // Redis 최근 메시지 캐시 (id가 채워진 객체로)
+    chatRedisService.addRecentMessage(chatRoomUuid, messageForMongo);
+    chatRedisService.trimRecentMessages(chatRoomUuid, 30);
 
-    boolean isReceiverInRoom = chatRoomId.equals(currentRoom);
+    // 수신자 현재 방 체크
+    String receiverCurrentRoom = chatRedisService.getCurrentChatRoom(String.valueOf(receiverId));
+    boolean isReceiverInRoom = chatRoomUuid.equals(receiverCurrentRoom);
 
-    if (!isReceiverInRoom) { // 상대방이 접속 중이지 않은 경우
-      // 3. 안읽은 메시지 수 증가
-      chatRedisService.incrementUnread(chatRoomId, receiverId);
+    if (!isReceiverInRoom) {
+      // 안읽은 메시지 증가
+      chatRedisService.incrementUnread(chatRoomUuid, String.valueOf(receiverId));
 
-      // 4. 알림 메시지 Redis 저장
-      notificationPushService.sendChatNotify(Long.valueOf(chatRoomId), Long.valueOf(senderId), messageForMongo.getId(), messageForMongo.getContent(), Long.valueOf(receiverId));
+      // 알림 발송
+      //  - messageId는 Mongo 저장 후 사용
+      notificationPushService.sendChatNotify(
+          chatRoom.getId(),
+          senderId,
+          messageForMongo.getId(),
+          messageForMongo.getContent(),
+          receiverId
+      );
     }
 
-    // 5. MongoDB 저장은 동기로 수행 (추후에 kafka로 비동기 저장)
-    mongoRepository.save(messageForMongo);
-
-    log.debug("채팅 메시지 저장 완료 - chatRoom={}, sender={}, receiverOnline={}, redis+mongo 저장됨",
-        chatRoomId, senderId, isReceiverInRoom);
+    log.debug("채팅 메시지 저장 완료 - roomUuid={}, roomId={}, senderId={}, receiverOnline={}, redis+mongo 저장",
+        chatRoomUuid, chatRoom.getId(), senderId, isReceiverInRoom);
+    return ChatMessageResponse.from(messageForMongo);
   }
+
 
   /**
    * Redis에서 최근 메시지 30개 조회
@@ -141,7 +170,7 @@ public class ChatMessageService {
 
     // 2. MongoDB에서 해당 채팅방의 해당 유저가 안 읽은 메시지를 모두 읽음 처리
     List<ChatMessageDocument> unreadMessages = mongoRepository
-        .findByChatRoomUuidAndSenderNotAndChatMessageStatus(chatRoomId, userId, ChatMessageStatus.UNREAD);
+        .findByChatRoomUuidAndSenderNameNotAndChatMessageStatus(chatRoomId, userId, ChatMessageStatus.UNREAD);
 
     unreadMessages.forEach(msg -> msg.setChatMessageStatus(ChatMessageStatus.READ));
 
@@ -152,7 +181,6 @@ public class ChatMessageService {
   }
 
   /**
-   *
    * 이전 메시지 페이징
   */
   public List<ChatMessageDocumentResponse> getPreviousMessages(String chatRoomId, Instant before, int size) {
