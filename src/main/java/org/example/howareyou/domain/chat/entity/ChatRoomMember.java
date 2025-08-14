@@ -6,13 +6,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.global.config.BaseTime;
 import org.example.howareyou.global.entity.BaseEntity;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
-public class ChatRoomMember extends BaseEntity {
+public class ChatRoomMember extends BaseTime {
 
   @Id
   @GeneratedValue

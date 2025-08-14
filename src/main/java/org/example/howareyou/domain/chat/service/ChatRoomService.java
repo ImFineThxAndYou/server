@@ -60,7 +60,9 @@ public class ChatRoomService {
 
     // 참여자 추가 (초기 상태는 PENDING)
     ChatRoomMember senderEntry = new ChatRoomMember(chatRoom, sender, ChatRoomMemberStatus.SENDER);
+    chatRoom.addMember(senderEntry);
     ChatRoomMember receiverEntry = new ChatRoomMember(chatRoom, receiver, ChatRoomMemberStatus.RECEIVER);
+    chatRoom.addMember(receiverEntry);
 
     chatRoomMemberRepository.save(senderEntry);
     chatRoomMemberRepository.save(receiverEntry);

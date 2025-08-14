@@ -61,4 +61,9 @@ public class ChatRoom extends BaseTime {
         .findFirst()
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
   }
+
+  public void addMember(ChatRoomMember member) {
+    members.add(member);
+    member.setChatRoom(this);
+  }
 }
