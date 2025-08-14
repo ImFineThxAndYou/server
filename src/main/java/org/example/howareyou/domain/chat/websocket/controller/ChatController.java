@@ -3,12 +3,15 @@ package org.example.howareyou.domain.chat.websocket.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.example.howareyou.domain.chat.entity.ChatRoom;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatEnterDTO;
+import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
 import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
 import org.example.howareyou.domain.chat.websocket.service.ChatMemberTracker;
@@ -17,9 +20,11 @@ import org.example.howareyou.domain.chat.websocket.service.ChatRedisService;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 
+import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -44,16 +49,28 @@ public class ChatController {
       서버는 메시지를 저장하고 /topic/chatroom/{chatRoomId}로 브로드캐스팅합니다.
       """
   )
-  @MessageMapping("/chat.send")
+  @MessageMapping("/chat.send") // 클라는 /app/chat.send 로 send
   public void sendMessage(
-      @Parameter(description = "채팅 메시지 문서", required = true)
-      @Payload CreateChatMessageRequest chatMessageRequest
+      @Valid @Payload CreateChatMessageRequest req,
+      @AuthenticationPrincipal CustomMemberDetails member
   ) {
-    chatMessageService.saveChatMessage(chatMessageRequest); // 저장
-    messagingTemplate.convertAndSend(
-        "/topic/chatroom/" + chatMessageRequest.getChatRoomUuid(), chatMessageRequest
-    );
+    Long authMemberId = member.getId();
+
+    // 클라 값 신뢰 X: 불일치시 예외
+    if (req.getSenderId() == null || !req.getSenderId().equals(authMemberId)) {
+      throw new CustomException(ErrorCode.FORBIDDEN_CHAT_ROOM_ACCESS, "Sender mismatch");
+    }
+
+    req.setSenderId(authMemberId);
+
+    // 서비스는 Document 반환(저장된 값 포함: id, 시간 등)
+    ChatMessageResponse savedDoc = chatMessageService.saveChatMessage(req);
+
+    // 브로드캐스트는 DTO로 (스키마 결합 방지)
+    messagingTemplate.convertAndSend("/topic/chatroom/" + savedDoc.getChatRoomUuid(), savedDoc);
   }
+
+
 
   /**
    * 채팅방 입장 처리 (WebSocket STOMP)
