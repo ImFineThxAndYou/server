@@ -11,7 +11,7 @@ import java.util.List;
 @Getter
 @Builder
 public class QuizWordCreate {
-    private final String word;          // 질문에 사용된 단어
+    private final String word;           // 질문에 사용된 단어
     private final List<String> choices; // 보기(4개)
     private final int answerIndex;      // 사용자가 답한 index 0~3
     private final Integer questionNo;   // 1..N
