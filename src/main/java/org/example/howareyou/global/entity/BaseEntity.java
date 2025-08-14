@@ -17,7 +17,7 @@ import lombok.Setter;
 @MappedSuperclass
 public abstract class BaseEntity {
 
-    /* ------------ 공통 PK (UUID) ------------ */
+    /* ------------ 공통 PK ------------ */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
