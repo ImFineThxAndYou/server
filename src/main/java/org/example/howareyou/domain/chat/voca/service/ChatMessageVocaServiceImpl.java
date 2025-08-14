@@ -4,7 +4,8 @@ package org.example.howareyou.domain.chat.voca.service;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.chat.voca.dto.ChatMessageReadModel;
 import org.example.howareyou.domain.chat.websocket.entity.ChatMessageDocument;
-import org.example.howareyou.domain.member.repository.ChatMessageDocumentRepository;
+
+import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
