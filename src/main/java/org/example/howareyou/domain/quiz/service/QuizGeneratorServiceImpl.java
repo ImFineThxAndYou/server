@@ -47,7 +47,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
     /* ====================== 공개 API ====================== */
 
-    /** 전체 랜덤 퀴즈 (레벨 필터 가능) */
+    /** 전체 랜덤 퀴즈 (레벨 필터 가능), 최소 5문항 ~ 최대 30문항 */
     @Override
     public ClientStartResponse startRandomQuiz(String membername, QuizLevel quizLevel) {
         Long memberId = memberService.getIdByMembername(membername);
@@ -60,11 +60,11 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         Map<String, VocaDTO> byWord = page.getContent().stream()
                 .filter(w -> matchesLevel(quizLevel, w.getLevel()))
                 .collect(Collectors.toMap(
-                        e -> safe(e.getWord()), // word 기준 유니크
+                        e -> safe(e.getWord()),
                         e -> e,
-                        (a, b) -> a
+                        (a, b) -> a // 중복 발생시 첫번째 항목 유지
                 ));
-
+        // 문항수 체크
         int unique = byWord.size();
         if (unique < 5) {
             throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
@@ -72,7 +72,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         int count = pickQuestionCount(unique);
 
-        // 타깃 만들기
+        // 정답후보 목록 생성
         List<Target> targets = byWord.values().stream()
                 .map(e -> new Target(
                         e.getWord(),
@@ -98,7 +98,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         return toClientStartResponse(result, generated);
     }
 
-    /** 데일리 퀴즈 (레벨 필터 가능) */
+    /** 데일리 퀴즈 - 특정 날짜 단어에서 문제 생성*/
     @Override
     public ClientStartResponse startDailyQuiz(String membername, LocalDate date) {
         Long memberId = memberService.getIdByMembername(membername);
@@ -116,12 +116,12 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                         w -> w,
                         (a, b) -> a
                 ));
-
+        // 문항수 체크
         int unique = byWord.size();
         if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
 
         int count = pickQuestionCount(unique);
-
+        // 정답후보 목록 생성
         List<Target> targets = byWord.values().stream()
                 .map(w -> new Target(
                         w.getWord(),
@@ -133,7 +133,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         Collections.shuffle(targets, RND);
         targets = targets.subList(0, count);
 
-        // 당일 보기 풀
+        // 보기 풀
         Set<String> dailyPool = page.getContent().stream()
                 .map(MemberVocabulary.MemberWordEntry::getMeaning)
                 .filter(this::nonBlank)
@@ -145,7 +145,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .map(VocaDTO::getMeaning)
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-
+        // 문항 생성
         List<GeneratedItem> generated = buildQuestionsFromTargets(targets, dailyPool, allPool);
 
         Instant dailyKeyUtc = date.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -171,20 +171,20 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
             String answer = t.meaning();
             List<String> choices = new ArrayList<>(4);
             choices.add(answer);
-
+            // 보기후보 집합
             List<String> candidates = new ArrayList<>();
             if (dailyPoolOrNull != null) candidates.addAll(dailyPoolOrNull);
             candidates.addAll(allPool);
-
+            // 중복제거
             Set<String> used = new HashSet<>(choices);
             List<String> filtered = candidates.stream()
                     .filter(this::nonBlank)
                     .filter(m -> !used.contains(m))
                     .distinct()
                     .collect(Collectors.toCollection(ArrayList::new));
-
+            // 보기 3개이상
             if (filtered.size() < 3) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
-
+            // 보기 랜덤선택
             Collections.shuffle(filtered, RND);
             choices.add(filtered.get(0));
             choices.add(filtered.get(1));
@@ -211,22 +211,23 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         if (generated == null || generated.isEmpty()) { // ★ 추가
             throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
         }
+        // 퀴즈 결과 생성
         QuizResult result = QuizResult.builder()
                 .memberId(memberId)
                 .quizType(type)
-                .dailyQuiz(dailyKeyUtc)           // RANDOM이면 null, DAILY면 UTC 자정 Instant
+                .dailyQuiz(dailyKeyUtc)
                 .createdAt(Instant.now())
                 .score(0L)
                 .correctCount(0L)
                 .totalQuestions((long) generated.size())
                 .quizStatus(QuizStatus.PENDING)
                 .build();
-
+        // 저장 후 문항저장
         result = quizResultRepository.save(result);
         saveQuizWords(result, generated);
         return result;
     }
-
+    // 엔티티 저장
     private void saveQuizWords(QuizResult result, List<GeneratedItem> generated) {
         List<QuizWord> batch = new ArrayList<>(generated.size());
 
@@ -251,7 +252,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                     .choice3(choices.get(2))
                     .choice4(choices.get(3))
                     .correctAnswer(answerIndex + 1)     // 1~4
-                    .level(toEnumLevel(gi.level()))                 // 문자열 그대로 저장 (A1/A2 등)
+                    .level(toEnumLevel(gi.level()))
                     .pos(gi.pos())
                     .createdAt(Instant.now())
                     .build());
@@ -259,7 +260,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
 
         quizWordRepository.saveAll(batch);
     }
-
+// QuizResult + generatedItem -> ClientStartResponse 변환
     private ClientStartResponse toClientStartResponse(QuizResult result, List<GeneratedItem> generated) {
         List<ClientQuizQuestion> clientQs = new ArrayList<>(generated.size());
         for (int i = 0; i < generated.size(); i++) {
@@ -283,46 +284,6 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private boolean nonBlank(String s) { return s != null && !s.isBlank(); }
     private String safe(String s) { return s == null ? "" : s; }
     private String nullToEmpty(String s) { return s == null ? "" : s; }
-
-    /** 보기 언어(meaningLang) 판단 - MemberWordEntry */
-    private boolean matchesMeaningLang(MemberVocabulary.MemberWordEntry w, String meaningLang) {
-        String dt = safe(w.getDictionaryType()); // enko | koen | null
-        String wl = safe(w.getLang());           // en | ko
-
-        // 1) 사전 방향이 명확하면 그 방향에 맞는 meaning만 허용
-        if ("enko".equalsIgnoreCase(dt)) {
-            return meaningLang == null || meaningLang.isBlank() || "ko".equalsIgnoreCase(meaningLang);
-        }
-        if ("koen".equalsIgnoreCase(dt)) {
-            return meaningLang == null || meaningLang.isBlank() || "en".equalsIgnoreCase(meaningLang);
-        }
-
-        // 2) dt가 없을 때만 기존 휴리스틱
-        if ("ko".equalsIgnoreCase(meaningLang)) {
-            return "en".equalsIgnoreCase(wl);
-        } else { // null 또는 "en"
-            return "ko".equalsIgnoreCase(wl);
-        }
-    }
-
-    /** 보기 언어(meaningLang) 판단  */
-    private boolean matchesMeaningLangAgg(VocaDTO w, String meaningLang) {
-        String dt = safe(w.getDictionaryType());
-        String wl = safe(w.getLang());
-
-        if ("enko".equalsIgnoreCase(dt)) {
-            return meaningLang == null || meaningLang.isBlank() || "ko".equalsIgnoreCase(meaningLang);
-        }
-        if ("koen".equalsIgnoreCase(dt)) {
-            return meaningLang == null || meaningLang.isBlank() || "en".equalsIgnoreCase(meaningLang);
-        }
-
-        if ("ko".equalsIgnoreCase(meaningLang)) {
-            return "en".equalsIgnoreCase(wl);
-        } else {
-            return "ko".equalsIgnoreCase(wl);
-        }
-    }
 
     /** 레벨 필터(quizLevel == null 이면 전체 허용) */
     private boolean matchesLevel(QuizLevel ql, String levelRow) {

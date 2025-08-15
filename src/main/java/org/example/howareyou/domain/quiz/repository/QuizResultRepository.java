@@ -16,9 +16,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
-
+    /* UUID 로 퀴즈 단건조회 */
     Optional<QuizResult> findByUuid(String uuid);
 
+    /* UUID 로 퀴즈 완료여부 조회*/
     @Query("""
         select qr.completed
           from QuizResult qr
@@ -26,6 +27,7 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
     """)
     Optional<Boolean> findCompletedQuizByUuid(@Param("uuid") String uuid);
 
+    /* 퀴즈 채점결과 및 상태변경 (quizStatus PENDING -> SUBMIT)*/
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
     update QuizResult qr
@@ -44,6 +46,7 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
                               @Param("completedAt") Instant completedAt,
                               @Param("quizStatus") QuizStatus quizStatus);
 
+    /* 회원 ID (+상태) 로 퀴즈 결과 조회 (status == null 이면 모든상태 조회 - PENDING + SUBMIT)*/
     @Query("""
         select qr
           from QuizResult qr
@@ -56,7 +59,9 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
             Pageable pageable
     );
 
+    /* 회원ID 와 상태로 퀴즈결과페이지 조회 */
     Page<QuizResult> findByMemberIdAndQuizStatus(Long memberId, QuizStatus status, Pageable pageable);
 
+    /* 회원ID 로 모든 퀴즈 결과 페이지 조회 */
     Page<QuizResult> findByMemberId(Long memberId, Pageable pageable);
 }

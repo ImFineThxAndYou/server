@@ -30,7 +30,12 @@ public class QuizServiceImpl implements QuizService {
     private final QuizResultRepository quizResultRepository;
     private final QuizWordRepository quizWordRepository;
 
-
+    /**
+     * 퀴즈 채점 및 상태 업데이트
+     * @param quizUuid   퀴즈 고유 식별자(UUID)
+     * @param selected   사용자가 제출한 각 문항의 선택 번호 리스트 (1~4, 미선택은 -1)
+     * @return 채점 결과(정답 개수, 총 문항 수, 점수 등)
+     */
     @Override
     public SubmitResponse gradeQuiz(String quizUuid, List<Integer> selected) {
         // 1) 제출 여부 확인 (uuid 기반)
@@ -51,23 +56,28 @@ public class QuizServiceImpl implements QuizService {
         }
 
         int correct = 0;
-
+        /* 채점 */
         for (int i = 0; i < items.size(); i++) {
             var view = items.get(i);
             int choiceSize = view.choiceSize();
-            int selRaw = selected.get(i);
+            int selRaw = selected.get(i); // 클라이언트 값: Null 또는 1..4
 
-            int sel; // 서버 내부 0-based
+            // 1-based 그대로 저장할 값
+            Integer userAnswerToStore;
             if (selRaw == -1) {
-                sel = -1; // 미선택
+                userAnswerToStore = null; // 미선택은 null
             } else if (selRaw >= 1 && selRaw <= choiceSize) {
-                sel = selRaw - 1;
+                userAnswerToStore = selRaw; // 1..4 유지
             } else {
                 throw new CustomException(ErrorCode.INVALID_SELECTION_INDEX);
             }
 
-            boolean isCorrect = (sel >= 0) && (sel + 1 == view.getCorrectAnswer());
-            quizWordRepository.applyGrading(view.getId(), sel, isCorrect);
+            // 1-based 끼리 비교
+            boolean isCorrect = (userAnswerToStore != null)
+                    && userAnswerToStore.equals(view.getCorrectAnswer());
+
+            // 저장도 1-based 그대로
+            quizWordRepository.applyGrading(view.getId(), userAnswerToStore, isCorrect);
             if (isCorrect) correct++;
         }
 
