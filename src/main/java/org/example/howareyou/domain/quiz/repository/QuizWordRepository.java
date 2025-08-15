@@ -23,16 +23,16 @@ public interface QuizWordRepository extends JpaRepository<QuizWord, Long> {
          order by w.questionNo asc
     """)
     List<QuizWordGrade> findForGrading(@Param("quizResultId") Long quizResultId);
-    /* 채점결과 반영 */
+    /* 채점결과 반영 user answer 1~4, 미선택 null*/
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-        update QuizWord w
-           set w.userAnswer = :selectedIndex,
-               w.isCorrect  = :isCorrect
-         where w.id = :quizWordId
+        update QuizWord qw
+           set qw.userAnswer = :userAnswer,
+               qw.isCorrect  = :isCorrect
+         where qw.id = :id
     """)
-    int applyGrading(@Param("quizWordId") Long quizWordId,
-                     @Param("selectedIndex") Integer selectedIndex,
+    int applyGrading(@Param("id") Long id,
+                     @Param("userAnswer") Integer userAnswer,
                      @Param("isCorrect") Boolean isCorrect);
 
     List<QuizWord> findByQuizResultIdOrderByQuestionNo(Long quizResultId);

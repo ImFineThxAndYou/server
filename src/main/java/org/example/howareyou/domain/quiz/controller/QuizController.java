@@ -156,7 +156,7 @@ public class QuizController {
                     @Parameter(name = "status", example = "SUBMIT") // (PENDING / SUBMIT)
             }
     )
-    // org.example.howareyou.domain.quiz.controller.QuizController
+
     @GetMapping("/me")
     public ResponseEntity<?> getMyQuizzes(
             @AuthenticationPrincipal CustomMemberDetails member,
@@ -183,7 +183,7 @@ public class QuizController {
                     @Parameter(name = "quizLevel", example = "A2")
             }
     )
-    @PostMapping ("/random/start-level")
+    @PostMapping ("/random/level/start")
     public ResponseEntity<ClientStartResponse> startRandomByLevel(
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestParam(value = "quizLevel", required = false) QuizLevel quizLevel
@@ -195,25 +195,5 @@ public class QuizController {
 
         ClientStartResponse res = quizGeneratorService.startRandomQuiz(memberName, quizLevel);
         return ResponseEntity.ok(res);
-    }
-
-    /* ===== 내부 유틸 ===== */
-
-    /* 공백 */
-    private static String firstNonBlank(String... vals) {
-        if (vals == null) return null;
-        for (String v : vals) {
-            if (v != null && !v.isBlank()) return v;
-        }
-        return null;
-    }
-    /** yyyy-dd-MM 형태(연-일-월) 전용 파서 */
-    private static LocalDate parseDateYDM(String s) {
-        try {
-            return LocalDate.parse(s, DateTimeFormatter.ofPattern("yyyy-dd-MM"));
-        } catch (DateTimeParseException ex) {
-            // 프로젝트 공통 에러코드 사용
-            throw new CustomException(ErrorCode.INVALID_DATE_FORMAT);
-        }
     }
 }
