@@ -10,4 +10,8 @@ public interface MemberTagScoreRepository extends JpaRepository<MemberTagScore, 
   List<MemberTagScore> findByMemberId(Long memberId);
   Optional<MemberTagScore> findByMemberIdAndMemberTag(Long memberId, MemberTag memberTag);
   void deleteByMemberIdAndMemberTagNotIn(Long memberId, List<MemberTag> MemberTags);
+
+  List<Long> findDistinctMemberIdByMemberIdNot(Long memberId);
+  List<Long> findDistinctMemberId();
+
 }
