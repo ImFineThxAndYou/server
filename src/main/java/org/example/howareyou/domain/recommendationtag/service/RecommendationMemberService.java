@@ -57,7 +57,7 @@ public class RecommendationMemberService {
     }
 
     // 2. 전체 사용자 ID (자기 자신 제외)
-    List<Long> allMemberIds = tagScoreRepository.findDistinctMemberIdByMemberIdNot(memberId);
+    List<Long> allMemberIds = tagScoreRepository.findDistinctMemberIdsExcept(memberId);
 
     List<SimilarityResult> similarityResults = new ArrayList<>();
 
