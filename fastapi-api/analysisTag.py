@@ -43,68 +43,153 @@ SCORES_COLL = "member_tag_score"    # 저장: { memberId: 123, scores: { "음식
 
 # ===== 태그 + 설명 =====
 tag_descriptions = {
-    "문화 & 예술": "Culture & Arts: traditional culture, performance, art, painting, sculpture, museum, literature, poetry, novel, exhibition, theater, drama, festival",
-    "음식 & 요리": "Food & Cooking: cooking, recipe, chef, cuisine, meal, dish, ingredient, gastronomy, dining, restaurant, kitchen, baking",
-    "디저트 & 음료": "Desserts & Beverages: coffee, tea, latte, espresso, cappuccino, cake, bread, dessert, pastry, cookie, smoothie, juice, milkshake",
-    "여행 & 관광": "Travel & Tourism: travel, trip, tour, tourism, destination, vacation, holiday, beach, island, mountain, hiking, sightseeing",
-    "기술 & IT": "Technology & IT: technology, computer, software, hardware, programming, coding, artificial intelligence, AI, robotics, gadget, innovation",
-    "모바일 & 앱": "Mobile & Apps: smartphone, mobile, cell phone, android, ios, application, app, ux, ui, mobile software",
-    "스포츠": "Sports: sport, soccer, football, basketball, baseball, tennis, golf, fitness, gym, yoga, swimming, running",
-    "건강 & 웰빙": "Health & Wellness: health, fitness, diet, nutrition, meditation, mental health, wellness, exercise, workout, healthy lifestyle",
-    "패션 & 뷰티": "Fashion & Beauty: fashion, clothing, style, outfit, dress, makeup, cosmetics, skincare, beauty products, hairstyle, modeling",
-    "경제 & 금융": "Economy & Finance: economy, economic, finance, financial, investment, stock, trading, market, business, real estate, banking",
-    "교육 & 학습": "Education & Learning: education, study, studying, school, learning, course, online course, lecture, class, training, self-development",
-    "엔터테인먼트": "Entertainment: entertainment, movie, film, cinema, drama, anime, animation, concert, musical, show, performance",
-    "게임": "Games: game, gaming, console, pc game, mobile game, playstation, xbox, nintendo, esports, online game",
-    "사회 & 정치": "Society & Politics: society, politics, political, government, law, policy, election, social issues, democracy, activism",
-    "과학": "Science: science, scientific, physics, chemistry, biology, astronomy, geology, experiment, research",
-    "환경 & 자연": "Environment & Nature: environment, environmental, nature, climate, climate change, eco-friendly, wildlife, recycling, conservation",
-    "음악": "Music: music, song, track, album, band, instrument, guitar, piano, concert, festival, performance",
-    "언어 & 문화교류": "Languages & Cultural Exchange: language, foreign language, translation, bilingual, multilingual, language exchange, culture exchange",
-    "역사": "History: history, historical, ancient history, modern history, heritage, war, civilization, historical event",
-    "자동차 & 모빌리티": "Automobiles & Mobility: automobile, car, vehicle, bike, motorcycle, transportation, driving, road trip",
-    "인테리어 & 주거": "Interior & Living: interior, home, housing, apartment, furniture, decoration, home design",
-    "반려동물": "Pets: pet, dog, puppy, cat, kitten, pet care, animal, companion animal",
-    "취미 & 라이프스타일": "Hobbies & Lifestyle: hobby, crafting, craft, diy, gardening, plant, collecting, leisure, lifestyle",
-    "사진 & 영상": "Photography & Videography: photo, photography, picture, camera, filming, video, videography, shoot",
-    "문구 & 디자인": "Stationery & Design: stationery, pen, paper, notebook, illustration, graphic design, drawing, sketch, typography",
-    "비즈니스 & 스타트업": "Business & Startups: business, startup, entrepreneurship, entrepreneur, marketing, sales, management, company, corporate",
-    "SNS & 커뮤니티": "SNS & Communities: social media, sns, facebook, instagram, twitter, tiktok, linkedin, chat, forum, community, post, profile, messaging",
-    "재테크": "Personal Finance: personal finance, saving, savings, side job, income, passive income, budgeting, money management",
-    "자기계발 & 목표관리": "Self-Development & Goal Management: self development, self-improvement, productivity, habit, habit building, goal, planning, motivation"
+    "LANGUAGE_LEARNING": "Languages & Cultural Exchange: language, foreign language, translation, bilingual, multilingual, language exchange, culture exchange",
+    "TRAVEL": "Travel & Tourism: travel, trip, tour, tourism, destination, vacation, holiday, beach, island, mountain, hiking, sightseeing",
+    "CULTURE": "Culture & Arts: traditional culture, performance, art, painting, sculpture, museum, literature, poetry, novel, exhibition, theater, drama, festival",
+    "BUSINESS": "Business & Startups: business, startup, entrepreneurship, entrepreneur, marketing, sales, management, company, corporate",
+    "EDUCATION": "Education & Learning: education, study, studying, school, learning, course, online course, lecture, class, training, self-development",
+    "TECHNOLOGY": "Technology & IT: technology, computer, software, hardware, programming, coding, artificial intelligence, AI, robotics, gadget, innovation",
+    "SPORTS": "Sports: sport, soccer, football, basketball, baseball, tennis, golf, fitness, gym, yoga, swimming, running",
+    "MUSIC": "Music: music, song, track, album, band, instrument, guitar, piano, concert, festival, performance",
+    "FOOD": "Food & Cooking: cooking, recipe, chef, cuisine, meal, dish, ingredient, gastronomy, dining, restaurant, kitchen, baking",
+    "ART": "Stationery & Design: stationery, pen, paper, notebook, illustration, graphic design, drawing, sketch, typography",
+    "SCIENCE": "Science: science, scientific, physics, chemistry, biology, astronomy, geology, experiment, research",
+    "HISTORY": "History: history, historical, ancient history, modern history, heritage, war, civilization, historical event",
+    "MOVIES": "Entertainment: entertainment, movie, film, cinema, drama, anime, animation, concert, musical, show, performance",
+    "GAMES": "Games: game, gaming, console, pc game, mobile game, playstation, xbox, nintendo, esports, online game",
+    "LITERATURE": "Literature: reading, writing, novel, poetry, prose, book, essay, fiction, literature analysis",
+    "PHOTOGRAPHY": "Photography & Videography: photo, photography, picture, camera, filming, video, videography, shoot",
+    "NATURE": "Environment & Nature: environment, environmental, nature, climate, climate change, eco-friendly, wildlife, recycling, conservation",
+    "FITNESS": "Health & Wellness: health, fitness, diet, nutrition, meditation, mental health, wellness, exercise, workout, healthy lifestyle",
+    "FASHION": "Fashion & Beauty: fashion, clothing, style, outfit, dress, makeup, cosmetics, skincare, beauty products, hairstyle, modeling",
+    "VOLUNTEERING": "Volunteering & Community: volunteering, nonprofit, donation, community service, helping others",
+    "ANIMALS": "Pets & Animals: pet, dog, puppy, cat, kitten, animal, animal care, companion animal",
+    "CARS": "Automobiles & Mobility: automobile, car, vehicle, bike, motorcycle, transportation, driving, road trip",
+    "DIY": "DIY & Hobbies: hobby, crafting, craft, diy, gardening, plant, collecting, leisure, lifestyle",
+    "FINANCE": "Economy & Finance: economy, economic, finance, financial, investment, stock, trading, market, business, real estate, banking"
 }
 
-# ===== 직접 매칭 키워드 =====
 tag_keywords = {
-    "문화 & 예술": ["culture", "art", "museum", "painting", "literature", "exhibition", "theater", "festival"],
-    "음식 & 요리": ["cooking", "recipe", "chef", "ingredient", "cuisine", "meal", "ramen", "sushi", "pizza"],
-    "여행 & 관광": ["travel", "trip", "tour", "destination", "beach", "mountain", "hiking", "sightseeing"],
-    "기술 & IT": ["technology", "software", "hardware", "AI", "robot", "coding", "programming", "gadget"],
-    "모바일 & 앱": ["app", "smartphone", "android", "ios", "ux", "ui", "application"],
-    "스포츠": ["soccer", "basketball", "tennis", "fitness", "yoga", "swimming", "baseball", "running"],
-    "건강 & 웰빙": ["health", "diet", "meditation", "wellness", "exercise", "workout"],
-    "패션 & 뷰티": ["fashion", "style", "makeup", "cosmetics", "skincare", "clothing"],
-    "경제 & 금융": ["economy", "stock", "investment", "finance", "real estate", "market", "trading"],
-    "교육 & 학습": ["education", "study", "school", "learning", "course", "lecture"],
-    "엔터테인먼트": ["movie", "drama", "anime", "concert", "show", "cinema"],
-    "게임": ["game", "console", "pc game", "esports", "playstation", "nintendo", "mobile game"],
-    "사회 & 정치": ["politics", "government", "law", "policy", "society", "election"],
-    "과학": ["science", "physics", "chemistry", "biology", "astronomy", "experiment"],
-    "환경 & 자연": ["environment", "climate", "nature", "wildlife", "recycling", "sustainability"],
-    "음악": ["music", "song", "instrument", "band", "concert", "album"],
-    "언어 & 문화교류": ["language", "exchange", "translation", "bilingual", "learning"],
-    "역사": ["history", "war", "ancient", "historical", "heritage", "monument"],
-    "자동차 & 모빌리티": ["car", "automobile", "bike", "transport", "drive", "vehicle"],
-    "인테리어 & 주거": ["interior", "furniture", "home", "apartment", "design", "decoration"],
-    "반려동물": ["pet", "dog", "cat", "puppy", "kitten", "animal"],
-    "취미 & 라이프스타일": ["hobby", "craft", "diy", "gardening", "collecting", "leisure"],
-    "사진 & 영상": ["photography", "video", "camera", "filming", "shooting"],
-    "문구 & 디자인": ["stationery", "illustration", "design", "drawing", "sketch"],
-    "비즈니스 & 스타트업": ["startup", "business", "entrepreneur", "marketing", "sales", "management"],
-    "SNS & 커뮤니티": ["facebook", "instagram", "twitter", "social", "sns", "community"],
-    "여행 음식": ["local food", "street food", "traditional food", "regional cuisine"],
-    "재테크": ["saving", "side job", "income", "budget", "asset"],
-    "자기계발 & 목표관리": ["productivity", "habit", "goal", "planning", "motivation"]
+    "LANGUAGE_LEARNING": [
+        "language", "translation", "bilingual", "foreign", "multilingual", "exchange",
+        "speaking", "conversation", "grammar", "pronunciation", "vocabulary",
+        "language partner", "fluency", "language test", "TOEIC", "IELTS", "language app"
+    ],
+    "TRAVEL": [
+        "travel", "trip", "tour", "destination", "vacation", "beach", "mountain", "hiking",
+        "backpacking", "airbnb", "flight", "passport", "itinerary", "exploration",
+        "hotel", "hostel", "sightseeing", "guide"
+    ],
+    "CULTURE": [
+        "culture", "museum", "festival", "tradition", "performance",
+        "heritage", "ceremony", "ritual", "cultural event", "custom",
+        "ethnicity", "folk", "dance", "symbol", "belief", "tradition", "language", "celebration"
+    ],
+    "BUSINESS": [
+        "business", "startup", "entrepreneur", "company", "marketing", "management",
+        "investment", "pitch", "profit", "corporate", "founder", "team", "revenue", "strategy",
+        "accelerator", "incubator", "business plan", "scaling"
+    ],
+    "EDUCATION": [
+        "education", "study", "learning", "lecture", "school", "course",
+        "university", "exam", "assignment", "classroom", "teacher", "textbook",
+        "tutoring", "e-learning", "quiz", "homework", "degree", "curriculum"
+    ],
+    "TECHNOLOGY": [
+        "technology", "software", "hardware", "ai", "robotics", "innovation", "coding", "programming",
+        "machine learning", "cloud", "server", "frontend", "backend", "algorithm",
+        "blockchain", "data", "api", "mobile tech"
+    ],
+    "SPORTS": [
+        "sport", "soccer", "tennis", "basketball", "golf", "swimming", "yoga", "gym",
+        "athlete", "football", "volleyball", "running", "baseball", "training", "competition",
+        "league", "tournament", "team"
+    ],
+    "MUSIC": [
+        "music", "song", "band", "instrument", "concert", "album",
+        "melody", "lyrics", "guitar", "piano", "drums", "rap", "chorus", "composition",
+        "recording", "studio", "performance", "genre"
+    ],
+    "FOOD": [
+        "food", "cooking", "recipe", "chef", "ingredient", "meal", "kitchen",
+        "taste", "dish", "flavor", "baking", "snack", "dining", "restaurant",
+        "menu", "grocery", "nutrition", "culinary"
+    ],
+    "ART": [
+        "art", "drawing", "painting", "illustration", "sketch", "design", "graphic",
+        "canvas", "color", "gallery", "sculpture", "brush", "artist", "exhibit",
+        "calligraphy", "installation", "visual art", "aesthetic"
+    ],
+    "SCIENCE": [
+        "science", "physics", "chemistry", "biology", "research", "experiment", "astronomy",
+        "theory", "microscope", "hypothesis", "scientist", "genetics", "lab", "data",
+        "ecology", "evolution", "element", "discovery"
+    ],
+    "HISTORY": [
+        "history", "heritage", "war", "ancient", "monument", "civilization",
+        "historical", "timeline", "event", "empire", "dynasty", "relic", "archaeology",
+        "battle", "archive", "colonial", "revolution", "historian"
+    ],
+    "MOVIES": [
+        "movie", "film", "drama", "cinema", "animation", "show",
+        "director", "actor", "scene", "script", "character", "theater",
+        "box office", "genre", "trailer", "blockbuster", "festival", "award"
+    ],
+    "GAMES": [
+        "game", "gaming", "console", "pc game", "mobile game", "esports",
+        "strategy", "fps", "rpg", "level", "quest", "multiplayer", "tournament",
+        "rank", "controller", "steam", "gamer"
+    ],
+    "LITERATURE": [
+        "book", "novel", "essay", "poetry", "fiction", "reading", "writing",
+        "author", "manuscript", "prose", "literary", "genre", "story", "narrative",
+        "publication", "editor", "literature", "critique"
+    ],
+    "PHOTOGRAPHY": [
+        "photo", "camera", "video", "shoot", "filming", "lens",
+        "shutter", "exposure", "focus", "tripod", "edit", "dslr", "gallery",
+        "portrait", "composition", "angle", "frame", "filter"
+    ],
+    "NATURE": [
+        "nature", "environment", "climate", "wildlife", "recycling", "eco",
+        "green", "forest", "mountain", "river", "park", "sustainability",
+        "tree", "natural", "outdoors", "weather", "landscape", "ecology"
+    ],
+    "FITNESS": [
+        "fitness", "health", "diet", "exercise", "wellness", "meditation", "workout",
+        "training", "routine", "cardio", "gym", "weight", "strength", "yoga",
+        "calories", "hydration", "stretch", "fit"
+    ],
+    "FASHION": [
+        "fashion", "style", "clothing", "makeup", "skincare", "cosmetics",
+        "outfit", "accessory", "model", "trend", "wardrobe", "designer",
+        "shopping", "fabric", "lookbook", "eyeshadow", "lipstick", "runway"
+    ],
+    "VOLUNTEERING": [
+        "volunteer", "help", "donation", "nonprofit", "support",
+        "service", "community", "charity", "ngo", "campaign", "fundraising",
+        "assist", "mentor", "relief", "care", "aid", "impact", "giving"
+    ],
+    "ANIMALS": [
+        "pet", "dog", "cat", "animal", "kitten", "puppy",
+        "veterinary", "shelter", "adopt", "fur", "leash", "animal care",
+        "rescue", "bark", "meow", "training", "wildlife", "pet food"
+    ],
+    "CARS": [
+        "car", "automobile", "vehicle", "motorcycle", "transportation", "drive",
+        "engine", "tire", "garage", "fuel", "license", "traffic", "sedan",
+        "highway", "ride", "repair", "speed", "driver"
+    ],
+    "DIY": [
+        "diy", "hobby", "craft", "gardening", "leisure", "collecting",
+        "tool", "woodworking", "homemade", "decor", "glue", "paint",
+        "project", "fixing", "handmade", "build", "plant", "kit"
+    ],
+    "FINANCE": [
+        "finance", "investment", "stock", "saving", "budget", "money", "economy",
+        "market", "income", "asset", "expense", "bank", "trading",
+        "credit", "debt", "financial plan", "retirement", "interest"
+    ]
 }
 
 # ===== 임베딩 모델/태그 임베딩 =====
