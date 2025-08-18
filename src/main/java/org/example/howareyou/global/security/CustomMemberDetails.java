@@ -13,6 +13,7 @@ import java.util.List;
 /** SecurityContext 에 저장·주입되는 사용자 객체 */
 @RequiredArgsConstructor
 @Getter
+@com.fasterxml.jackson.annotation.JsonIgnoreType // Jackson 역직렬화 완전 차단
 public class CustomMemberDetails implements UserDetails {
 
     private final Long id;                  // PK

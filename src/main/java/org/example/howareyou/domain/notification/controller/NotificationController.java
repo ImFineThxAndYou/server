@@ -15,6 +15,7 @@ import org.example.howareyou.global.exception.ErrorCode;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -89,7 +90,7 @@ public class NotificationController {
                     "서버에서 ping 이벤트를 받으면 이 엔드포인트로 응답하여 " +
                     "연결 상태를 유지해야 합니다."
     )
-    @PostMapping("/heartbeat")
+    @PostMapping(value = "/heartbeat", produces = MediaType.APPLICATION_JSON_VALUE)
     public void heartbeat(@AuthenticationPrincipal CustomMemberDetails memberDetails) {
         emitters.touch(memberDetails.getId());  // Redis TTL 연장
     }

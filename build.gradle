@@ -24,6 +24,7 @@ dependencies {
 
     // 💾 SQL - PostgreSQL + JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'org.postgresql:postgresql'
 
     // 🍃 NoSQL - MongoDB
@@ -76,6 +77,7 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 
     //Kafka
+    implementation 'org.apache.kafka:kafka-clients:3.8.0'
     implementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 

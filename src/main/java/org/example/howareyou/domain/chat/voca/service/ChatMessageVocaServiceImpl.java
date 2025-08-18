@@ -27,7 +27,8 @@ public class ChatMessageVocaServiceImpl implements ChatMessageVocaService {
         return ChatMessageReadModel.builder()
                 .id(doc.getId())
                 .chatRoomUuid(doc.getChatRoomUuid())
-                .sender(doc.getSenderName())
+                .senderId(doc.getSenderId())
+                .senderName(doc.getSenderName())
                 .content(doc.getContent())
                 .messageTime(doc.getMessageTime())
                 .build();
