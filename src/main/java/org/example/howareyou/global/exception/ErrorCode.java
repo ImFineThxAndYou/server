@@ -111,7 +111,12 @@ public enum ErrorCode {
     NOTIFICATION_RECEIVER_NOT_FOUND(HttpStatus.NOT_FOUND, "N006", "알림 수신자를 찾을 수 없습니다."),
 
     /* ───────────[단어장]─────────── */
-    VOCABULARY_NOT_FOUND(HttpStatus.NOT_FOUND, "V001", "단어장을 찾을 수 없습니다.");
+    VOCABULARY_NOT_FOUND(HttpStatus.NOT_FOUND, "V001", "단어장을 찾을 수 없습니다."),
+
+    /* ───────────[Vector]─────────── */
+    VECTOR_SERIALIZATION_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "VEC001", "사용자 벡터 직렬화에 실패했습니다."),
+    VECTOR_DESERIALIZATION_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "VEC002", "사용자 벡터 역직렬화에 실패했습니다.")
+    ;
 
     /* Getter ― 럼북을 안 쓴 예시 */
     /* 필드 정의 */
