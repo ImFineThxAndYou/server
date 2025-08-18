@@ -95,7 +95,7 @@ public class QuizController {
     }
     @Operation(
             summary = "퀴즈 제출(채점)",
-            description = "퀴즈의 각 문항 선택 인덱스 배열(0~3, 미선택은 -1)을 제출하면 서버에서 채점합니다.",
+            description = "퀴즈의 각 문항 선택 (1~4) 를 제출하면 서버에서 채점합니다.",
             parameters = {
                     @Parameter(name = "quizUUID", description = "퀴즈 공개용 UUID", example = "3b8b5e6a-1e24-4d2f-9d2a-7a1b0f2ec1aa")
             },
@@ -162,7 +162,7 @@ public class QuizController {
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) QuizStatus status // ★ PENDING | SUBMIT (enum과 일치)
+            @RequestParam(required = false) QuizStatus status // ★ PENDING | SUBMIT
     ) {
         if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
 
