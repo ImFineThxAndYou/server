@@ -39,6 +39,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
 
+        // WebSocket 관련 경로는 JWT 필터 스킵
+        String requestURI = req.getRequestURI();
+        if (requestURI.startsWith("/ws-chatroom/")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         String token = null;
         
         // 1. Authorization 헤더에서 토큰 확인
