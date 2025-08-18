@@ -69,6 +69,7 @@ jobs:
             JWT_SECRET="${{ secrets.JWT_SECRET }}"
             LIBER_HOST=${{secrets.LIBER_HOST}}
             LIBER_PORT=${{secrets.LIBER_PORT}}
+            NLP_BASE_URL=${{secrets.NLP_BASE_URL}}
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
