@@ -70,6 +70,7 @@ jobs:
             LIBER_HOST=${{secrets.LIBER_HOST}}
             LIBER_PORT=${{secrets.LIBER_PORT}}
             NLP_BASE_URL=${{secrets.NLP_BASE_URL}}
+            TAGGING_NLP_BASE_URL=${{secrets.TAGGING_NLP_BASE_UR}}
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
