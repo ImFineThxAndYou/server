@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 사용자별 단어장 생성 서비스
@@ -311,6 +312,53 @@ public class MemberVocaBookService {
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "analyzedAt")),
                 total
         );
+    }
+
+    /* 최신단어 개수 */
+    public long countLatestUniqueWordsTotal(String membername) {
+        List<MemberVocabularyRepository.CountOnly> cnt =
+                memberVocabularyRepository.countLatestUniqueWords(membername, null,null);
+    // 결과가 없거나 total이 null이면 0
+        if (cnt == null || cnt.isEmpty() || cnt.get(0) == null || cnt.get(0).getTotal() == null) {
+            return 0L;
+        }
+        return cnt.get(0).getTotal();
+    }
+    /**
+     * 지정 구간(UTC) 동안 생성된 단어장 문서의 createdAt을
+     * 주어진 타임존(tz) 기준 "로컬 날짜(YYYY-MM-DD)"로 변환하여
+     * LocalDate 집합(Set)으로 반환후 대시보드의 "복습 필요 일수" 등 날짜 단위 지표를 계산
+     * 사용자 로컬 자정 기준으로 날짜 경계를 맞추기 위해 사용
+     *
+     * @param membername  사용자 식별자
+     * @param fromUtc     조회 시작 UTC (포함)
+     * @param toUtcExcl   조회 종료 UTC (제외)
+     * @param tz          타임존 ID (예: "Asia/Seoul")
+     * @return            해당 구간에 단어장이 존재했던 로컬 날짜들의 집합
+     */
+    public Set<LocalDate> getDistinctVocabLocalDates(String membername, Instant fromUtc, Instant toUtcExcl, String tz) {
+        // 1) membername + createdAt 범위로 매칭
+        // 2) createdAt을 tz 기준 로컬 날짜 문자열(YYYY-MM-DD)로 변환
+        // 3) 변환된 날짜 문자열로 group하여 distinct 집합 생성
+        // 4) 결과를 LocalDate로 파싱하여 Set으로 반환
+        List<AggregationOperation> pipeline = List.of(
+                Aggregation.match(
+                        Criteria.where("membername").is(membername)
+                                .and("createdAt").gte(fromUtc).lt(toUtcExcl)
+                ),
+                Aggregation.project()
+                        .andExpression("dateToString({ date: '$createdAt', timezone: '" + tz + "', format: '%Y-%m-%d' })")
+                        .as("localDate"),
+                Aggregation.group("localDate"),
+                Aggregation.project("_id").and("_id").as("day")
+        );
+
+        Aggregation agg = Aggregation.newAggregation(pipeline);
+        AggregationResults<Document> res = mongoTemplate.aggregate(agg, "member_vocabulary", Document.class);
+
+        return res.getMappedResults().stream()
+                .map(d -> LocalDate.parse(d.getString("day")))
+                .collect(Collectors.toSet());
     }
 
 }

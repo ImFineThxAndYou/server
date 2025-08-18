@@ -1,12 +1,8 @@
 package org.example.howareyou.domain.quiz.service;
 
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
-import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
 import org.example.howareyou.domain.quiz.entity.QuizLevel;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
-import java.util.List;
 
 
 public interface QuizGeneratorService {

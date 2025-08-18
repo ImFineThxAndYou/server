@@ -38,6 +38,7 @@ public class QuizServiceImpl implements QuizService {
      */
     @Override
     public SubmitResponse gradeQuiz(String quizUuid, List<Integer> selected) {
+        // TODO : 제출하는사람의 member id 가 동일한지 확인하는 로직추가 (방어로직)
         // 1) 제출 여부 확인 (uuid 기반)
         boolean completed = quizResultRepository.findCompletedQuizByUuid(quizUuid)
                 .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));

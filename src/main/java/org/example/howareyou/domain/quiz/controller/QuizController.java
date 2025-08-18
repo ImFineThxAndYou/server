@@ -2,6 +2,7 @@ package org.example.howareyou.domain.quiz.controller;
 
 import io.swagger.v3.oas.annotations.*;
 import io.swagger.v3.oas.annotations.media.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.member.service.MemberService;
@@ -30,6 +31,7 @@ import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "퀴즈", description = "퀴즈 관련 API")
 @RequestMapping("/api/quiz")
 public class QuizController {
 
