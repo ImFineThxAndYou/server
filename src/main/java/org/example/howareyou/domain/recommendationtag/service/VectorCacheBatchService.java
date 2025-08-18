@@ -21,7 +21,7 @@ public class VectorCacheBatchService {
 
   /** 모든 사용자 벡터 캐싱 (하루 1회) */
   public void cacheAllMemberVectors() {
-    List<Long> allMemberIds = tagScoreRepository.findDistinctMemberId();
+    List<Long> allMemberIds = tagScoreRepository.findDistinctMemberIds();
     for (Long memberId : allMemberIds) {
       Map<String, Double> todayVector = tagService.refreshMemberScores(memberId);
       Map<String, Double> existing = redisService.getMemberVector(memberId);
