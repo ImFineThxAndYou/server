@@ -19,6 +19,7 @@ public class ChatMessageDocumentResponse {
   public static ChatMessageDocumentResponse from(ChatMessageDocument chatMessageDocument) {
     return ChatMessageDocumentResponse.builder()
         .id(chatMessageDocument.getId())
+        .chatRoomUuid(chatMessageDocument.getChatRoomUuid())
         .senderName(chatMessageDocument.getSenderName())
         .content(chatMessageDocument.getContent())
         .messageTime(chatMessageDocument.getMessageTime())

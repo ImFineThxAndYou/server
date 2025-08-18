@@ -11,3 +11,4 @@ public record NotifyDto(
         Instant readAt,
         String payload           // 필요하면 클래스로 파싱
 ) {}
+

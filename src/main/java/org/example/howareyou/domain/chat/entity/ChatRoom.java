@@ -22,7 +22,7 @@ public class ChatRoom extends BaseTime {
   @GeneratedValue
   private Long id;
 
-  @Column(columnDefinition = "uuid", unique = true, nullable = false)
+  @Column( unique = true, nullable = false)
   private String uuid;
 
   @Enumerated(EnumType.STRING)

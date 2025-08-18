@@ -74,6 +74,9 @@ public class SecurityConfig {
 
                         // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
+                        
+                        // WebSocket 관련 경로 허용 (SockJS info, sockjs-node 등)
+                        .requestMatchers("/ws-chatroom/**").permitAll()
 
                         // 개발 환경 전용 허용 경로
                         .requestMatchers(isDevProfile() ? new String[]{
