@@ -64,4 +64,10 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
 
     /* 회원ID 로 모든 퀴즈 결과 페이지 조회 */
     Page<QuizResult> findByMemberId(Long memberId, Pageable pageable);
+
+    //가장 최근에 제출한 퀴즈 조회
+    Optional<QuizResult> findTopByMemberIdAndQuizStatusOrderByCreatedAtDesc(
+            Long memberId,
+            QuizStatus quizStatus
+    );
 }

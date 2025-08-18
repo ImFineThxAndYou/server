@@ -1,6 +1,8 @@
 package org.example.howareyou.domain.dashboard.service;
 
 import org.example.howareyou.domain.dashboard.dto.ScorePoint;
+import org.example.howareyou.domain.dashboard.dto.WrongAnswer;
+import org.example.howareyou.domain.quiz.dto.response.WrongAnswerResponse;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,6 +24,9 @@ public interface DashboardService {
     int countReviewDays(Long memberId, LocalDate from, LocalDate to, ZoneId zone);
     // 학습 성과 분석
     List<ScorePoint> getQuizScoreSeries(Long memberId, Instant fromUtc, Instant toUtc, Integer limit);
+    //오답노트
+    List<WrongAnswer> getWrongAnswer(Long memberId);
+
 
 
 

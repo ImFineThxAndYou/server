@@ -2,6 +2,7 @@ package org.example.howareyou.domain.quiz.service;
 
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
+import org.example.howareyou.domain.quiz.dto.response.WrongAnswerResponse;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
 import org.example.howareyou.domain.quiz.entity.QuizStatus;
 import org.springframework.data.domain.Page;
@@ -26,5 +27,7 @@ public interface QuizService {
     @Transactional(readOnly = true)
     ClientStartResponse getPendingQuizByUuid(Long memberId, String uuid);
 
-
+    //가장 최근에 제출한 퀴즈 틀린 단어 가져오기
+    @Transactional(readOnly = true)
+    List<WrongAnswerResponse> getWrongAnswer(Long memberId);
 }

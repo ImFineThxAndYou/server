@@ -36,4 +36,7 @@ public interface QuizWordRepository extends JpaRepository<QuizWord, Long> {
                      @Param("isCorrect") Boolean isCorrect);
 
     List<QuizWord> findByQuizResultIdOrderByQuestionNo(Long quizResultId);
+
+    // 만약 바로 틀린 문제만 가져오고 싶다면 이렇게도 가능
+    List<QuizWord> findByQuizResultIdAndIsCorrectFalse(Long quizResultId);
 }

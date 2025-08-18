@@ -2,6 +2,8 @@ package org.example.howareyou.domain.dashboard.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.dashboard.dto.ScorePoint;
+import org.example.howareyou.domain.dashboard.dto.WrongAnswer;
+import org.example.howareyou.domain.quiz.service.QuizService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class DashboardServiceImpl implements DashboardService {
+
+    private final QuizService quizService;
 
     @Override
     public long countWords(String membername, String lang, String pos) {
@@ -33,5 +37,12 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public List<ScorePoint> getQuizScoreSeries(Long memberId, Instant fromUtc, Instant toUtc, Integer limit) {
         return List.of();
+    }
+
+    @Override
+    public List<WrongAnswer> getWrongAnswer(Long memberId) {
+        return quizService.getWrongAnswer(memberId).stream()
+                .map(r -> new WrongAnswer(r.getWord(), r.getMeaning(), r.getPos()))
+                .toList();
     }
 }

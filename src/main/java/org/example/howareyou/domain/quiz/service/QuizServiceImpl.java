@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.quiz.dto.ClientQuizQuestion;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
+import org.example.howareyou.domain.quiz.dto.response.WrongAnswerResponse;
 import org.example.howareyou.domain.quiz.dto.submit.SubmitResponse;
 import org.example.howareyou.domain.quiz.entity.QuizResult;
 import org.example.howareyou.domain.quiz.entity.QuizStatus;
@@ -144,5 +145,21 @@ public class QuizServiceImpl implements QuizService {
                 .quizUUID(qr.getUuid())
                 .quizQuestions(questions)
                 .build();
+    }
+
+    //오답노트
+    @Override
+    public List<WrongAnswerResponse> getWrongAnswer(Long memberId) {
+        QuizResult latestResult = quizResultRepository
+                .findTopByMemberIdAndQuizStatusOrderByCreatedAtDesc(memberId, QuizStatus.SUBMIT)
+                .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
+
+        List<QuizWord> wrongWords = quizWordRepository
+                .findByQuizResultIdAndIsCorrectFalse(latestResult.getId());
+
+
+        return wrongWords.stream()
+                .map(w -> new WrongAnswerResponse(w.getWord(), w.getMeaning(), w.getPos()))
+                .toList();
     }
 }
