@@ -31,4 +31,6 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     
     // 리프레시 토큰으로 인증 정보 조회
     Optional<Auth> findByRefreshToken(String refreshToken);
+    
+
 }

@@ -37,7 +37,9 @@ public class AuthController {
         
         // Set tokens in response
         response.setHeader("Authorization", "Bearer " + tokenBundle.access());
-        response.addCookie(CookieUtils.refresh(tokenBundle.refresh(), false));
+        // 개발 환경에서는 secure=false, 프로덕션에서는 secure=true
+        boolean isSecure = !"dev".equals(System.getProperty("spring.profiles.active", "dev"));
+        response.addCookie(CookieUtils.refresh(tokenBundle.refresh(), isSecure));
         
         // 개발 환경에서는 응답 본문에도 Refresh Token 포함 (HttpOnly 쿠키 읽기 문제 해결)
         return ResponseEntity.ok(tokenBundle);
@@ -45,11 +47,11 @@ public class AuthController {
 
     @Operation(
         summary = "토큰 갱신",
-        description = "리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. " +
+        description = "membername과 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. " +
                      "리프레시 토큰은 쿠키에서 자동으로 읽어집니다."
     )
     @PostMapping("/refresh")
-    public ResponseEntity<Void> refresh(
+    public ResponseEntity<TokenBundle> refresh(
             @Parameter(description = "리프레시 토큰 (쿠키에서 자동 읽기)", hidden = true)
             @CookieValue(value = "Refresh", required = false) String refreshToken, 
             HttpServletRequest request, 
@@ -59,10 +61,10 @@ public class AuthController {
             throw new CustomException(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND);
         }
         
-        String newAccessToken = authService.refresh(refreshToken);
-        response.setHeader("Authorization", "Bearer " + newAccessToken);
+        TokenBundle tokenBundle = authService.refreshToken(refreshToken);
+        response.setHeader("Authorization", "Bearer " + tokenBundle.access());
         
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(tokenBundle);
     }
 
     @Operation(

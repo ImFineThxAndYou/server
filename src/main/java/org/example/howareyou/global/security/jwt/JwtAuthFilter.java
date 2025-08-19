@@ -81,10 +81,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            // validate() 내부에서 서명·만료 체크만 하고 subject 반환
-            String userId = jwtTokenProvider.validateAndGetSubject(token);
+            // Access Token에서 사용자 식별자 추출
+            String identifier = jwtTokenProvider.getIdentifierFromAccessToken(token);
 
-            UserDetails user = userDetailsService.loadUserByUsername(userId); // ← userId=email or memberId
+            UserDetails user = userDetailsService.loadUserByUsername(identifier); // ← identifier=membername
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
