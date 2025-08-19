@@ -75,5 +75,5 @@ docker compose -f docker-compose.k6.yml exec k6 k6 run scripts/test.js
 
 ## 🎯 기능별 실행 예시
 ```powershell
-docker compose -f docker-compose.k6.yml exec k6 k6 run scripts/features/chat.js
+docker compose -f docker-compose.k6.yml exec k6 k6 run scripts/features/ramp.js
 ```
