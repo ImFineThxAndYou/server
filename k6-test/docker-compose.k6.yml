@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  k6:
+    image: grafana/k6:latest
+    container_name: k6-local
+    working_dir: /work
+    volumes:
+      - ./scripts:/work/scripts    # 로컬 scripts/를 컨테이너 /work/scripts에 마운트
+    ports:
+      - "5665:5665"                # Web Dashboard
+    environment:
+      - K6_WEB_DASHBOARD=true
+      - BASE_URL=http://host.docker.internal:8080
+    # 기본 실행은 빈 상태로 두고, run 할 때 커맨드를 덮어쓸 수 있음
+#    entrypoint: ["k6"]
+    entrypoint: ["sleep", "infinity"]
