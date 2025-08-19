@@ -69,37 +69,24 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 2) 프로세서 실행
         TokenBundle t = proc.process((OAuth2User)auth.getPrincipal(), req);
 
-        // 3-1) 토큰 전달 (같음)
-        res.setHeader("Authorization", "Bearer "+t.access());
-        res.addCookie(CookieUtils.refresh(t.refresh(), false));
+        // 3-1) 토큰 전달 - Refresh Token만 쿠키에 설정
+        // 개발 환경에서는 secure=false, 프로덕션에서는 secure=true
+        boolean isSecure = !"dev".equals(activeProfile);
+        res.addCookie(CookieUtils.refresh(t.refresh(), isSecure));
 
         // 3-2) 목적지 결정 (환경에 따라 다름)
         String redirectUrl;
+        String path = t.completed() ? "/login/success" : "/signup/membername";
         
-        if ("dev".equals(activeProfile)) {
-            // 개발 환경: React 앱으로 리다이렉트
-            String path = t.completed() ? "/login/success" : "/signup/membername";
-            
-            redirectUrl = UriComponentsBuilder
-                    .fromUriString(frontUrl)
-                    .path(path)
-                    .queryParam("oauth_success", "true")
-                    .queryParam("provider", provider.name().toLowerCase())
-                    .queryParam("profile_completed", String.valueOf(t.completed()))
-                    .build().toUriString();
-            
-            log.info("🔧 개발 환경 OAuth2 리다이렉트 (React): {}", redirectUrl);
-        } else {
-            // 프로덕션 환경: 프론트엔드로 리다이렉트
-            String path = t.completed() ? "/login/success" : "/signup/membername";
-            
-            redirectUrl = UriComponentsBuilder
-                    .fromUriString(frontUrl)
-                    .path(path)
-                    .build().toUriString();
-            
-            log.info("🚀 프로덕션 환경 OAuth2 리다이렉트: {}", redirectUrl);
-        }
+        redirectUrl = UriComponentsBuilder
+                .fromUriString(frontUrl)
+                .path(path)
+                .queryParam("oauth_success", "true")
+                .queryParam("provider", provider.name().toLowerCase())
+                .queryParam("profile_completed", String.valueOf(t.completed()))
+                .build().toUriString();
+        
+        log.info("🔄 OAuth2 리다이렉트: {}", redirectUrl);
 
         getRedirectStrategy().sendRedirect(req, res, redirectUrl);
 

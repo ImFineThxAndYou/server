@@ -8,7 +8,7 @@ public final class CookieUtils {
     
     public static Cookie refresh(String rt, boolean secure){
         Cookie c=new Cookie("Refresh",rt);
-        c.setHttpOnly(true);
+        c.setHttpOnly(false); // JavaScript에서 읽을 수 있도록
         c.setPath("/");
         c.setSecure(secure); 
         c.setMaxAge(14*24*60*60);

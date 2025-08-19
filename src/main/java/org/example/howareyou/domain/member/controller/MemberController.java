@@ -44,6 +44,9 @@ public class MemberController {
     public ResponseEntity<ProfileResponse> getMyProfile(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(memberService.getMyProfile(memberDetails.getId()));
     }
 
@@ -53,6 +56,9 @@ public class MemberController {
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
             @Valid @RequestBody ProfileCreateRequest request) {
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(memberService.updateMyProfile(memberDetails.getId(), request));
     }
 
@@ -86,6 +92,9 @@ public class MemberController {
     public ResponseEntity<Void> deleteMyAccount(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomMemberDetails memberDetails) {
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         memberService.deleteAccount(memberDetails.getId());
         return ResponseEntity.noContent().build();
     }
@@ -103,6 +112,9 @@ public class MemberController {
             @AuthenticationPrincipal CustomMemberDetails memberDetails,
             @Valid @RequestBody MembernameRequest request,
             HttpServletResponse res) {
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(memberService.setMembername(memberDetails.getId(), request, res));
     }
 
@@ -150,6 +162,9 @@ public class MemberController {
                     hidden      = true
             )
             @AuthenticationPrincipal CustomMemberDetails memberDetails){
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         List<ProfileResponse> users = memberService.findOthersWithSameCategories(memberDetails.getId());
         return ResponseEntity.ok().body(users);
     }
@@ -187,6 +202,9 @@ public class MemberController {
             )
             @Valid FilterRequest filterRequest
     ) {
+        if (memberDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
         List<ProfileResponse> users = memberService.findOthersWithFilter(filterRequest, memberDetails.getId());
         return ResponseEntity.ok(users);
     }
