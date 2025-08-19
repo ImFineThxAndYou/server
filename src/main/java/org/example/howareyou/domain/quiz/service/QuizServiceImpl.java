@@ -1,6 +1,7 @@
 package org.example.howareyou.domain.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.quiz.dto.ClientQuizQuestion;
 import org.example.howareyou.domain.quiz.dto.ClientStartResponse;
 import org.example.howareyou.domain.quiz.dto.response.QuizResultResponse;
@@ -11,6 +12,7 @@ import org.example.howareyou.domain.quiz.entity.QuizStatus;
 import org.example.howareyou.domain.quiz.entity.QuizWord;
 import org.example.howareyou.domain.quiz.repository.QuizResultRepository;
 import org.example.howareyou.domain.quiz.repository.QuizWordRepository;
+import org.example.howareyou.domain.dashboard.dto.ScorePoint;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.data.domain.Page;
@@ -19,13 +21,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class QuizServiceImpl implements QuizService {
 
     private final QuizResultRepository quizResultRepository;
@@ -59,107 +66,169 @@ public class QuizServiceImpl implements QuizService {
         int correct = 0;
         /* 채점 */
         for (int i = 0; i < items.size(); i++) {
-            var view = items.get(i);
-            int choiceSize = view.choiceSize();
-            int selRaw = selected.get(i); // 클라이언트 값: Null 또는 1..4
+            var item = items.get(i);
+            Integer selectedIndex = selected.get(i);
 
-            // 1-based 그대로 저장할 값
-            Integer userAnswerToStore;
-            if (selRaw == -1) {
-                userAnswerToStore = null; // 미선택은 null
-            } else if (selRaw >= 1 && selRaw <= choiceSize) {
-                userAnswerToStore = selRaw; // 1..4 유지
-            } else {
-                throw new CustomException(ErrorCode.INVALID_SELECTION_INDEX);
+            if (Objects.equals(selectedIndex, item.getCorrectAnswer() - 1)) { // 0-based로 변환
+                correct++;
             }
-
-            // 1-based 끼리 비교
-            boolean isCorrect = (userAnswerToStore != null)
-                    && userAnswerToStore.equals(view.getCorrectAnswer());
-
-            // 저장도 1-based 그대로
-            quizWordRepository.applyGrading(view.getId(), userAnswerToStore, isCorrect);
-            if (isCorrect) correct++;
         }
 
-        long total = items.size();
-        long score = Math.round(correct * 100.0 / total);
+        // 4) 점수 계산 및 상태 업데이트
+        int totalQuestions = items.size();
+        int score = (int) Math.round((double) correct / totalQuestions * 100);
 
-        // 4) 결과 집계 업데이트 (uuid 기반)
-        quizResultRepository.finalizeGradingByUuid(quizUuid, correct, total, score, Instant.now(), QuizStatus.SUBMIT);
+        quizResultRepository.updateQuizResult(quizResultId, correct, totalQuestions, score, true);
 
-        // 5) 응답
         return SubmitResponse.builder()
-                .quizUUID(quizUuid)
                 .correctCount(correct)
-                .totalQuestions((int) total)
+                .totalQuestions(totalQuestions)
                 .score(score)
                 .build();
     }
-    /* 멤버벌 퀴즈 조회 (전체)*/
+
     @Override
-    public Page<QuizResultResponse> getQuizResultsByMember(Long memberId,QuizStatus status, Pageable pageable) {
-        Page<QuizResult> page = (status == null)
-                ? quizResultRepository.findByMemberId(memberId, pageable)
-                : quizResultRepository.findByMemberIdAndQuizStatus(memberId, status, pageable);
-        return quizResultRepository.findByMemberIdAndOptionalStatus(memberId,status, pageable)
-                .map(QuizResultResponse::fromEntity);
+    @Transactional(readOnly = true)
+    public Page<QuizResultResponse> getQuizResultsByMember(Long memberId, QuizStatus status, Pageable pageable) {
+        return quizResultRepository.findByMemberIdAndStatus(memberId, status, pageable)
+                .map(QuizResultResponse::from);
     }
-    /* 단건조회 */
+
     @Override
+    @Transactional(readOnly = true)
     public QuizResultResponse getQuizResultDetail(String quizUUID) {
-        QuizResult result = quizResultRepository.findByUuid(quizUUID)
+        return quizResultRepository.findByUuid(quizUUID)
+                .map(QuizResultResponse::from)
                 .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
-
-        return QuizResultResponse.fromEntity(result);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ClientStartResponse getPendingQuizByUuid(Long memberId, String uuid) {
-        QuizResult qr = quizResultRepository.findByUuid(uuid)
+        QuizResult quizResult = quizResultRepository.findByUuidAndMemberId(uuid, memberId)
                 .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
 
-        if (!Objects.equals(qr.getMemberId(), memberId)) {
-            throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
-        }
-        if (qr.getQuizStatus() != QuizStatus.PENDING) {
-            throw new CustomException(ErrorCode.QUIZ_ALREADY_SUBMITTED); // 제출 완료는 재개 불가
+        if (quizResult.getStatus() != QuizStatus.PENDING) {
+            throw new CustomException(ErrorCode.QUIZ_ALREADY_SUBMITTED);
         }
 
-        List<QuizWord> words = quizWordRepository.findByQuizResultIdOrderByQuestionNo(qr.getId());
-
-        List<ClientQuizQuestion> questions = new ArrayList<>(words.size());
-        for (QuizWord w : words) {
-            List<String> choices = List.of(
-                    w.getChoice1(), w.getChoice2(), w.getChoice3(), w.getChoice4()
-            );
-            questions.add(ClientQuizQuestion.builder()
-                    .questionNo(w.getQuestionNo())
-                    .question(w.getWord())
-                    .choices(choices)
-                    .build());
-        }
+        List<ClientQuizQuestion> questions = quizWordRepository.findByQuizResultId(quizResult.getId())
+                .stream()
+                .map(ClientQuizQuestion::from)
+                .toList();
 
         return ClientStartResponse.builder()
-                .quizResultId(qr.getId())
-                .quizUUID(qr.getUuid())
+                .quizResultId(quizResult.getId())
+                .quizUUID(quizResult.getUuid())
                 .quizQuestions(questions)
                 .build();
     }
 
-    //오답노트
     @Override
+    @Transactional(readOnly = true)
     public List<WrongAnswerResponse> getWrongAnswer(Long memberId) {
-        QuizResult latestResult = quizResultRepository
-                .findTopByMemberIdAndQuizStatusOrderByCreatedAtDesc(memberId, QuizStatus.SUBMIT)
-                .orElseThrow(() -> new CustomException(ErrorCode.QUIZ_NOT_FOUND));
+        return quizResultRepository.findLatestWrongAnswers(memberId);
+    }
 
-        List<QuizWord> wrongWords = quizWordRepository
-                .findByQuizResultIdAndIsCorrectFalse(latestResult.getId());
+    /* -------------------- 대시보드용 메서드들 -------------------- */
 
+    @Override
+    @Transactional(readOnly = true)
+    public int calculateLearningStreak(Long memberId, ZoneId zoneId, String period) {
+        try {
+            log.info("연속 학습일 계산 시작 - memberId: {}, zoneId: {}, period: {}", memberId, zoneId, period);
+            
+            LocalDate to = LocalDate.now(zoneId);
+            LocalDate from = calculateFromDate(to, period);
+            
+            int streak = quizResultRepository.calculateLearningStreakByPeriod(memberId, from, to, zoneId.getId());
+            
+            log.info("연속 학습일 계산 완료 - memberId: {}, streak: {}", memberId, streak);
+            return streak;
+            
+        } catch (Exception e) {
+            log.error("연속 학습일 계산 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
+            return 0;
+        }
+    }
 
-        return wrongWords.stream()
-                .map(w -> new WrongAnswerResponse(w.getWord(), w.getMeaning(), w.getPos()))
-                .toList();
+    @Override
+    @Transactional(readOnly = true)
+    public int countReviewNeededDays(Long memberId, LocalDate from, LocalDate to, ZoneId zoneId) {
+        try {
+            log.info("복습 필요 날짜 계산 시작 - memberId: {}, from: {}, to: {}", memberId, from, to);
+            
+            // 간단한 구현: 기간 내 퀴즈를 푼 날짜 수를 복습 필요 날짜로 계산
+            int reviewDays = quizResultRepository.countQuizDaysByPeriod(memberId, from, to, zoneId.getId());
+            
+            log.info("복습 필요 날짜 계산 완료 - memberId: {}, reviewDays: {}", memberId, reviewDays);
+            return reviewDays;
+            
+        } catch (Exception e) {
+            log.error("복습 필요 날짜 계산 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
+            return 0;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ScorePoint> getScoreSeries(Long memberId, Instant fromUtc, Instant toUtc, Integer limit) {
+        try {
+            log.info("점수 시리즈 조회 시작 - memberId: {}, fromUtc: {}, toUtc: {}, limit: {}", memberId, fromUtc, toUtc, limit);
+            
+            List<ScorePoint> scoreSeries = quizResultRepository.findScoreSeriesByPeriod(memberId, fromUtc, toUtc)
+                    .stream()
+                    .limit(limit != null ? limit : 30) // 기본값 30개로 제한
+                    .map(result -> new ScorePoint(
+                        result.getUuid(),
+                        result.getCompletedAt(),
+                        result.getScore().intValue()
+                    ))
+                    .toList();
+            
+            log.info("점수 시리즈 조회 완료 - memberId: {}, count: {}", memberId, scoreSeries.size());
+            return scoreSeries;
+            
+        } catch (Exception e) {
+            log.error("점수 시리즈 조회 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Integer> getQuizGrass(Long memberId, int year, ZoneId zoneId, String period) {
+        try {
+            log.info("퀴즈 잔디 조회 시작 - memberId: {}, year: {}, zoneId: {}, period: {}", memberId, year, zoneId, period);
+            
+            LocalDate to = LocalDate.now(zoneId);
+            LocalDate from = calculateFromDate(to, period);
+            
+            List<QuizResultRepository.DailyQuizCount> result = quizResultRepository.getDailyQuizCountsByPeriod(
+                memberId, from, to, zoneId.getId());
+            
+            Map<String, Integer> grass = new HashMap<>();
+            for (QuizResultRepository.DailyQuizCount daily : result) {
+                grass.put(daily.getDate(), daily.getCount());
+            }
+            
+            log.info("퀴즈 잔디 조회 완료 - memberId: {}, count: {}", memberId, grass.size());
+            return grass;
+            
+        } catch (Exception e) {
+            log.error("퀴즈 잔디 조회 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * 기간에 따른 시작 날짜 계산
+     */
+    private LocalDate calculateFromDate(LocalDate to, String period) {
+        return switch (period) {
+            case "week" -> to.minusWeeks(1);
+            case "month" -> to.minusMonths(1);
+            default -> to.minusWeeks(1); // 기본값은 주간
+        };
     }
 }

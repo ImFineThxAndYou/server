@@ -250,4 +250,17 @@ public class MemberServiceImpl implements MemberService {
     public List<MemberProfileViewForVoca> findAllActiveProfilesForVoca() {
         return memberRepository.findAllActiveProfilesForVoca();
     }
+
+    /* 대시보드용 메서드 */
+
+    @Override
+    public String findMembernameById(Long memberId) {
+        try {
+            Member member = fetchMember(memberId);
+            return member.getMembername();
+        } catch (Exception e) {
+            log.error("멤버 ID로 membername 조회 실패 - memberId: {}", memberId, e);
+            return null;
+        }
+    }
 }

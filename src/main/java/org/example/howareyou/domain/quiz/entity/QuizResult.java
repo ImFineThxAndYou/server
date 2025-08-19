@@ -69,7 +69,15 @@ public class QuizResult {
 
     @OneToMany(mappedBy = "quizResult", cascade = CascadeType.ALL)
     @OrderBy("questionNo ASC") // 문항번호대로 정렬
+    @Builder.Default
     private List<QuizWord> quizWords = new ArrayList<>();
+
+    /**
+     * 퀴즈 상태 조회 (getter 메서드)
+     */
+    public QuizStatus getStatus() {
+        return this.quizStatus;
+    }
 
     /** 저장 직전에 기본값 보정 */
     @PrePersist

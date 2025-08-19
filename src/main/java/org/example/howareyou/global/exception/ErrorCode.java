@@ -125,7 +125,10 @@ public enum ErrorCode {
     INVALID_SELECTION_INDEX(HttpStatus.BAD_REQUEST, "Q006", "답안 인덱스가 보기 범위를 벗어났습니다."),
     QUIZ_FORBIDDEN(HttpStatus.FORBIDDEN, "Q007", "해당 퀴즈에 접근 권한이 없습니다."),
     DAILY_VOCAB_NOT_FOUND(HttpStatus.NOT_FOUND, "Q008", "해당 날짜의 단어장을 찾을 수 없습니다."),
-    QUIZ_BUILD_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Q009", "퀴즈 생성에 실패했습니다. 단어장을 좀 더 생성한 뒤 다시 시도해주세요.");
+    QUIZ_BUILD_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Q009", "퀴즈 생성에 실패했습니다. 단어장을 좀 더 생성한 뒤 다시 시도해주세요."),
+
+    /* ───────────[대시보드]─────────── */
+    DASHBOARD_CALCULATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D001", "대시보드 데이터 계산 중 오류가 발생했습니다.");
 
 
     /* Getter ― 럼북을 안 쓴 예시 */
