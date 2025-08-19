@@ -71,5 +71,12 @@ public class QuizWord {
     // 생성시간
     @Column(name = "created_at")
     private Instant createdAt;
+
+    /**
+     * 정답 인덱스 조회 (0-based)
+     */
+    public Integer getCorrectIndex() {
+        return this.correctAnswer != null ? this.correctAnswer - 1 : null;
+    }
 }
 

@@ -74,5 +74,12 @@ public class QuizResultResponse {
                 .build();
     }
 
+    /**
+     * QuizResult 엔티티에서 QuizResultResponse로 변환 (새로운 메서드)
+     */
+    public static QuizResultResponse from(QuizResult qr) {
+        return fromEntity(qr);
+    }
+
     private static String nz(String s) { return (s == null) ? "" : s; }
 }

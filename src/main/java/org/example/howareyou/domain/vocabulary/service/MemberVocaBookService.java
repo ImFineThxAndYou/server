@@ -268,6 +268,174 @@ public class MemberVocaBookService {
         return new PageImpl<>(slice, PageRequest.of(page, size), words.size());
     }
 
+    /* -------------------- 대시보드용 메서드들 -------------------- */
+
+    /**
+     * 사용자 ID로 전체 단어 개수 조회 (기간별 필터링 없음)
+     */
+    public long countTotalWordsByMemberId(Long memberId) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return 0;
+            }
+            List<MemberVocabularyRepository.CountOnly> result = memberVocabularyRepository.countTotalUniqueWords(membername);
+            return result.isEmpty() ? 0 : result.get(0).getTotal();
+        } catch (Exception e) {
+            log.error("전체 단어 개수 조회 실패 - memberId: {}", memberId, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 사용자 ID로 단어 개수 조회 (기간별)
+     */
+    public long countByMemberIdAndPeriod(Long memberId, LocalDate from, LocalDate to) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return 0;
+            }
+            List<MemberVocabularyRepository.CountOnly> result = memberVocabularyRepository.countTotalUniqueWordsByPeriod(
+                membername, "Asia/Seoul", from.toString(), to.toString()); // Hardcoded timezone for now
+            return result.isEmpty() ? 0 : result.get(0).getTotal();
+        } catch (Exception e) {
+            log.error("기간별 단어 개수 조회 실패 - memberId: {}, from: {}, to: {}", memberId, from, to, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 언어별 단어 개수 조회 (기간별)
+     */
+    public long countByMemberAndLangAndPeriod(Long memberId, String lang, LocalDate from, LocalDate to) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return 0;
+            }
+            List<MemberVocabularyRepository.CountOnly> result = memberVocabularyRepository.countByMemberAndLangAndPeriod(
+                membername, lang, "Asia/Seoul", from.toString(), to.toString());
+            return result.isEmpty() ? 0 : result.get(0).getTotal();
+        } catch (Exception e) {
+            log.error("언어별 단어 개수 조회 실패 - memberId: {}, lang: {}, from: {}, to: {}", memberId, lang, from, to, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 품사별 단어 개수 조회 (기간별)
+     */
+    public long countByMemberAndPosAndPeriod(Long memberId, String pos, LocalDate from, LocalDate to) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return 0;
+            }
+            List<MemberVocabularyRepository.CountOnly> result = memberVocabularyRepository.countByMemberAndPosAndPeriod(
+                membername, pos, "Asia/Seoul", from.toString(), to.toString());
+            return result.isEmpty() ? 0 : result.get(0).getTotal();
+        } catch (Exception e) {
+            log.error("품사별 단어 개수 조회 실패 - memberId: {}, pos: {}, from: {}, to: {}", memberId, pos, from, to, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 언어+품사별 단어 개수 조회 (기간별)
+     */
+    public long countByMemberAndLangAndPosAndPeriod(Long memberId, String lang, String pos, LocalDate from, LocalDate to) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return 0;
+            }
+            List<MemberVocabularyRepository.CountOnly> result = memberVocabularyRepository.countByMemberAndLangAndPosAndPeriod(
+                membername, lang, pos, "Asia/Seoul", from.toString(), to.toString());
+            return result.isEmpty() ? 0 : result.get(0).getTotal();
+        } catch (Exception e) {
+            log.error("언어+품사별 단어 개수 조회 실패 - memberId: {}, lang: {}, pos: {}, from: {}, to: {}", 
+                memberId, lang, pos, from, to, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 학습 잔디 데이터 조회
+     */
+    public Map<String, Integer> getLearningGrass(Long memberId, int year, ZoneId zoneId, String period) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return Map.of();
+            }
+            
+            // 기간에 따른 날짜 범위 계산
+            LocalDate to = LocalDate.now(zoneId);
+            LocalDate from = calculateFromDate(to, period);
+            
+            List<MemberVocabularyRepository.DailyWordCount> result = memberVocabularyRepository.getDailyWordCountsByPeriod(
+                membername, "Asia/Seoul", from.toString(), to.toString());
+            
+            Map<String, Integer> grass = new HashMap<>();
+            for (MemberVocabularyRepository.DailyWordCount daily : result) {
+                grass.put(daily.get_id(), daily.getCount());
+            }
+            
+            return grass;
+        } catch (Exception e) {
+            log.error("학습 잔디 조회 실패 - memberId: {}, year: {}, period: {}", memberId, year, period, e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * 단어장 잔디 데이터 조회
+     */
+    public Map<String, Integer> getVocabularyGrass(Long memberId, int year, ZoneId zoneId, String period) {
+        try {
+            String membername = memberService.findMembernameById(memberId);
+            if (membername == null) {
+                log.warn("멤버를 찾을 수 없습니다 - memberId: {}", memberId);
+                return Map.of();
+            }
+            
+            // 기간에 따른 날짜 범위 계산
+            LocalDate to = LocalDate.now(zoneId);
+            LocalDate from = calculateFromDate(to, period);
+            
+            List<MemberVocabularyRepository.DailyWordCount> result = memberVocabularyRepository.getDailyWordCountsByPeriod(
+                membername, "Asia/Seoul", from.toString(), to.toString());
+            
+            Map<String, Integer> grass = new HashMap<>();
+            for (MemberVocabularyRepository.DailyWordCount daily : result) {
+                grass.put(daily.get_id(), daily.getCount());
+            }
+            
+            return grass;
+        } catch (Exception e) {
+            log.error("단어장 잔디 조회 실패 - memberId: {}, year: {}, period: {}", memberId, year, period, e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * 기간에 따른 시작 날짜 계산
+     */
+    private LocalDate calculateFromDate(LocalDate to, String period) {
+        return switch (period) {
+            case "week" -> to.minusWeeks(1);
+            case "month" -> to.minusMonths(1);
+            default -> to.minusWeeks(1); // 기본값은 주간
+        };
+    }
+
     private Comparator<MemberVocabulary.MemberWordEntry> buildComparator(String sortBy) {
         // 허용 필드: word|analyzedAt (기본 analyzedAt)
         return switch (sortBy == null ? "" : sortBy) {

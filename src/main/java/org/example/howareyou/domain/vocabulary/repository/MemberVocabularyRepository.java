@@ -125,4 +125,154 @@ public interface MemberVocabularyRepository extends MongoRepository<MemberVocabu
 
     interface CountOnly { Long getTotal(); }
 
+    /* -------------------- 대시보드용 메서드들 -------------------- */
+
+    /**
+     * 전체 단어 개수 조회 (기간별 필터링 없음)
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $group: { _id: { word: \"$words.word\", pos: \"$words.pos\" } } }",
+            "{ $count: \"total\" }"
+    })
+    List<CountOnly> countTotalUniqueWords(String membername);
+
+    /**
+     * 기간별 총 단어 개수 조회
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $addFields: { " +
+                    "localDate: { " +
+                    "  $dateToString: { " +
+                    "    format: \"%Y-%m-%d\", " +
+                    "    date: { $dateFromString: { dateString: \"$words.analyzedAt\" } }, " +
+                    "    timezone: ?1 " + // timezone parameter
+                    "  } " +
+                    "} } }",
+            "{ $match: { " +
+                    "localDate: { " +
+                    "  $gte: ?2, " + // fromDate parameter
+                    "  $lte: ?3 " + // toDate parameter
+                    "} } }",
+            "{ $group: { _id: { word: \"$words.word\", pos: \"$words.pos\" } } }",
+            "{ $count: \"total\" }"
+    })
+    List<CountOnly> countTotalUniqueWordsByPeriod(String membername, String timezone, String fromDate, String toDate);
+
+    /**
+     * 언어별 기간 필터링 단어 개수 조회
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $addFields: { " +
+                    "localDate: { " +
+                    "  $dateToString: { " +
+                    "    format: \"%Y-%m-%d\", " +
+                    "    date: { $dateFromString: { dateString: \"$words.analyzedAt\" } }, " +
+                    "    timezone: ?1 " + // timezone parameter
+                    "  } " +
+                    "} } }",
+            "{ $match: { " +
+                    "localDate: { " +
+                    "  $gte: ?2, " + // fromDate parameter
+                    "  $lte: ?3 " + // toDate parameter
+                    "}, " +
+                    "words.lang: ?4 " + // lang parameter
+                    "} } }",
+            "{ $group: { _id: { word: \"$words.word\", pos: \"$words.pos\" } } }",
+            "{ $count: \"total\" }"
+    })
+    List<CountOnly> countByMemberAndLangAndPeriod(String membername, String timezone, String fromDate, String toDate, String lang);
+
+    /**
+     * 품사별 기간 필터링 단어 개수 조회
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $addFields: { " +
+                    "localDate: { " +
+                    "  $dateToString: { " +
+                    "    format: \"%Y-%m-%d\", " +
+                    "    date: { $dateFromString: { dateString: \"$words.analyzedAt\" } }, " +
+                    "    timezone: ?1 " + // timezone parameter
+                    "  } " +
+                    "} } }",
+            "{ $match: { " +
+                    "localDate: { " +
+                    "  $gte: ?2, " + // fromDate parameter
+                    "  $lte: ?3 " + // toDate parameter
+                    "}, " +
+                    "words.pos: ?4 " + // pos parameter
+                    "} } }",
+            "{ $group: { _id: { word: \"$words.word\", pos: \"$words.pos\" } } }",
+            "{ $count: \"total\" }"
+    })
+    List<CountOnly> countByMemberAndPosAndPeriod(String membername, String timezone, String fromDate, String toDate, String pos);
+
+    /**
+     * 언어+품사별 기간 필터링 단어 개수 조회
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $addFields: { " +
+                    "localDate: { " +
+                    "  $dateToString: { " +
+                    "    format: \"%Y-%m-%d\", " +
+                    "    date: { $dateFromString: { dateString: \"$words.analyzedAt\" } }, " +
+                    "    timezone: ?1 " + // timezone parameter
+                    "  } " +
+                    "} } }",
+            "{ $match: { " +
+                    "localDate: { " +
+                    "  $gte: ?2, " + // fromDate parameter
+                    "  $lte: ?3 " + // toDate parameter
+                    "}, " +
+                    "words.lang: ?4, " + // lang parameter
+                    "words.pos: ?5 " + // pos parameter
+                    "} } }",
+            "{ $group: { _id: { word: \"$words.word\", pos: \"$words.pos\" } } }",
+            "{ $count: \"total\" }"
+    })
+    List<CountOnly> countByMemberAndLangAndPosAndPeriod(String membername, String timezone, String fromDate, String toDate, String lang, String pos);
+
+    /**
+     * 기간별 일일 단어 개수 조회
+     */
+    @Aggregation(pipeline = {
+            "{ $match: { membername: ?0 } }",
+            "{ $unwind: \"$words\" }",
+            "{ $addFields: { " +
+                    "localDate: { " +
+                    "  $dateToString: { " +
+                    "    format: \"%Y-%m-%d\", " +
+                    "    date: { $dateFromString: { dateString: \"$words.analyzedAt\" } }, " +
+                    "    timezone: ?1 " + // timezone parameter
+                    "  } " +
+                    "} } }",
+            "{ $match: { " +
+                    "localDate: { " +
+                    "  $gte: ?2, " + // fromDate parameter
+                    "  $lte: ?3 " + // toDate parameter
+                    "} } }",
+            "{ $group: { " +
+                    "_id: \"$localDate\", " +
+                    "count: { $sum: 1 } " +
+                    "} }",
+            "{ $sort: { _id: 1 } }"
+    })
+    List<DailyWordCount> getDailyWordCountsByPeriod(String membername, String timezone, String fromDate, String toDate);
+
+    /**
+     * 일일 단어 개수 결과를 위한 인터페이스
+     */
+    interface DailyWordCount {
+        String get_id(); // MongoDB aggregation의 _id 필드
+        Integer getCount();
+    }
 }

@@ -44,4 +44,7 @@ public interface MemberService {
 
     /* 단어장 생성용 프로필 조회*/
     List<MemberProfileViewForVoca> findAllActiveProfilesForVoca();
+
+    /* 대시보드용 메서드 */
+    String findMembernameById(Long memberId);
 }
