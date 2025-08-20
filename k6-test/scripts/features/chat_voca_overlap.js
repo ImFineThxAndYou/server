@@ -1,4 +1,4 @@
-// scripts/features/voca_overlap.js
+// scripts/features/chat_voca_overlap.js
 import http from 'k6/http';
 import { check } from 'k6';
 
