@@ -233,5 +233,13 @@ public class VocaTestController {
         }
     }
 
+    /**-----------------------------k6 테스트용-------------------------------**/
+    @PostMapping("/replay")
+    public ResponseEntity<Void> replay(@RequestParam Instant from, @RequestParam Instant to) {
+        chatVocaBookService.generateVocabularyForRangeReactive(from, to)
+                .subscribe(); // fire-and-forget (테스트용)
+        return ResponseEntity.accepted().build();
+    }
+
 
 }
