@@ -48,3 +48,6 @@ certs/
 *.p12
 *.key
 /src/main/resources/certs/
+
+# seed 디렉토리 전체 무시
+seed/
