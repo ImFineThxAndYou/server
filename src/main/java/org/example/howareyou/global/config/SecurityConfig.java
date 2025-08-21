@@ -94,6 +94,7 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/actuator/**",
                                 "/upload-csv"
+//                                ,"/api/vocabook/member/**"
                         } : new String[]{}).permitAll()
 
                         // 읽기 전용 공개 API
