@@ -14,20 +14,23 @@ import org.example.howareyou.domain.chat.websocket.entity.ChatMessageStatus;
 
 
 import org.example.howareyou.domain.chat.websocket.repository.ChatMessageDocumentRepository;
+import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca;
+import org.example.howareyou.domain.member.entity.Member;
+import org.example.howareyou.domain.member.entity.MemberProfile;
+import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzeRequestDto;
 import org.example.howareyou.domain.vocabulary.dto.AnalyzedResponseWord;
 import org.example.howareyou.domain.vocabulary.service.ChatVocaBookService;
 import org.example.howareyou.domain.vocabulary.service.MemberVocaBookService;
 import org.example.howareyou.domain.vocabulary.service.NlpClient;
+import org.example.howareyou.global.exception.CustomException;
+import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +47,7 @@ public class VocaTestController {
     private final ChatVocaBookService chatVocaBookService;
     private final MemberVocaBookService memberVocaBookService;
     private final NlpClient nlpClient;
+    private final MemberService memberService;
 
 
     @Operation(
@@ -232,6 +236,59 @@ public class VocaTestController {
             return ResponseEntity.ok(result);
         }
     }
+
+    /**-----------------------------k6 테스트용-------------------------------**/
+    @PostMapping("/replay")
+    public ResponseEntity<Void> replay(@RequestParam Instant from, @RequestParam Instant to) {
+        chatVocaBookService.generateVocabularyForRangeReactive(from, to)
+                .subscribe(); // fire-and-forget (테스트용)
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/user-daily")
+    public ResponseEntity<Void> generateUserDailyVoca(
+            @RequestParam Long userId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "true") boolean ignoreTimezone
+    ) {
+        // ✅ Member 엔티티 조회
+        Member member = memberService.getMemberById(userId);
+        MemberProfile profile = member.getProfile();
+
+        if (profile == null) {
+            throw new CustomException(ErrorCode.MEMBER_NOT_FOUND); // or PROFILE_NOT_FOUND
+        }
+
+        Instant start;
+        Instant end;
+
+        if (ignoreTimezone) {
+            // 타임존 무시 (UTC 하루)
+            start = date.atStartOfDay(ZoneOffset.UTC).toInstant();
+            end   = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        } else {
+            // 사용자 프로필 타임존 기준 하루
+            ZoneId zone = ZoneId.of(profile.getTimezone());
+            start = date.atStartOfDay(zone).toInstant();
+            end   = date.plusDays(1).atStartOfDay(zone).toInstant();
+        }
+
+        // ✅ docId = membername + "_" + date
+        String docId = member.getMembername() + "_" + date;
+
+        memberVocaBookService.generateVocabularyForMember(
+                member.getId(),
+                member.getMembername(),
+                profile.getLanguage(),
+                start,
+                end,
+                docId
+        );
+
+        return ResponseEntity.ok().build();
+    }
+
+
 
 
 }
