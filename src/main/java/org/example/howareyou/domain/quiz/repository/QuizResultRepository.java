@@ -51,22 +51,6 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
                               @Param("completedAt") Instant completedAt,
                               @Param("quizStatus") QuizStatus quizStatus);
 
-    /* 퀴즈 결과 업데이트 (새로운 메서드) */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-    update QuizResult qr
-       set qr.correctCount   = :correct,
-           qr.totalQuestions = :total,
-           qr.score          = :score,
-           qr.completed      = :completed
-     where qr.id = :quizResultId
-""")
-    int updateQuizResult(@Param("quizResultId") Long quizResultId,
-                         @Param("correct") int correct,
-                         @Param("total") int total,
-                         @Param("score") int score,
-                         @Param("completed") boolean completed);
-
     /* 회원 ID (+상태) 로 퀴즈 결과 조회 (status == null 이면 모든상태 조회 - PENDING + SUBMIT)*/
     @Query("""
         select qr
@@ -83,7 +67,7 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
     /* 회원ID 와 상태로 퀴즈결과페이지 조회 */
     Page<QuizResult> findByMemberIdAndQuizStatus(Long memberId, QuizStatus status, Pageable pageable);
 
-    /* 회원ID와 상태로 퀴즈결과 조회 (새로운 메서드) */
+    /* 회원ID와 상태로 퀴즈결과 조회  */
     @Query("""
         select qr
           from QuizResult qr

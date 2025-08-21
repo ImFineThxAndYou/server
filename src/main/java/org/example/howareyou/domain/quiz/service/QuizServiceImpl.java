@@ -64,23 +64,33 @@ public class QuizServiceImpl implements QuizService {
         }
 
         int correct = 0;
+        final Instant now = Instant.now();
         /* 채점 */
         for (int i = 0; i < items.size(); i++) {
             var item = items.get(i);
-            Integer selectedIndex = selected.get(i);
+            Integer sel = selected.get(i);
+            boolean ok = (sel != null && sel > 0 && Objects.equals(sel, item.getCorrectAnswer()));
+            if (ok) correct++;
 
-            if (Objects.equals(selectedIndex, item.getCorrectAnswer() - 1)) { // 0-based로 변환
-                correct++;
-            }
+            quizWordRepository.applyGrading(item.getId(), sel, ok);
         }
 
         // 4) 점수 계산 및 상태 업데이트
         int totalQuestions = items.size();
         int score = (int) Math.round((double) correct / totalQuestions * 100);
 
-        quizResultRepository.updateQuizResult(quizResultId, correct, totalQuestions, score, true);
+
+        quizResultRepository.finalizeGradingByUuid(
+                quizUuid,
+                correct,
+                totalQuestions,
+                score,
+                now,
+                QuizStatus.SUBMIT
+        );
 
         return SubmitResponse.builder()
+                .quizUUID(quizUuid)
                 .correctCount(correct)
                 .totalQuestions(totalQuestions)
                 .score(score)
