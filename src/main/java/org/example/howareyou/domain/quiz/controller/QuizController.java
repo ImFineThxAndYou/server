@@ -22,11 +22,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -123,7 +121,7 @@ public class QuizController {
             @PathVariable String quizUUID,
             @Valid @RequestBody SubmitQuizRequest req
     ) {
-        SubmitResponse res = quizService.gradeQuiz(quizUUID, req.getSelectedIndexes());
+        SubmitResponse res = quizService.gradeQuiz(quizUUID, req.getSelected());
         return ResponseEntity.ok(res);
     }
     /* ==================== 조회/재시작/레벨별 생성 ==================== */
@@ -166,7 +164,7 @@ public class QuizController {
     ) {
         if (member == null) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
 
-        Long memberId = memberService.getIdByMembername(member.getMembername());
+        Long memberId = member.getId();
         Pageable pageable = PageRequest.of(Math.max(page,0), Math.max(size,1), Sort.by(Sort.Direction.DESC, "createdAt"));
 
         return ResponseEntity.ok(quizService.getQuizResultsByMember(memberId, status, pageable));
