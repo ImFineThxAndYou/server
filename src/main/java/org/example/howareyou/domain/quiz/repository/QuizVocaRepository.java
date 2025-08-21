@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 public interface QuizVocaRepository extends MongoRepository<MemberVocabulary, String> {
-    // (신규) 전체 조회용: (word,pos) 기준 최신 1개만
+    // 전체 조회용: (word,pos) 기준 최신 1개만
     @Aggregation(pipeline = {
             // 1) 사용자 전체 문서
             "{ $match: { membername: ?0 } }",
