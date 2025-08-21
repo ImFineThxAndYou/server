@@ -36,8 +36,6 @@ public interface QuizWordRepository extends JpaRepository<QuizWord, Long> {
                      @Param("userAnswer") Integer userAnswer,
                      @Param("isCorrect") Boolean isCorrect);
 
-    List<QuizWord> findByQuizResultIdOrderByQuestionNo(Long quizResultId);
-
     /* 퀴즈 결과 ID로 퀴즈 단어 조회 (새로운 메서드) */
     List<QuizWord> findByQuizResultId(Long quizResultId);
 

@@ -97,6 +97,7 @@ public class QuizServiceImpl implements QuizService {
                 .build();
     }
 
+
     @Override
     @Transactional(readOnly = true)
     public Page<QuizResultResponse> getQuizResultsByMember(Long memberId, QuizStatus status, Pageable pageable) {
@@ -147,15 +148,15 @@ public class QuizServiceImpl implements QuizService {
     public int calculateLearningStreak(Long memberId, ZoneId zoneId, String period) {
         try {
             log.info("연속 학습일 계산 시작 - memberId: {}, zoneId: {}, period: {}", memberId, zoneId, period);
-            
+
             LocalDate to = LocalDate.now(zoneId);
             LocalDate from = calculateFromDate(to, period);
-            
+
             int streak = quizResultRepository.calculateLearningStreakByPeriod(memberId, from, to, zoneId.getId());
-            
+
             log.info("연속 학습일 계산 완료 - memberId: {}, streak: {}", memberId, streak);
             return streak;
-            
+
         } catch (Exception e) {
             log.error("연속 학습일 계산 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
             return 0;
@@ -167,13 +168,13 @@ public class QuizServiceImpl implements QuizService {
     public int countReviewNeededDays(Long memberId, LocalDate from, LocalDate to, ZoneId zoneId) {
         try {
             log.info("복습 필요 날짜 계산 시작 - memberId: {}, from: {}, to: {}", memberId, from, to);
-            
+
             // 간단한 구현: 기간 내 퀴즈를 푼 날짜 수를 복습 필요 날짜로 계산
             int reviewDays = quizResultRepository.countQuizDaysByPeriod(memberId, from, to, zoneId.getId());
-            
+
             log.info("복습 필요 날짜 계산 완료 - memberId: {}, reviewDays: {}", memberId, reviewDays);
             return reviewDays;
-            
+
         } catch (Exception e) {
             log.error("복습 필요 날짜 계산 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
             return 0;
@@ -185,20 +186,20 @@ public class QuizServiceImpl implements QuizService {
     public List<ScorePoint> getScoreSeries(Long memberId, Instant fromUtc, Instant toUtc, Integer limit) {
         try {
             log.info("점수 시리즈 조회 시작 - memberId: {}, fromUtc: {}, toUtc: {}, limit: {}", memberId, fromUtc, toUtc, limit);
-            
+
             List<ScorePoint> scoreSeries = quizResultRepository.findScoreSeriesByPeriod(memberId, fromUtc, toUtc)
                     .stream()
                     .limit(limit != null ? limit : 30) // 기본값 30개로 제한
                     .map(result -> new ScorePoint(
-                        result.getUuid(),
-                        result.getCompletedAt(),
-                        result.getScore().intValue()
+                            result.getUuid(),
+                            result.getCompletedAt(),
+                            result.getScore().intValue()
                     ))
                     .toList();
-            
+
             log.info("점수 시리즈 조회 완료 - memberId: {}, count: {}", memberId, scoreSeries.size());
             return scoreSeries;
-            
+
         } catch (Exception e) {
             log.error("점수 시리즈 조회 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
             return new ArrayList<>();
@@ -210,21 +211,21 @@ public class QuizServiceImpl implements QuizService {
     public Map<String, Integer> getQuizGrass(Long memberId, int year, ZoneId zoneId, String period) {
         try {
             log.info("퀴즈 잔디 조회 시작 - memberId: {}, year: {}, zoneId: {}, period: {}", memberId, year, zoneId, period);
-            
+
             LocalDate to = LocalDate.now(zoneId);
             LocalDate from = calculateFromDate(to, period);
-            
+
             List<QuizResultRepository.DailyQuizCount> result = quizResultRepository.getDailyQuizCountsByPeriod(
-                memberId, from, to, zoneId.getId());
-            
+                    memberId, from, to, zoneId.getId());
+
             Map<String, Integer> grass = new HashMap<>();
             for (QuizResultRepository.DailyQuizCount daily : result) {
                 grass.put(daily.getDate(), daily.getCount());
             }
-            
+
             log.info("퀴즈 잔디 조회 완료 - memberId: {}, count: {}", memberId, grass.size());
             return grass;
-            
+
         } catch (Exception e) {
             log.error("퀴즈 잔디 조회 실패 - memberId: {}, error: {}", memberId, e.getMessage(), e);
             return Map.of();
