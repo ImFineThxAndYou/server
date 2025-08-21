@@ -57,10 +57,18 @@ public class GoogleLoginProcessor implements OAuth2LoginProcessor {
         // 2. 마지막 로그인 시간 갱신
         auth.updateLastLoginInfo(UserAgentUtils.getClientIP(request));
 
-        // 3. 토큰 발급
-        String userId = auth.getMember().getId().toString();
-        String accessToken = jwtTokenProvider.createAccessToken(userId);
-        String refreshToken = jwtTokenProvider.createRefreshToken();
+        // 3. 토큰 발급 (membername이 있으면 membername 기반, 없으면 email 기반)
+        String accessToken = jwtTokenProvider.createAccessToken(auth.getMember().getMembername());
+        String refreshToken;
+        
+        if (auth.getMember().getMembername() != null && !auth.getMember().getMembername().isEmpty()) {
+            // membername이 있으면 membername 기반 Refresh Token
+            refreshToken = jwtTokenProvider.createRefreshTokenWithMembername(auth.getMember().getMembername());
+        } else {
+            // membername이 없으면 email 기반 Refresh Token
+            refreshToken = jwtTokenProvider.createRefreshTokenWithEmail(auth.getMember().getEmail());
+        }
+        
         Instant refreshTokenExpiry = Instant.now().plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
 
         // 4. 리프레시 토큰 저장

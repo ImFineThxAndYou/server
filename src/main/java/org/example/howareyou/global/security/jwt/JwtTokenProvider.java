@@ -69,20 +69,64 @@ public class JwtTokenProvider {
     }
 
     /**
+     * Access Token에서 사용자 식별자를 추출합니다.
+     * @param token Access Token
+     * @return 사용자 식별자 (membername)
+     */
+    public String getIdentifierFromAccessToken(String token) {
+        Claims claims = parse(token);
+        return claims.get("identifier", String.class);
+    }
+
+    /**
      * Access Token을 생성합니다.
      * @param userId 사용자 ID
      * @return 생성된 Access Token
      */
-    public String createAccessToken(String userId) {
-        return build(userId, ACCESS_EXP_MS);
+    /**
+     * Access Token을 생성합니다.
+     * @param membername 사용자 membername
+     * @return 생성된 Access Token
+     */
+    public String createAccessToken(String membername) {
+        return buildWithIdentifier(membername, "membername", ACCESS_EXP_MS, true);
     }
 
     /**
-     * Refresh Token을 생성합니다.
+     * Refresh Token을 생성합니다 (email 기반).
+     * @param email 사용자 email
      * @return 생성된 Refresh Token
      */
-    public String createRefreshToken() {
-        return build(UUID.randomUUID().toString(), REFRESH_EXP_MS);
+    public String createRefreshTokenWithEmail(String email) {
+        return buildWithIdentifier(email, "email", REFRESH_EXP_MS, false);
+    }
+
+    /**
+     * Refresh Token을 생성합니다 (membername 기반).
+     * @param membername 사용자 membername
+     * @return 생성된 Refresh Token
+     */
+    public String createRefreshTokenWithMembername(String membername) {
+        return buildWithIdentifier(membername, "membername", REFRESH_EXP_MS, false);
+    }
+
+    /**
+     * 사용자 식별자를 포함한 토큰을 생성합니다.
+     * @param identifier 사용자 식별자 (email 또는 membername)
+     * @param identifierType 식별자 타입 ("email" 또는 "membername")
+     * @param expMs 만료 시간 (밀리초)
+     * @param isAccessToken Access Token인지 여부
+     * @return 생성된 토큰
+     */
+    private String buildWithIdentifier(String identifier, String identifierType, long expMs, boolean isAccessToken) {
+        return Jwts.builder()
+                .setSubject(isAccessToken ? "access_token" : "refresh_token")
+                .claim("identifier", identifier)
+                .claim("identifierType", identifierType)
+                .setId(UUID.randomUUID().toString())
+                .setExpiration(Date.from(Instant.now().plusMillis(expMs)))
+                .signWith(key(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     /**
@@ -104,5 +148,25 @@ public class JwtTokenProvider {
     public String validateAndGetSubject(String token) {
         Claims claims = parse(token);          // 기존 parse 로직 재사용
         return claims.getSubject();            // 유효하면 subject 반환
+    }
+
+    /**
+     * Refresh Token에서 사용자 식별자를 추출합니다.
+     * @param token Refresh Token
+     * @return 사용자 식별자 (email 또는 membername)
+     */
+    public String getIdentifierFromRefreshToken(String token) {
+        Claims claims = parse(token);
+        return claims.get("identifier", String.class);
+    }
+
+    /**
+     * Refresh Token에서 식별자 타입을 추출합니다.
+     * @param token Refresh Token
+     * @return 식별자 타입 ("email" 또는 "membername")
+     */
+    public String getIdentifierTypeFromRefreshToken(String token) {
+        Claims claims = parse(token);
+        return claims.get("identifierType", String.class);
     }
 }

@@ -17,10 +17,17 @@ import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.example.howareyou.domain.member.redis.MemberCache;
 import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.domain.member.repository.MemberRepository;
+import org.example.howareyou.domain.auth.repository.AuthRepository;
+import org.example.howareyou.domain.auth.entity.Auth;
+import org.example.howareyou.global.security.jwt.JwtTokenProvider;
+import org.example.howareyou.global.util.CookieUtils;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.Duration;
 
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +43,8 @@ public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
     private final MemberCacheService memberCacheService;
+    private final AuthRepository authRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /* ---------- 프로필 ---------- */
 
@@ -88,6 +97,23 @@ public class MemberServiceImpl implements MemberService {
         Member m = memberRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         m.setMembername(req.membername());
+        
+        // membername 설정 후 Refresh Token을 membername 기반으로 재발급
+        Auth auth = authRepository.findByMemberId(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_BAD_CREDENTIAL));
+        
+        // 새로운 Refresh Token 생성 (membername 기반)
+        String newRefreshToken = jwtTokenProvider.createRefreshTokenWithMembername(req.membername());
+        
+        // Refresh Token 갱신
+        Instant refreshTokenExpiry = Instant.now()
+                .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
+        auth.setRefreshToken(newRefreshToken, refreshTokenExpiry);
+        
+        // 새로운 쿠키 설정
+        boolean isSecure = !"dev".equals(System.getProperty("spring.profiles.active", "dev"));
+        res.addCookie(CookieUtils.refresh(newRefreshToken, isSecure));
+        
         return MembernameResponse.from(m);            // dirty-checking flush
     }
 
@@ -204,6 +230,16 @@ public class MemberServiceImpl implements MemberService {
                 .toList();
     }
 
+    @Override
+    public Member getMemberById(Long id) {
+        return fetchMember(id);
+    }
+
+    @Override
+    public Member getMemberByMembername(String membername) {
+        return fetchMember(membername);
+    }
+
     /* ---------- util ---------- */
 
     private Member fetchMember(Long id) {
@@ -239,5 +275,18 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public List<MemberProfileViewForVoca> findAllActiveProfilesForVoca() {
         return memberRepository.findAllActiveProfilesForVoca();
+    }
+
+    /* 대시보드용 메서드 */
+
+    @Override
+    public String findMembernameById(Long memberId) {
+        try {
+            Member member = fetchMember(memberId);
+            return member.getMembername();
+        } catch (Exception e) {
+            log.error("멤버 ID로 membername 조회 실패 - memberId: {}", memberId, e);
+            return null;
+        }
     }
 }

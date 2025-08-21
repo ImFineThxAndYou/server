@@ -16,17 +16,33 @@ public class RecommendationTagService {
 
   private final TaggingNlpClient taggingNlpClient;
 
-  private final MemberTagScoreRepository repository;
-
-  // 필요시 매핑 테이블 사용 (파이썬이 Enum명으로 보내면 불필요)
-  private static final Map<String, MemberTag> TAG_TO_MEMBERTAG = Map.of(
-//      "음식 & 요리", MemberTag.FOOD_COOKING,
-//      "여행 & 관광", MemberTag.TRAVEL_TOURISM
-          /**
-           * 지금 기존에 있는 memberTag 안 enum과 바꿀 내용 (FOOD_COOKING) 등등 맞지 않는 문제가 있기에
-           * 임시로 주석처리
-           */
+  private static final Map<String, MemberTag> TAG_TO_MEMBERTAG = Map.ofEntries(
+      Map.entry("언어 학습", MemberTag.LANGUAGE_LEARNING),
+      Map.entry("여행", MemberTag.TRAVEL),
+      Map.entry("문화", MemberTag.CULTURE),
+      Map.entry("비즈니스", MemberTag.BUSINESS),
+      Map.entry("교육", MemberTag.EDUCATION),
+      Map.entry("기술", MemberTag.TECHNOLOGY),
+      Map.entry("스포츠", MemberTag.SPORTS),
+      Map.entry("음악", MemberTag.MUSIC),
+      Map.entry("음식", MemberTag.FOOD),
+      Map.entry("예술", MemberTag.ART),
+      Map.entry("과학", MemberTag.SCIENCE),
+      Map.entry("역사", MemberTag.HISTORY),
+      Map.entry("영화", MemberTag.MOVIES),
+      Map.entry("게임", MemberTag.GAMES),
+      Map.entry("문학", MemberTag.LITERATURE),
+      Map.entry("사진", MemberTag.PHOTOGRAPHY),
+      Map.entry("자연", MemberTag.NATURE),
+      Map.entry("피트니스", MemberTag.FITNESS),
+      Map.entry("패션", MemberTag.FASHION),
+      Map.entry("봉사", MemberTag.VOLUNTEERING),
+      Map.entry("동물", MemberTag.ANIMALS),
+      Map.entry("자동차", MemberTag.CARS),
+      Map.entry("DIY", MemberTag.DIY),
+      Map.entry("금융", MemberTag.FINANCE)
   );
+
 
   /** 단어 리스트 → 태그 스코어 */
   public Map<String, Double> getTagScores(List<String> words) {

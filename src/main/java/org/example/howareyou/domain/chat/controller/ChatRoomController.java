@@ -19,6 +19,7 @@ import org.example.howareyou.domain.chat.dto.ChatRoomSummaryResponse;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomRequest;
 import org.example.howareyou.domain.chat.dto.CreateChatRoomResponse;
 import org.example.howareyou.domain.chat.service.ChatRoomService;
+import org.example.howareyou.domain.member.service.MemberService;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class ChatRoomController {
 
   private final ChatRoomService chatRoomService;
+  private final MemberService memberService;
 
   @Operation(summary = "채팅방 생성", description = "상대방과의 1:1 채팅방을 생성합니다.")
   @ApiResponses({
@@ -55,10 +57,9 @@ public class ChatRoomController {
   public void acceptChatRoom(
       @Parameter(description = "채팅방 UUID", required = true)
       @PathVariable String roomUuid,
-
-      @Parameter(description = "수락하는 사용자 ID", required = true)
-      @RequestParam Long receiverId
+      @AuthenticationPrincipal CustomMemberDetails memberDetails
   ) {
+    Long receiverId = memberDetails.getId();
     chatRoomService.acceptChatRoom(roomUuid, receiverId);
   }
 

@@ -39,4 +39,12 @@ out/
 # secret 설정 파일
 /src/main/resources/application-secret.yml
 
+# Environment files
 .env
+
+# SSL certificates
+certs/
+*.pem
+*.p12
+*.key
+/src/main/resources/certs/

@@ -8,6 +8,7 @@ import org.example.howareyou.domain.member.dto.response.MemberProfileViewForVoca
 import org.example.howareyou.domain.member.dto.response.MembernameResponse;
 import org.example.howareyou.domain.member.dto.response.ProfileResponse;
 import org.example.howareyou.domain.member.dto.response.MemberStatusResponse;
+import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
 import org.springframework.data.domain.Pageable;
 
@@ -37,6 +38,13 @@ public interface MemberService {
     List<ProfileResponse> findOthersWithSameCategories(Long requesterId);
     List<ProfileResponse> findOthersWithFilter(FilterRequest filterRequest,Long requesterId);
 
+    /* get member */
+    Member getMemberById(Long id);
+    Member getMemberByMembername(String membername);
+
     /* 단어장 생성용 프로필 조회*/
     List<MemberProfileViewForVoca> findAllActiveProfilesForVoca();
+
+    /* 대시보드용 메서드 */
+    String findMembernameById(Long memberId);
 }

@@ -39,6 +39,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
 
+        // WebSocket 관련 경로는 JWT 필터 스킵
+        String requestURI = req.getRequestURI();
+        if (requestURI.startsWith("/ws-chatroom/")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         String token = null;
         
         // 1. Authorization 헤더에서 토큰 확인
@@ -74,10 +81,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            // validate() 내부에서 서명·만료 체크만 하고 subject 반환
-            String userId = jwtTokenProvider.validateAndGetSubject(token);
+            // Access Token에서 사용자 식별자 추출
+            String identifier = jwtTokenProvider.getIdentifierFromAccessToken(token);
 
-            UserDetails user = userDetailsService.loadUserByUsername(userId); // ← userId=email or memberId
+            UserDetails user = userDetailsService.loadUserByUsername(identifier); // ← identifier=membername
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
