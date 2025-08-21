@@ -121,22 +121,44 @@ public class QuizTestController {
     }
 
     // 부하테스트를 위해 임의추가
-    @GetMapping("/uuids")
-    public ResponseEntity<?> getUuids(
+    @GetMapping("/uuids/pending")
+    public ResponseEntity<?> getPendingUuids(
             @RequestParam String membername,
-            @RequestParam(required = false) QuizStatus status,        // SUBMIT | PENDING | null
-            @RequestParam(defaultValue = "10000") int limit           // 가져올 최대 개수
+            @RequestParam(defaultValue = "10000") int limit
     ) {
         Long memberId = memberService.getIdByMembername(membername);
 
         int size = Math.min(Math.max(limit, 1), 100_000);
         PageRequest pr = PageRequest.of(0, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<QuizResult> page = quizResultRepository.findByMemberIdAndStatus(memberId, status, pr);
+        // PENDING만 조회
+        Page<QuizResult> page = quizResultRepository.findByMemberIdAndStatus(memberId, QuizStatus.PENDING, pr);
+
         var uuids = page.getContent().stream()
                 .map(QuizResult::getUuid)
                 .toList();
 
-        return ResponseEntity.ok(uuids); // JSON 배열로 반환
+        return ResponseEntity.ok(uuids);
+    }
+
+    @Operation(summary = "전체 퀴즈 UUID 조회(테스트용)", description = "membername으로 모든 퀴즈 UUID 조회. 상태 제한 없음")
+    @GetMapping("/uuids")
+    public ResponseEntity<?> getAllUuids(
+            @RequestParam String membername,
+            @RequestParam(defaultValue = "10000") int limit
+    ) {
+        Long memberId = memberService.getIdByMembername(membername);
+
+        int size = Math.min(Math.max(limit, 1), 100_000);
+        PageRequest pr = PageRequest.of(0, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // 상태 조건 없이 전체 조회
+        Page<QuizResult> page = quizResultRepository.findByMemberId(memberId, pr);
+
+        var uuids = page.getContent().stream()
+                .map(QuizResult::getUuid)
+                .toList();
+
+        return ResponseEntity.ok(uuids);
     }
 }

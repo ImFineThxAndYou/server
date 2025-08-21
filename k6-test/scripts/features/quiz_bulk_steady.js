@@ -101,35 +101,43 @@ function getCountFromDetailOnce(uuid, token) {
 }
 
 // ---------- 시나리오 본문 ----------
+// ---------- 시나리오 본문 ----------
 export default function () {
     const token = pick(TOKENS);
 
     // 1) 50% 데일리 / 50% 랜덤
     const doDaily = Math.random() < 0.5;
     let startResp;
+    let startTag;
     if (doDaily) {
         const days = ['2025-08-09', '2025-08-10', '2025-08-12', '2025-08-13', '2025-08-14'];
         const d = pick(days);
+        startTag = { type: 'start-daily' };
         startResp = http.post(
             `${BASE}/daily/start?membername=${encodeURIComponent(MEMBERNAME)}&date=${d}`,
             null,
-            H(token, { type: 'start' })
+            H(token, startTag)
         );
     } else {
         const levels = [null, 'A', 'B', 'C']; // 필요 시 서버 Enum에 맞춰 조정
         const lv = pick(levels);
         const qs = [`membername=${encodeURIComponent(MEMBERNAME)}`];
         if (lv) qs.push(`level=${lv}`);
-        startResp = http.post(`${BASE}/random/start?` + qs.join('&'), null, H(token, { type: 'start' }));
+        startTag = { type: 'start-random' };
+        startResp = http.post(
+            `${BASE}/random/start?` + qs.join('&'),
+            null,
+            H(token, startTag)
+        );
     }
-    tag(startResp, { type: 'start' });
+    tag(startResp, startTag);
     check(startResp, {
         'start ok (2xx/409/422/429)': (r) => r && (
             (r.status >= 200 && r.status < 300) || r.status === 409 || r.status === 422 || r.status === 429
         ),
     });
 
-    // 2) start 응답에서 uuid 확보 + 문항 수 확보 시도
+    // 2) start 응답에서 uuid 확보
     let startUuid = null;
     let q = null;
     try {
@@ -140,7 +148,7 @@ export default function () {
         console.error('JSON parse error', e);
     }
 
-    // 3) /me → (없으면) /{uuid} 상세로 문항 수 보정
+    // 3) uuid 있으면 /me or /detail 조회 후 submit
     if (startUuid) {
         const fromMe = getCountFromMeOnce(startUuid, token);
         if (Number.isInteger(fromMe) && fromMe > 0) q = fromMe;
@@ -150,23 +158,20 @@ export default function () {
             if (Number.isInteger(fromDetail) && fromDetail > 0) q = fromDetail;
         }
 
-        // 방어 기본값
         if (!Number.isInteger(q) || q < 1) q = 5;
 
-        // ✅ 서버는 1-based 선택지 기대
         const answersOneBased = Array.from({ length: q }, () => 1 + Math.floor(Math.random() * 4));
-
         const payload = JSON.stringify({ selected: answersOneBased });
 
+        const submitTag = { type: doDaily ? 'submit-daily' : 'submit-random' };
         const sub = http.post(
             `${BASE}/${encodeURIComponent(startUuid)}/submit`,
             payload,
-            H(token, { type: 'submit' }),
+            H(token, submitTag),
         );
-        tag(sub, { type: 'submit' });
+        tag(sub, submitTag);
 
-// ✅ 제출 결과만 출력
-        console.log('submitResp', sub.status, String(sub.body || '').slice(0, 200));
+        console.log(`[${submitTag.type}]`, sub.status, String(sub.body || '').slice(0, 200));
 
         check(sub, {
             'submit ok (200/409/4xx)': (r) => r && [200, 409, 400, 401, 403, 404, 422].includes(r.status),
