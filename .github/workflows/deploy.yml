@@ -1,0 +1,80 @@
+name: Deploy to Amazon ECS
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION:           ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY:       ${{ secrets.ECR_REPO }}        # 예: howru-spring
+  ECS_SERVICE:          ${{ secrets.ECS_SERVICE }}     # 예: howru-backend-service
+  ECS_CLUSTER:          ${{ secrets.ECS_CLUSTER }}     # 예: howru-cluster
+  ECS_TASK_DEFINITION:  infra/taskdef.json             # 리포 안의 태스크 정의 파일 경로
+  CONTAINER_NAME:       spring-app                     # 태스크 정의의 컨테이너 name
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG:    ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill env & image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: infra/taskdef.json
+          container-name: spring-app
+          image: ${{ steps.build-image.outputs.image }}
+          environment-variables: |
+            SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}
+            SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+            SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_HOST }}
+            SPRING_DATA_REDIS_PORT=${{ secrets.REDIS_PORT }}
+            SPRING_DATA_REDIS_PASSWORD=${{secrets.REDIS_PASSWORD}}
+            SPRING_DATA_REDIS_SSL_ENABLED=true
+            FRONT_URL=${{ secrets.FRONT_URL }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            LIBER_HOST=${{secrets.LIBER_HOST}}
+            LIBER_PORT=${{secrets.LIBER_PORT}}
+            NLP_BASE-URL=${{secrets.NLP_BASE_URL}}
+            TAGGING-NLP_BASE-URL=${{secrets.TAGGING_NLP_BASE_URL}}
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition:               ${{ steps.task-def.outputs.task-definition }}
+          service:                       howru-backend-service
+          cluster:                       howru-cluster
+          wait-for-service-stability:    true
