@@ -47,7 +47,7 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(java.time.Duration.ofSeconds(5))
+                .timeout(java.time.Duration.ofSeconds(10))
                 .doOnSuccess(res -> log.info("✅ {} health check successful: {}", apiName, res))
                 .doOnError(err -> log.error("❌ {} health check failed: {}", apiName, err.getMessage()));
     }

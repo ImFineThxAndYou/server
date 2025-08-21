@@ -80,7 +80,7 @@ springdoc:
 
 
 jwt:
-  secret: ${JWT_SECRET}d
+  secret: ${JWT_SECRET}
 
 front:
   url: ${FRONT_URL}
