@@ -16,12 +16,12 @@ public class TestConsumer {
     private CountDownLatch latch = new CountDownLatch(1);
     private String payload;
 
-    @KafkaListener(topics = "test-topic", groupId = "test-group")
-    public void receive(String message) {
-        log.info("received message='{}'", message);
-        payload = message;
-        latch.countDown();
-    }
+//    @KafkaListener(topics = "test-topic", groupId = "test-group")
+//    public void receive(String message) {
+//        log.info("received message='{}'", message);
+//        payload = message;
+//        latch.countDown();
+//    }
 
     public void reset() {
         latch = new CountDownLatch(1);
