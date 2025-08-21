@@ -67,7 +67,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         // 문항수 체크
         int unique = byWord.size();
         if (unique < 5) {
-            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+            throw new CustomException(ErrorCode.INSUFFICIENT_UNIQUE_WORDS_RANDOM);
         }
 
         int count = pickQuestionCount(unique);
@@ -92,7 +92,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // 문항 생성
-        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, null, allPool);
+        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, null, allPool, QuizType.RANDOM);
 
         QuizResult result = createAndPersistResult(memberId, QuizType.RANDOM, null, generated);
         return toClientStartResponse(result, generated);
@@ -107,7 +107,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
         Page<MemberVocabulary.MemberWordEntry> page =
                 vocaBookService.findWordsByMemberAndDatePaged(membername, date, 0, 1000, "analyzedAt", "desc");
 
-        if (page.isEmpty()) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        if (page.isEmpty()) throw new CustomException(ErrorCode.DAILY_VOCAB_NOT_FOUND);
 
         // 후보 집계 (언어 + 레벨 동시 필터)
         Map<String, MemberVocabulary.MemberWordEntry> byWord = page.getContent().stream()
@@ -118,7 +118,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 ));
         // 문항수 체크
         int unique = byWord.size();
-        if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        if (unique < 5) throw new CustomException(ErrorCode.INSUFFICIENT_UNIQUE_WORDS_DAILY);
 
         int count = pickQuestionCount(unique);
         // 정답후보 목록 생성
@@ -146,7 +146,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         // 문항 생성
-        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, dailyPool, allPool);
+        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, dailyPool, allPool, QuizType.DAILY);
 
         Instant dailyKeyUtc = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         QuizResult result = createAndPersistResult(memberId, QuizType.DAILY, dailyKeyUtc, generated);
@@ -164,7 +164,8 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     /** 4지선다 생성 */
     private List<GeneratedItem> buildQuestionsFromTargets(List<Target> targets,
                                                           Set<String> dailyPoolOrNull,
-                                                          Set<String> allPool) {
+                                                          Set<String> allPool,
+                                                          QuizType mode) {
         List<GeneratedItem> out = new ArrayList<>(targets.size());
 
         for (Target t : targets) {
@@ -182,8 +183,14 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                     .filter(m -> !used.contains(m))
                     .distinct()
                     .collect(Collectors.toCollection(ArrayList::new));
-            // 보기 3개이상
-            if (filtered.size() < 3) throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+            // 오답 3개이상
+            if (filtered.size() < 3) {
+                throw new CustomException(
+                        mode == QuizType.DAILY
+                                ? ErrorCode.INSUFFICIENT_DISTRACTORS_DAILY
+                                : ErrorCode.INSUFFICIENT_DISTRACTORS_RANDOM
+                );
+            }
             // 보기 랜덤선택
             Collections.shuffle(filtered, RND);
             choices.add(filtered.get(0));
@@ -208,8 +215,8 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                                               QuizType type,
                                               Instant dailyKeyUtc,
                                               List<GeneratedItem> generated) {
-        if (generated == null || generated.isEmpty()) { // ★ 추가
-            throw new CustomException(ErrorCode.INSUFFICIENT_DISTRACTORS);
+        if (generated == null || generated.isEmpty()) {
+            throw new CustomException(ErrorCode.EMPTY_GENERATED_SET);
         }
         // 퀴즈 결과 생성
         QuizResult result = QuizResult.builder()

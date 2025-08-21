@@ -118,7 +118,7 @@ public enum ErrorCode {
     VECTOR_DESERIALIZATION_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "VEC002", "사용자 벡터 역직렬화에 실패했습니다."),
     /* ───────────[퀴즈]─────────── */
     INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "Q001", "잘못된 날짜 형식입니다. yyyy-dd-MM 형식으로 보내주세요."),
-    INSUFFICIENT_DISTRACTORS(HttpStatus.UNPROCESSABLE_ENTITY, "Q002", "오답 선택지가 부족합니다."),
+//    INSUFFICIENT_DISTRACTORS(HttpStatus.UNPROCESSABLE_ENTITY, "Q002", "오답 선택지가 부족합니다."),
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "Q003", "퀴즈를 찾을 수 없습니다."),
     QUIZ_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "Q004", "이미 채점된 퀴즈입니다."),
     INVALID_SELECTION_COUNT(HttpStatus.BAD_REQUEST, "Q005", "문제 개수와 답안 개수가 다릅니다."),
@@ -126,6 +126,12 @@ public enum ErrorCode {
     QUIZ_FORBIDDEN(HttpStatus.FORBIDDEN, "Q007", "해당 퀴즈에 접근 권한이 없습니다."),
     DAILY_VOCAB_NOT_FOUND(HttpStatus.NOT_FOUND, "Q008", "해당 날짜의 단어장을 찾을 수 없습니다."),
     QUIZ_BUILD_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Q009", "퀴즈 생성에 실패했습니다. 단어장을 좀 더 생성한 뒤 다시 시도해주세요."),
+    INSUFFICIENT_UNIQUE_WORDS_RANDOM (HttpStatus.UNPROCESSABLE_ENTITY, "Q010", "랜덤 퀴즈 생성에 필요한 유니크 단어 수가 부족합니다."),
+    INSUFFICIENT_UNIQUE_WORDS_DAILY  (HttpStatus.UNPROCESSABLE_ENTITY, "Q011", "데일리 퀴즈 생성에 필요한 유니크 단어 수가 부족합니다."),
+    INSUFFICIENT_DISTRACTORS_RANDOM  (HttpStatus.UNPROCESSABLE_ENTITY, "Q012", "랜덤 퀴즈의 오답 선택지가 부족합니다."),
+    INSUFFICIENT_DISTRACTORS_DAILY   (HttpStatus.UNPROCESSABLE_ENTITY, "Q013", "데일리 퀴즈의 오답 선택지가 부족합니다."),
+    EMPTY_GENERATED_SET              (HttpStatus.UNPROCESSABLE_ENTITY, "Q014", "퀴즈 문항이 한 개도 생성되지 않았습니다."),
+    QUIZ_CHOICE_POOL_BUILD_FAILED    (HttpStatus.UNPROCESSABLE_ENTITY, "Q015", "퀴즈 보기 풀 구성에 실패했습니다."),
 
     /* ───────────[대시보드]─────────── */
     DASHBOARD_CALCULATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D001", "대시보드 데이터 계산 중 오류가 발생했습니다.");
