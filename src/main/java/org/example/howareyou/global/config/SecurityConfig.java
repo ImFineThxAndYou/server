@@ -53,9 +53,12 @@ public class SecurityConfig {
     private List<String> allowedOriginsRaw;
 
     private List<String> allowedOrigins() {
-        return allowedOriginsRaw == null ? List.of()
+        List<String> origins = allowedOriginsRaw == null ? List.of()
                 : allowedOriginsRaw.stream().map(String::trim)
                 .filter(s -> !s.isBlank()).distinct().collect(Collectors.toList());
+        
+        log.info("🔒 CORS allowed origins: {}", origins);
+        return origins;
     }
 
     /* ──────────── Security Filter Chain ──────────── */
@@ -100,23 +103,23 @@ public class SecurityConfig {
                                 "/sockjs-node/**"
                         ).permitAll()
 
-                        // 개발 전용 허용 경로 (dev 프로필에서만 적용)
-                        .requestMatchers(isDevProfile() ? new String[]{
-                                "/",
-                                "/index.html",
-                                "/notification-test.html",
-                                "/test-login.html",
-                                "/test-signup.html",
-                                "/test-info.html",
-                                "/js/**",
-                                "/api/test/**",
-                                "/test/**",
-                                "/dev/**",
-                                "/debug/**",
-                                "/h2-console/**",
-                                "/actuator/**",     // dev에선 actuator 전체 열어도 됨
-                                "/upload-csv"
-                        } : new String[]{}).permitAll()
+                                // 개발/프로덕션 공통 허용 경로 (모든 환경에서 적용)
+        .requestMatchers(new String[]{
+                "/",
+                "/index.html",
+                "/notification-test.html",
+                "/test-login.html",
+                "/test-signup.html",
+                "/test-info.html",
+                "/js/**",
+                "/api/test/**",
+                "/test/**",
+                "/dev/**",
+                "/debug/**",
+                "/h2-console/**",
+                "/actuator/**",     // 모든 환경에서 actuator 허용
+                "/upload-csv"
+        }).permitAll()
 
                         // 공개 GET 조회
                         .requestMatchers(HttpMethod.GET,
@@ -148,13 +151,9 @@ public class SecurityConfig {
                 // JWT 필터 위치 조정
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // 개발: H2 console 프레임 허용
-        if (isDevProfile()) {
-            http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
-            log.info("🔧 dev profile: wide-open CORS + dev routes permitted + H2 frame allowed");
-        } else {
-            log.info("🚀 prod profile: CORS whitelist + auth-by-default");
-        }
+        // 모든 환경에서 동일한 설정 적용
+        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+        log.info("🔧 All profiles: wide-open CORS + dev routes permitted + H2 frame allowed");
 
         return http.build();
     }
@@ -187,17 +186,15 @@ public class SecurityConfig {
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 
-        if (isDevProfile()) {
-            // 개발: 어디서든 붙을 수 있게
-            cfg.addAllowedOriginPattern("*");  // credentials true + pattern 허용
+        // 모든 환경에서 CORS 허용 (dev와 prod 동일하게)
+        List<String> origins = allowedOrigins();
+        if (origins.isEmpty()) {
+            // CORS 설정이 비어있으면 모든 origin 허용 (개발 편의)
+            log.warn("CORS allowed-origins is empty. Allowing all origins for development convenience.");
+            cfg.addAllowedOriginPattern("*");
         } else {
-            // 운영: 화이트리스트만
-            List<String> origins = allowedOrigins();
-            if (origins.isEmpty()) {
-                // 운영인데 비어있으면 실수 방지용으로 로그만 남기고 막음(필요시 기본값 추가)
-                log.warn("CORS allowed-origins is empty on PROD. Check your config/env!");
-            }
-            cfg.setAllowedOrigins(origins);     // credentials true + exact origin만
+            // 설정된 origins만 허용
+            cfg.setAllowedOrigins(origins);
         }
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
@@ -215,7 +212,8 @@ public class SecurityConfig {
 
     private boolean isDevProfile() {
         String[] profiles = environment.getActiveProfiles();
-        // 프로필 미설정 시 dev로 간주(로컬 기본값)
-        return profiles.length == 0 || Arrays.asList(profiles).contains("dev");
+        boolean isDev = profiles.length == 0 || Arrays.asList(profiles).contains("dev");
+        log.info("🔧 Active profiles: {}, isDev: {}", Arrays.toString(profiles), isDev);
+        return isDev;
     }
 }
