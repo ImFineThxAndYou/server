@@ -10,9 +10,9 @@ spring:
       oauth2:
         client:
           registration:
-            google:
-              # 개발 환경에서는 localhost 사용
-              redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
+              google:
+                # 프로덕션 환경에서는 https 사용
+                redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
 
 # CORS 설정 (prod에서도 dev처럼 허용)
 front:

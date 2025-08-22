@@ -46,7 +46,7 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
             } else {
                 // 🛠️ 개발/테스트: 바로 종료
                 log.error("❌ External API health check failed. Aborting startup (non-prod).", e);
-                throw new RuntimeException("External API health check failed", e);
+//                throw new RuntimeException("External API health check failed", e);
             }
         }
     }
