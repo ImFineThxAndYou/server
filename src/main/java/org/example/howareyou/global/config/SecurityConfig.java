@@ -124,6 +124,8 @@ public class SecurityConfig {
                                 "/api/members/*/status",
                                 "/api/members/membername/*"
                         ).permitAll()
+                        //server health 체크
+                        .requestMatchers("/health").permitAll()
 
                         // SSE(알림)는 인증 필요
                         .requestMatchers("/api/notify/sse").authenticated()
