@@ -16,7 +16,7 @@ public class TestConsumer {
     private CountDownLatch latch = new CountDownLatch(1);
     private String payload;
 
-    @KafkaListener(topics = "test-topic", groupId = "test-group")
+    @KafkaListener(topics = "test-topic", groupId = "${spring.kafka.consumer.group-id}")
     public void receive(String message) {
         log.info("received message='{}'", message);
         payload = message;
