@@ -26,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableMethodSecurity
@@ -38,28 +39,46 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler successHandler;
     private final Environment environment;
 
-    /* ──────────── CORS Origins (prod에서 사용) ────────────
-       application.yml (또는 ENV) 예:
-       front:
-         cors:
-           allowed-origins:
-             - "https://your-prod-frontend.com"
-             - "https://another-allowed-site.com"
-    */
-    @Value("${front.cors.allowed-origins:http://localhost:3000}")
-    private List<String> allowedOrigins;
+    /*
+     * 운영 CORS 화이트리스트 (콤마 구분 env 지원 + yml 리스트 둘 다 지원)
+     * 예) FRONT_CORS_ALLOWED_ORIGINS="https://howareu.click,https://www.howareu.click"
+     * 또는 application-prod.yml:
+     * front:
+     *   cors:
+     *     allowed-origins:
+     *       - https://howareu.click
+     *       - https://www.howareu.click
+     */
+    @Value("#{'${front.cors.allowed-origins:https://howareu.click,https://www.howareu.click}'.split(',')}")
+    private List<String> allowedOriginsRaw;
+
+    private List<String> allowedOrigins() {
+        return allowedOriginsRaw == null ? List.of()
+                : allowedOriginsRaw.stream().map(String::trim)
+                .filter(s -> !s.isBlank()).distinct().collect(Collectors.toList());
+    }
 
     /* ──────────── Security Filter Chain ──────────── */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // REST API라 CSRF 미사용. (필요 시 특정 경로만 ignore)
                 .csrf(csrf -> csrf.disable())
+
+                // CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // 세션 없이 동작(JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // 인가 규칙
                 .authorizeHttpRequests(auth -> auth
-                        // 프리플라이트(OPTIONS) 전역 허용
+                        // 프리플라이트(OPTIONS) 전체 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 헬스체크/기본 공개 엔드포인트
+                        .requestMatchers("/", "/favicon.ico", "/robots.txt").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
 
                         // Swagger & 정적 리소스
                         .requestMatchers(
@@ -68,17 +87,20 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
                                 "/webjars/**",
-                                "/favicon.ico",
                                 "/error"
                         ).permitAll()
 
-                        // 인증/회원 관련 공개 API
+                        // 인증/회원 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
-                        
-                        // WebSocket 관련 경로 허용 (SockJS info, sockjs-node 등)
-                        .requestMatchers("/ws-chatroom/**").permitAll()
 
-                        // 개발 환경 전용 허용 경로
+                        // WebSocket 핸드셰이크 경로 (SockJS info 포함) 공개
+                        .requestMatchers(
+                                "/ws-chatroom/**",
+                                "/ws/**",
+                                "/sockjs-node/**"
+                        ).permitAll()
+
+                        // 개발 전용 허용 경로 (dev 프로필에서만 적용)
                         .requestMatchers(isDevProfile() ? new String[]{
                                 "/",
                                 "/index.html",
@@ -92,11 +114,11 @@ public class SecurityConfig {
                                 "/dev/**",
                                 "/debug/**",
                                 "/h2-console/**",
-                                "/actuator/**",
+                                "/actuator/**",     // dev에선 actuator 전체 열어도 됨
                                 "/upload-csv"
                         } : new String[]{}).permitAll()
 
-                        // 읽기 전용 공개 API
+                        // 공개 GET 조회
                         .requestMatchers(HttpMethod.GET,
                                 "/api/members/*",
                                 "/api/members/*/status",
@@ -105,28 +127,33 @@ public class SecurityConfig {
                         //server health 체크
                         .requestMatchers("/health").permitAll()
 
-                        // SSE 는 인증 필요
+                        // SSE(알림)는 인증 필요
                         .requestMatchers("/api/notify/sse").authenticated()
 
-                        // 그 외는 인증
+                        // 이외 전부 인증
                         .anyRequest().authenticated()
                 )
 
-                .oauth2Login(oauth2 -> oauth2.successHandler(successHandler))
+                // OAuth2 로그인 (성공 시 커스텀 핸들러)
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(successHandler)
+                )
 
+                // 예외 처리 - JSON 응답
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler())
                 )
 
+                // JWT 필터 위치 조정
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // 개발(h2-console 등 frame 허용)
+        // 개발: H2 console 프레임 허용
         if (isDevProfile()) {
-            http.headers(headers -> headers.frameOptions().disable());
-            log.info("🔧 개발 환경: 무제한 CORS / dev 허용 경로 / H2 콘솔 프레임 허용");
+            http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+            log.info("🔧 dev profile: wide-open CORS + dev routes permitted + H2 frame allowed");
         } else {
-            log.info("🚀 운영 환경: 제한된 CORS (화이트리스트 기반)");
+            log.info("🚀 prod profile: CORS whitelist + auth-by-default");
         }
 
         return http.build();
@@ -152,23 +179,25 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
+        // 공통
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cfg.setAllowedHeaders(List.of("*"));
+        // 토큰/쿠키 노출 필요시
+        cfg.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
 
         if (isDevProfile()) {
-            // ✅ 개발: 모든 Origin/메서드/헤더 허용
-            cfg.addAllowedOriginPattern("*");
-            cfg.addAllowedMethod(CorsConfiguration.ALL);
-            cfg.addAllowedHeader(CorsConfiguration.ALL);
-            cfg.setAllowCredentials(true);
-            // 노출할 헤더
-            cfg.addExposedHeader("Authorization");
+            // 개발: 어디서든 붙을 수 있게
+            cfg.addAllowedOriginPattern("*");  // credentials true + pattern 허용
         } else {
-            // ✅ 운영: 화이트리스트 기반
-            // allowCredentials(true)일 때는 addAllowedOriginPattern("*") 사용 불가
-            cfg.setAllowedOrigins(allowedOrigins);
-            cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-            cfg.setAllowedHeaders(List.of("*"));
-            cfg.setAllowCredentials(true);
-            cfg.setExposedHeaders(List.of("Authorization"));
+            // 운영: 화이트리스트만
+            List<String> origins = allowedOrigins();
+            if (origins.isEmpty()) {
+                // 운영인데 비어있으면 실수 방지용으로 로그만 남기고 막음(필요시 기본값 추가)
+                log.warn("CORS allowed-origins is empty on PROD. Check your config/env!");
+            }
+            cfg.setAllowedOrigins(origins);     // credentials true + exact origin만
         }
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
@@ -186,6 +215,7 @@ public class SecurityConfig {
 
     private boolean isDevProfile() {
         String[] profiles = environment.getActiveProfiles();
+        // 프로필 미설정 시 dev로 간주(로컬 기본값)
         return profiles.length == 0 || Arrays.asList(profiles).contains("dev");
     }
 }
