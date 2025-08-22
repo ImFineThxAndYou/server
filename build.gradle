@@ -80,6 +80,9 @@ dependencies {
     implementation 'org.apache.kafka:kafka-clients:3.8.0'
     implementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+    
+    // AWS MSK IAM Authentication
+    implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.9'
 
 }
 
