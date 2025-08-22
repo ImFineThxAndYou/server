@@ -5,23 +5,36 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
+  
+  # 개발 환경 OAuth2 설정
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            # 개발 환경에서는 localhost 사용
+            redirect-uri: "http://localhost:8080/login/oauth2/code/google"
+  
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
     consumer:
-      group-id: howru-dev
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:howru-dev}
       auto-offset-reset: earliest
-    # 로컬 개발 편의: 토픽 자동생성(브로커 옵션과 무관하게 AdminClient로 시도)
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    # 로컬 개발 편의: 토픽 자동생성
     admin:
       auto-create: true
-      # 최신부트는 아래만으로 충분. 필요 시 spring.kafka.admin.auto-create=true 추가
-      # auto-create는 스프링이 토픽을 만들도록 "시도"하는 옵션(존재 시 무시)
-      # spring.kafka.admin.auto-create: true
     properties:
       # 디버깅 강화
-      # "org.apache.kafka" 로그 레벨 INFO 이상으로 맞추면 콘솔에 잘 나옴
-      # logging.level.org.apache.kafka=INFO
+      logging.level.org.apache.kafka: INFO
       # 개발에서만 요청 타임아웃 늘리고 재시도 줄이는 등 필요시 추가
       request.timeout.ms: 20000
+      # 보안 설정 (로컬 개발용)
+      security.protocol: PLAINTEXT
 
 springdoc:
   cache:

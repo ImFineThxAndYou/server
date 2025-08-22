@@ -13,7 +13,7 @@ spring:
   data:
     mongodb:
       uri: mongodb+srv://howruname:howrupass@howru.ywfyiyp.mongodb.net/?retryWrites=true&w=majority&appName=howru
-      database: howrudb
+      database: howrudbx
 
     redis:
       host: ${REDIS_HOST}
@@ -40,7 +40,7 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "https://{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
               - email
               - profile
@@ -83,10 +83,12 @@ jwt:
   secret: ${JWT_SECRET}
 
 front:
-  url: ${FRONT_URL}
+  url: ${FRONT_URL:https://howareu.click}
   cors:
     allowed-origins:
-      - ${FRONT_URL}
+      - ${FRONT_URL:https://howareu.click}
+      - https://howareu.click
+      - https://www.howareu.click
       - http://localhost:3000  # React 개발 서버
       - http://localhost:5173  # Vite 개발 서버
       - http://localhost:8080  # 기본 개발 서버
@@ -99,3 +101,6 @@ nlp:
   base-url: http://localhost:8000         # 기존 분석 서비스(NlpClient)
 tagging-nlp:
   base-url: http://localhost:8001         # 새 태깅 서비스(FastAPI analysisTag.py)
+
+server:
+  forward-headers-strategy: framework
