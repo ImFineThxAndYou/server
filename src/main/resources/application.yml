@@ -102,5 +102,3 @@ nlp:
 tagging-nlp:
   base-url: http://localhost:8001         # 새 태깅 서비스(FastAPI analysisTag.py)
 
-server:
-  forward-headers-strategy: framework

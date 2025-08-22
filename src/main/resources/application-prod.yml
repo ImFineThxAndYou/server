@@ -13,6 +13,7 @@ spring:
               google:
                 # 프로덕션 환경에서는 https 사용
                 redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
+                authorization-grant-type: authorization_code
 
 # CORS 설정 (prod에서도 dev처럼 허용)
 front:
@@ -51,8 +52,7 @@ front:
 
 # 보안 헤더 설정
 server:
-  # ALB 뒤에서 실행되므로 실제 클라이언트 IP를 얻기 위한 설정
-  forward-headers-strategy: framework
+  forward-headers-strategy: NATIVE
   # HTTPS 리다이렉트 설정 (ALB에서 처리하므로 비활성화)
   ssl:
     enabled: false
