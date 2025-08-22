@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -62,10 +63,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // REST API라 CSRF 미사용. (필요 시 특정 경로만 ignore)
-                .csrf(csrf -> csrf.disable())
-
-                // CORS
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // 세션 없이 동작(JWT)
@@ -90,17 +88,25 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-                        // 인증/회원 공개 API
+                        // k6 테스트
+                    .requestMatchers(
+                        "/api/chat-message/**",
+                        "/analyze/**"
+
+                    ).permitAll()
+
+                        // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/signup/**").permitAll()
 
-                        // WebSocket 핸드셰이크 경로 (SockJS info 포함) 공개
-                        .requestMatchers(
-                                "/ws-chatroom/**",
-                                "/ws/**",
-                                "/sockjs-node/**"
-                        ).permitAll()
 
-                        // 개발 전용 허용 경로 (dev 프로필에서만 적용)
+
+                    // WebSocket 관련 경로 허용 (SockJS info, sockjs-node 등)
+                        .requestMatchers("/ws-chatroom/**").permitAll()
+                        .requestMatchers("/ws-chatroom/**", "/topic/**", "/app/**").permitAll()
+
+
+                    // 개발 환경 전용 허용 경로
                         .requestMatchers(isDevProfile() ? new String[]{
                                 "/",
                                 "/index.html",
