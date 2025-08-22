@@ -25,7 +25,6 @@ import java.time.Instant;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@Profile("dev")
 public class TestDataInitializer {
 
     private final MemberRepository memberRepository;

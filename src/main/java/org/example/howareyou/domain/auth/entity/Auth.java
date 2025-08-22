@@ -42,6 +42,7 @@ public class Auth extends BaseEntity {
     private String providerUserId;
 
     // 리프레시 토큰
+    @Column(name = "refresh_token", columnDefinition = "text")
     private String refreshToken;
 
     // 리프레시 토큰 만료 시간
