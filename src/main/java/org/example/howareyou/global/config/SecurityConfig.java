@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
@@ -72,13 +73,25 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
+                        // k6 테스트
+                    .requestMatchers(
+                        "/api/chat-message/**",
+                        "/analyze/**"
+
+                    ).permitAll()
+
                         // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
-                        
-                        // WebSocket 관련 경로 허용 (SockJS info, sockjs-node 등)
-                        .requestMatchers("/ws-chatroom/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/signup/**").permitAll()
 
-                        // 개발 환경 전용 허용 경로
+
+
+                    // WebSocket 관련 경로 허용 (SockJS info, sockjs-node 등)
+                        .requestMatchers("/ws-chatroom/**").permitAll()
+                        .requestMatchers("/ws-chatroom/**", "/topic/**", "/app/**").permitAll()
+
+
+                    // 개발 환경 전용 허용 경로
                         .requestMatchers(isDevProfile() ? new String[]{
                                 "/",
                                 "/index.html",
