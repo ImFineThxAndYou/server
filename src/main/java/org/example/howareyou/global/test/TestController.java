@@ -9,6 +9,7 @@ import org.example.howareyou.domain.auth.entity.Provider;
 import org.example.howareyou.domain.auth.repository.AuthRepository;
 import org.example.howareyou.domain.member.entity.Member;
 import org.example.howareyou.domain.member.entity.MemberProfile;
+import org.example.howareyou.domain.member.entity.MemberTag;
 import org.example.howareyou.domain.member.entity.Role;
 import org.example.howareyou.domain.member.redis.MemberCacheService;
 import org.example.howareyou.domain.member.repository.MemberRepository;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -235,5 +237,55 @@ public class TestController {
             response.put("message", "캐시 상태 확인 중 오류 발생: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
+    }
+
+    /**
+     * 기존 테스트 유저 프로필에 관심사 추가
+     */
+    @PostMapping("/update-test-profiles")
+    public ResponseEntity<Map<String, Object>> updateTestProfiles() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // 테스트 유저들 찾기
+            List<Member> testUsers = memberRepository.findByEmailContaining("@example.com");
+            int updatedCount = 0;
+            
+            for (Member member : testUsers) {
+                if (member.getProfile() != null && 
+                    (member.getProfile().getInterests() == null || member.getProfile().getInterests().isEmpty())) {
+                    
+                    // 관심사 설정
+                    Set<MemberTag> interests = Set.of(
+                        MemberTag.TECHNOLOGY,
+                        MemberTag.MUSIC,
+                        MemberTag.FOOD,
+                        MemberTag.TRAVEL
+                    );
+                    
+                    member.getProfile().setInterests(interests);
+                    member.getProfile().setLanguage("ko");
+                    member.getProfile().setTimezone("Asia/Seoul");
+                    member.getProfile().setCompleted(true);
+                    
+                    memberRepository.save(member);
+                    updatedCount++;
+                    
+                    log.info("테스트 유저 프로필 업데이트: {} (관심사: {})", 
+                            member.getEmail(), interests);
+                }
+            }
+            
+            response.put("success", true);
+            response.put("updatedCount", updatedCount);
+            response.put("message", updatedCount + "명의 테스트 유저 프로필이 업데이트되었습니다.");
+            
+        } catch (Exception e) {
+            log.error("테스트 유저 프로필 업데이트 중 오류 발생", e);
+            response.put("success", false);
+            response.put("message", "프로필 업데이트 중 오류 발생: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(response);
     }
 }

@@ -39,6 +39,12 @@ public interface MemberRepository extends JpaRepository<Member,Long>{
     Optional<Member> findByMembernameForAuth(@Param("membername") String membername);
     
     boolean existsByMembername(String Membername);
+    
+    /**
+     * 이메일에 특정 문자열이 포함된 사용자들을 조회
+     */
+    List<Member> findByEmailContaining(String email);
+    
     List<Member> findDistinctByProfileInterestsInAndIdNot(Set<MemberTag> interests, Long excludeId);
 
     Long getIdByMembername(String membername);
@@ -112,4 +118,5 @@ HAVING
         where m.active = true
     """)
     Page<MemberProfileViewForVoca> findAllActiveProfilesForVoca(Pageable pageable);
+
 }
