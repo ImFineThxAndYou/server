@@ -188,13 +188,19 @@ public class SecurityConfig {
         cfg.setAllowedHeaders(List.of("*"));
         // 토큰/쿠키 노출 필요시
         cfg.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+        cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 
-        // credentials가 true일 때는 특정 origin만 허용
-        cfg.setAllowCredentials(true);
-        cfg.addAllowedOriginPattern("*");
-        
-        log.info("🔓 CORS 전체 허용 설정 적용 - 모든 origin 허용, credentials: true");
+        // 모든 환경에서 CORS 허용 (dev와 prod 동일하게)
+        List<String> origins = allowedOrigins();
+        if (origins.isEmpty()) {
+            // CORS 설정이 비어있으면 모든 origin 허용 (개발 편의)
+            log.warn("CORS allowed-origins is empty. Allowing all origins for development convenience.");
+            cfg.addAllowedOriginPattern("*");
+        } else {
+            // 설정된 origins만 허용
+            cfg.setAllowedOrigins(origins);
+        }
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
