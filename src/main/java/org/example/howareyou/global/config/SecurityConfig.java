@@ -127,6 +127,12 @@ public class SecurityConfig {
                                 "/api/members/*/status",
                                 "/api/members/membername/*"
                         ).permitAll()
+                        //
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/members/*",
+                                "/api/members/*/status",
+                                "/api/members/membername/*"
+                        ).permitAll()
                         //server health 체크
                         .requestMatchers("/health").permitAll()
 
