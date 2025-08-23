@@ -32,5 +32,10 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     // 리프레시 토큰으로 인증 정보 조회
     Optional<Auth> findByRefreshToken(String refreshToken);
     
+    /**
+     * Auth와 Member 정보를 함께 조회 (LazyInitializationException 방지)
+     */
+    @Query("SELECT a FROM Auth a JOIN FETCH a.member WHERE a.id = :id")
+    Optional<Auth> findByIdWithMember(@Param("id") Long id);
 
 }

@@ -81,10 +81,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            // Access Token에서 사용자 식별자 추출
-            String identifier = jwtTokenProvider.getIdentifierFromAccessToken(token);
+            // Access Token에서 Auth ID 추출
+            Long authId = jwtTokenProvider.getAuthIdFromAccessToken(token);
+            
+            log.debug("JWT 인증 처리: authId={}", authId);
 
-            UserDetails user = userDetailsService.loadUserByUsername(identifier); // ← identifier=membername
+            // Auth ID로 사용자 조회 (기존 로직 활용)
+            UserDetails user = userDetailsService.loadUserByUsername(authId.toString());
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 

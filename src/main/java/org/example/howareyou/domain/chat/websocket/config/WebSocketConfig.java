@@ -106,15 +106,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             try {
               log.info("🔑 JWT 토큰 검증 시작");
               // JWT 토큰 검증 및 사용자 정보 추출
-              String userId = jwtTokenProvider.validateAndGetSubject(token);
-              log.info("✅ JWT 토큰 검증 성공: userId={}", userId);
+              Long authId = jwtTokenProvider.getAuthIdFromAccessToken(token);
+              log.info("✅ JWT 토큰 검증 성공: authId={}", authId);
               
               // CustomMemberDetails 생성
-              CustomMemberDetails userDetails = (CustomMemberDetails) customMemberDetailsService.loadUserByUsername(userId);
+              CustomMemberDetails userDetails = (CustomMemberDetails) customMemberDetailsService.loadUserByUsername(authId.toString());
               Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
               accessor.setUser(auth);
               
-              log.info("✅ WebSocket CONNECT 인증 성공: userId={}, membername={}", userId, userDetails.getMembername());
+              log.info("✅ WebSocket CONNECT 인증 성공: authId={}, membername={}", authId, userDetails.getMembername());
             } catch (Exception e) {
               log.error("❌ WebSocket CONNECT 인증 실패: {}", e.getMessage(), e);
               // 인증 실패 시 연결 거부

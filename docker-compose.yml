@@ -34,13 +34,22 @@ services:
   libretranslate:
     image: libretranslate/libretranslate:latest
     restart: unless-stopped
+    user: "0:0"                          # ← root 로 실행(볼륨 쓰기 권한 문제 해결)
     ports:
-      - "5001:5000"  # 호스트 5001 → 컨테이너 5000
+      - "5001:5000"                      # host 5001 -> container 5000
+    environment:
+      LT_LOAD_ONLY: "en,ko"              # en/ko만 사용
+      LT_PRELOAD: "true"                 # 기동 시 en<->ko 모델 미리 로드
+      LT_UPDATE_MODELS: "true"
+    command: ["--host", "0.0.0.0", "--port", "5000"]
+    volumes:
+      - lt_models:/home/libretranslate/.local/share/argos-translate
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5001/ || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/languages | grep -q '\"code\":\"ko\"' && grep -q '\"code\":\"en\"'"]
+      interval: 20s
       timeout: 5s
-      retries: 3
+      retries: 10
+
 
   spacy-api:
     build:
@@ -110,6 +119,8 @@ services:
 volumes:
   pgdata:
   redisdata:
+  lt_models:
+
 
 networks:
   kafka-net:

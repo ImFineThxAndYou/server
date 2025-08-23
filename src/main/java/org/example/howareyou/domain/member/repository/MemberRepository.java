@@ -18,6 +18,26 @@ import java.util.Set;
 public interface MemberRepository extends JpaRepository<Member,Long>{
     Optional<Member> findById(Long id);
     Optional<Member> findByMembername(String membername);
+    Optional<Member> findByEmail(String email);
+    
+    /**
+     * Member 기본 정보를 fetch join으로 조회 (LazyInitializationException 방지)
+     */
+    @Query("SELECT m FROM Member m WHERE m.id = :id")
+    Optional<Member> findByIdForAuth(@Param("id") Long id);
+    
+    /**
+     * Member 기본 정보를 fetch join으로 조회 (LazyInitializationException 방지)
+     */
+    @Query("SELECT m FROM Member m WHERE m.email = :email")
+    Optional<Member> findByEmailForAuth(@Param("email") String email);
+    
+    /**
+     * Member 기본 정보를 fetch join으로 조회 (LazyInitializationException 방지)
+     */
+    @Query("SELECT m FROM Member m WHERE m.membername = :membername")
+    Optional<Member> findByMembernameForAuth(@Param("membername") String membername);
+    
     boolean existsByMembername(String Membername);
     List<Member> findDistinctByProfileInterestsInAndIdNot(Set<MemberTag> interests, Long excludeId);
 

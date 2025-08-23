@@ -98,21 +98,8 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         m.setMembername(req.membername());
         
-        // membername 설정 후 Refresh Token을 membername 기반으로 재발급
-        Auth auth = authRepository.findByMemberId(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_BAD_CREDENTIAL));
-        
-        // 새로운 Refresh Token 생성 (membername 기반)
-        String newRefreshToken = jwtTokenProvider.createRefreshTokenWithMembername(req.membername());
-        
-        // Refresh Token 갱신
-        Instant refreshTokenExpiry = Instant.now()
-                .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
-        auth.setRefreshToken(newRefreshToken, refreshTokenExpiry);
-        
-        // 새로운 쿠키 설정
-        boolean isSecure = !"dev".equals(System.getProperty("spring.profiles.active", "dev"));
-        res.addCookie(CookieUtils.refresh(newRefreshToken, isSecure));
+        // 멤버네임만 설정하고 토큰은 건드리지 않음
+        // Access Token은 Auth ID 기반, Refresh Token은 UUID 기반으로 유지
         
         return MembernameResponse.from(m);            // dirty-checking flush
     }

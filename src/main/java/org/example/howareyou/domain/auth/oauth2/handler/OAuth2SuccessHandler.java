@@ -74,9 +74,17 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         boolean isSecure = !"dev".equals(activeProfile);
         res.addCookie(CookieUtils.refresh(t.refresh(), isSecure));
 
-        // 3-2) 목적지 결정 (환경에 따라 다름)
+        // 3-2) 목적지 결정 (프로필 완료 상태에 따라)
         String redirectUrl;
-        String path = t.completed() ? "/login/success" : "/signup/membername";
+        String path;
+        
+        if (t.completed()) {
+            // 프로필 완료 → 로그인 성공 페이지
+            path = "/login/success";
+        } else {
+            // 프로필 미완료 → membername 설정 페이지
+            path = "/signup/membername";
+        }
         
         redirectUrl = UriComponentsBuilder
                 .fromUriString(frontUrl)
@@ -84,6 +92,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .queryParam("oauth_success", "true")
                 .queryParam("provider", provider.name().toLowerCase())
                 .queryParam("profile_completed", String.valueOf(t.completed()))
+                .queryParam("access_token", t.access())  // Access Token 추가
                 .build().toUriString();
         
         log.info("🔄 OAuth2 리다이렉트: {}", redirectUrl);

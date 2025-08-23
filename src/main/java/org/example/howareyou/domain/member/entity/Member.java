@@ -126,6 +126,16 @@ public class Member extends BaseEntity {
         return this.profile != null && this.profile.isCompleted();
     }
 
+    /** membername 설정 여부 */
+    public boolean hasMembername() {
+        return this.membername != null && !this.membername.trim().isEmpty() && !this.membername.startsWith("temp_");
+    }
+
+    /** 프로필 설정 가능 여부 (membername이 설정되어야 프로필 설정 가능) */
+    public boolean canSetupProfile() {
+        return hasMembername();
+    }
+
     /** 계정 삭제(soft-delete) */
     public void deleteAccount() {
         this.active = false;
