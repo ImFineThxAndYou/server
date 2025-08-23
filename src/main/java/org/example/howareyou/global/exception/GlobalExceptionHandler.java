@@ -7,7 +7,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.data.redis.RedisSystemException;
-import org.springframework.session.data.redis.RedisSessionRepository;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -58,27 +57,11 @@ public class GlobalExceptionHandler {
         return makeValidationErrorResponse(detail); // 기존 헬퍼 재사용
     }
 
-    /* ── 4) Redis/Session 관련 예외 ───────────────────────────────────── */
-    @ExceptionHandler({RedisSystemException.class, IllegalStateException.class})
-    protected ResponseEntity<ErrorResponse> handleRedisSessionException(Exception ex) {
+    /* ── 4) Redis 연결 관련 예외 ───────────────────────────────────── */
+    @ExceptionHandler(RedisSystemException.class)
+    protected ResponseEntity<ErrorResponse> handleRedisException(RedisSystemException ex) {
         
-        // Session was invalidated 에러는 클라이언트에게 세션 만료로 안내
-        if (ex.getMessage() != null && ex.getMessage().contains("Session was invalidated")) {
-            log.warn("[SESSION] Session invalidated: {}", ex.getMessage());
-            
-            ErrorResponse body = ErrorResponse.builder()
-                    .code("SESSION_EXPIRED")
-                    .message("세션이 만료되었습니다. 다시 로그인해주세요.")
-                    .status(401)
-                    .detail("Session was invalidated")
-                    .timestamp(LocalDateTime.now())
-                    .build();
-            
-            return ResponseEntity.status(401).body(body);
-        }
-        
-        // Redis 연결 문제
-        log.error("[REDIS] Redis/Session error: {}", ex.getMessage(), ex);
+        log.error("[REDIS] Redis connection error: {}", ex.getMessage(), ex);
         
         ErrorResponse body = ErrorResponse.builder()
                 .code(ErrorCode.INTERNAL_SERVER_ERROR.getCode())

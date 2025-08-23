@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
+import java.util.Set;
 
 /**
  * 개발 환경에서 테스트용 데이터를 자동으로 초기화하는 컴포넌트
@@ -25,7 +26,6 @@ import java.time.Instant;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@Profile("dev")
 public class TestDataInitializer {
 
     private final MemberRepository memberRepository;
@@ -62,6 +62,15 @@ public class TestDataInitializer {
                 .nickname(nickname)
                 .completed(profileCompleted)
                 .avatarUrl("https://via.placeholder.com/150")
+                .language("ko")
+                .timezone("Asia/Seoul")
+                .interests(Set.of(
+                    // 테스트용 관심사 설정
+                    org.example.howareyou.domain.member.entity.MemberTag.TECHNOLOGY,
+                    org.example.howareyou.domain.member.entity.MemberTag.MUSIC,
+                    org.example.howareyou.domain.member.entity.MemberTag.FOOD,
+                    org.example.howareyou.domain.member.entity.MemberTag.TRAVEL
+                ))
                 .build();
 
         // 회원 생성

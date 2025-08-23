@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.example.howareyou.domain.translate.dto.TranslateRequestDto;
 import org.example.howareyou.domain.translate.dto.TranslateResponseDto;
+import org.example.howareyou.domain.translate.dto.LanguageDetectionResponseDto;
 import org.example.howareyou.domain.translate.service.GeminiTranslateService;
 import org.example.howareyou.domain.translate.service.LiberTranslateService;
 import org.example.howareyou.global.exception.ErrorResponse;
@@ -99,6 +100,82 @@ public class TranslateController {
             TranslateRequestDto requestDto
     ){
         TranslateResponseDto responseDto = geminiTranslateService.translate(requestDto);
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @Operation(
+            summary = "언어 자동 감지 (LiberTranslate)",
+            description = "LibreTranslate 엔진을 사용해 텍스트의 언어를 자동으로 감지합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "언어 감지 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = LanguageDetectionResponseDto.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PostMapping("/detect")
+    public ResponseEntity<LanguageDetectionResponseDto> detectLanguage(
+            @RequestBody
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "언어 감지 요청 DTO",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = TranslateRequestDto.class))
+            )
+            TranslateRequestDto requestDto
+    ){
+        LanguageDetectionResponseDto responseDto = liberTranslateService.detectLanguage(requestDto.getQ());
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @Operation(
+            summary = "자동 언어 감지 및 번역 (LiberTranslate)",
+            description = "텍스트의 언어를 자동으로 감지하고 반대 언어로 번역합니다. source와 target을 지정하지 않아도 됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "자동 번역 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = TranslateResponseDto.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PostMapping("/auto")
+    public ResponseEntity<TranslateResponseDto> translateAuto(
+            @RequestBody
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "자동 번역 요청 DTO (source, target 생략 가능)",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = TranslateRequestDto.class))
+            )
+            TranslateRequestDto requestDto
+    ){
+        TranslateResponseDto responseDto = liberTranslateService.translateAuto(requestDto);
         return ResponseEntity.ok(responseDto);
     }
 }

@@ -45,7 +45,7 @@ public class RecommendationTagController {
   }
 
   @GetMapping("/recommend")
-  public List<Long> recommendMembers(
+  public List<String> recommendMembers(
       @AuthenticationPrincipal CustomMemberDetails memberDetails,
       @RequestParam(defaultValue = "5") int topN) {
 

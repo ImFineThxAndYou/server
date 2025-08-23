@@ -2,8 +2,8 @@
   "family": "howru-backend",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["EC2"],
-  "cpu": "512",
-  "memory": "1024",
+  "cpu": "1024",
+  "memory": "4096",
   "executionRoleArn": "arn:aws:iam::257976284139:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {

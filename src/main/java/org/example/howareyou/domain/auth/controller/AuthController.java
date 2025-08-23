@@ -47,13 +47,15 @@ public class AuthController {
 
     @Operation(
         summary = "토큰 갱신",
-        description = "membername과 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. " +
+        description = "리프레시 토큰과 만료된 액세스 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. " +
                      "리프레시 토큰은 쿠키에서 자동으로 읽어집니다."
     )
     @PostMapping("/refresh")
     public ResponseEntity<TokenBundle> refresh(
             @Parameter(description = "리프레시 토큰 (쿠키에서 자동 읽기)", hidden = true)
-            @CookieValue(value = "Refresh", required = false) String refreshToken, 
+            @CookieValue(value = "Refresh", required = false) String refreshToken,
+            @Parameter(description = "만료된 액세스 토큰", required = true)
+            @RequestHeader("X-Expired-Access-Token") String expiredAccessToken,
             HttpServletRequest request, 
             HttpServletResponse response
     ) {
@@ -61,7 +63,7 @@ public class AuthController {
             throw new CustomException(ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND);
         }
         
-        TokenBundle tokenBundle = authService.refreshToken(refreshToken);
+        TokenBundle tokenBundle = authService.refreshToken(refreshToken, expiredAccessToken);
         response.setHeader("Authorization", "Bearer " + tokenBundle.access());
         
         return ResponseEntity.ok(tokenBundle);

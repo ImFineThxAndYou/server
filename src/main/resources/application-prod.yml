@@ -10,39 +10,49 @@ spring:
       oauth2:
         client:
           registration:
-            google:
-              # 개발 환경에서는 localhost 사용
-              redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
+              google:
+                # 프로덕션 환경에서는 https 사용
+                redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
+                authorization-grant-type: authorization_code
 
-  kafka:
-    bootstrap-servers: ${AWS_MSK_BROKERS}
-    consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP_ID:howru-prod}
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-    admin:
-      auto-create: false  # 프로덕션에서는 수동으로 토픽 관리
-    properties:
-      # AWS MSK 보안 설정
-      security.protocol: SASL_SSL
-      sasl.mechanism: AWS_MSK_IAM
-      sasl.jaas.config: com.amazon.msk.auth.iam.IAMLoginModule required;
-      sasl.client.callback.handler.class: com.amazon.msk.auth.iam.IAMClientCallbackHandler
-      # 성능 최적화
-      request.timeout.ms: 30000
-      retry.backoff.ms: 1000
-      max.in.flight.requests.per.connection: 5
-      # SSL 설정
-      ssl.endpoint.identification.algorithm: https
+# CORS 설정 (prod에서도 dev처럼 허용)
+front:
+  cors:
+    allowed-origins:
+      - https://howareu.click
+      - https://www.howareu.click
+      - http://localhost:3000  # 개발 편의
+      - http://localhost:5173  # 개발 편의
+      - http://localhost:8080  # 개발 편의
+
+#  kafka:
+#    bootstrap-servers: ${AWS_MSK_BROKERS}
+#    consumer:
+#      group-id: ${KAFKA_CONSUMER_GROUP_ID:howru-prod}
+#      auto-offset-reset: earliest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#    producer:
+#      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+#      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+#    admin:
+#      auto-create: false  # 프로덕션에서는 수동으로 토픽 관리
+#    properties:
+#      # AWS MSK 보안 설정
+#      security.protocol: SASL_SSL
+#      sasl.mechanism: AWS_MSK_IAM
+#      sasl.jaas.config: com.amazon.msk.auth.iam.IAMLoginModule required;
+#      sasl.client.callback.handler.class: com.amazon.msk.auth.iam.IAMClientCallbackHandler
+#      # 성능 최적화
+#      request.timeout.ms: 30000
+#      retry.backoff.ms: 1000
+#      max.in.flight.requests.per.connection: 5
+#      # SSL 설정
+#      ssl.endpoint.identification.algorithm: https
 
 # 보안 헤더 설정
 server:
-  # ALB 뒤에서 실행되므로 실제 클라이언트 IP를 얻기 위한 설정
-  forward-headers-strategy: framework
+  forward-headers-strategy: NATIVE
   # HTTPS 리다이렉트 설정 (ALB에서 처리하므로 비활성화)
   ssl:
     enabled: false

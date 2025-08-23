@@ -78,3 +78,4 @@ jobs:
           service:                       howru-backend-service
           cluster:                       howr-final-cluster
           wait-for-service-stability:    true
+          force-new-deployment:          true   # ✅ 강제 배포 옵션 추가

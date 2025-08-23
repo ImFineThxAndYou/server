@@ -30,9 +30,8 @@ dependencies {
     // 🍃 NoSQL - MongoDB
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 
-    // 🚀 Redis (동기식 Pub/Sub + 세션)
+    // 🚀 Redis (동기식 Pub/Sub + 캐싱)
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.session:spring-session-data-redis'
 
      //🔐 Security + OAuth2
     implementation 'org.springframework.boot:spring-boot-starter-security'

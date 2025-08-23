@@ -9,7 +9,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-@Profile("dev")
+import java.util.Arrays;
+
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
@@ -19,12 +20,14 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
     private final WebClient taggingNlpWebClient;
     private final WebClient translateWebClient;
     private final WebClient geminiWebClient;
+    private final org.springframework.core.env.Environment environment;
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("🔍 Performing health checks for external APIs. The application will not start if any API is down.");
+        log.info("🔍 Performing health checks for external APIs.");
 
-        // Define each API check
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
         Mono<String> spacyApiHealth = checkHealth(nlpWebClient, "/health", "Spacy API (port 8000)");
         Mono<String> fastApiHealth = checkHealth(taggingNlpWebClient, "/health", "FastAPI (port 8001)");
         Mono<String> libreTranslateHealth = checkHealth(translateWebClient, "/languages", "LibreTranslate API");
@@ -33,12 +36,18 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
         try {
             Mono.zip(spacyApiHealth, fastApiHealth, libreTranslateHealth, geminiApiHealth)
                     .doOnSuccess(results -> {
-                        log.info("✅ All external APIs are healthy. Proceeding with application startup.");
+                        log.info("✅ All external APIs are healthy.");
                     })
-                    .block(); // block until all health checks complete
+                    .block();
         } catch (Exception e) {
-            log.error("❌ One or more external API health checks failed. Aborting application startup.", e);
-            throw new RuntimeException("External API health check failed", e);
+            if (isProd) {
+                // 🚀 운영: 서버는 계속 실행
+                log.error("⚠️ External API health check failed, but continuing startup (prod mode).", e);
+            } else {
+                // 🛠️ 개발/테스트: 바로 종료
+                log.error("❌ External API health check failed. Aborting startup (non-prod).", e);
+//                throw new RuntimeException("External API health check failed", e);
+            }
         }
     }
 
@@ -47,7 +56,7 @@ public class ApiHealthCheckRunner implements ApplicationRunner {
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(java.time.Duration.ofSeconds(10))
+                .timeout(java.time.Duration.ofSeconds(5))
                 .doOnSuccess(res -> log.info("✅ {} health check successful: {}", apiName, res))
                 .doOnError(err -> log.error("❌ {} health check failed: {}", apiName, err.getMessage()));
     }

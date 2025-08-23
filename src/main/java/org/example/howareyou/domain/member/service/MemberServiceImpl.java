@@ -23,6 +23,7 @@ import org.example.howareyou.global.security.jwt.JwtTokenProvider;
 import org.example.howareyou.global.util.CookieUtils;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
+import org.example.howareyou.domain.recommendationtag.service.RecommendationTagService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,7 @@ public class MemberServiceImpl implements MemberService {
     private final MemberCacheService memberCacheService;
     private final AuthRepository authRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RecommendationTagService recommendationTagService;
 
     /* ---------- 프로필 ---------- */
 
@@ -75,6 +77,15 @@ public class MemberServiceImpl implements MemberService {
         if (!p.isCompleted()) p.completeProfile();
         memberCacheService.cache(m);       // 캐시 동기화
 
+        // 프로필 관심사 기반 자동 태깅 생성
+        try {
+            recommendationTagService.createOrUpdateMemberTagScores(id, r.getInterests());
+            log.info("프로필 업데이트 시 자동 태깅 생성 완료: memberId={}, interests={}", id, r.getInterests());
+        } catch (Exception e) {
+            log.error("프로필 업데이트 시 자동 태깅 생성 실패: memberId={}", id, e);
+            // 태깅 실패해도 프로필 업데이트는 계속 진행
+        }
+
         return ProfileResponse.from(p);
     }
 
@@ -98,21 +109,8 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         m.setMembername(req.membername());
         
-        // membername 설정 후 Refresh Token을 membername 기반으로 재발급
-        Auth auth = authRepository.findByMemberId(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.AUTH_BAD_CREDENTIAL));
-        
-        // 새로운 Refresh Token 생성 (membername 기반)
-        String newRefreshToken = jwtTokenProvider.createRefreshTokenWithMembername(req.membername());
-        
-        // Refresh Token 갱신
-        Instant refreshTokenExpiry = Instant.now()
-                .plus(Duration.ofMillis(jwtTokenProvider.getRefreshTokenExpirationTime()));
-        auth.setRefreshToken(newRefreshToken, refreshTokenExpiry);
-        
-        // 새로운 쿠키 설정
-        boolean isSecure = !"dev".equals(System.getProperty("spring.profiles.active", "dev"));
-        res.addCookie(CookieUtils.refresh(newRefreshToken, isSecure));
+        // 멤버네임만 설정하고 토큰은 건드리지 않음
+        // Access Token은 Auth ID 기반, Refresh Token은 UUID 기반으로 유지
         
         return MembernameResponse.from(m);            // dirty-checking flush
     }

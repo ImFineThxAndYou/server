@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.example.howareyou.domain.chat.entity.ChatRoom;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
+import org.example.howareyou.domain.chat.repository.ChatRoomMemberRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatEnterDTO;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
 import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
@@ -28,10 +29,12 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 @Tag(name = "WebSocket 채팅", description = "STOMP 기반 실시간 채팅 메시지 처리")
 public class ChatController {
 
@@ -39,6 +42,7 @@ public class ChatController {
   private final ChatMessageService chatMessageService;
   private final ChatRedisService chatRedisService;
   private final ChatRoomRepository chatRoomRepository;
+  private final ChatRoomMemberRepository chatRoomMemberRepository;
   private final ChatMemberTracker chatMemberTracker;
 
   /**
@@ -140,8 +144,8 @@ public class ChatController {
     
     String chatRoomId = dto.getChatRoomId();
 
-    // 입장 제한 로직
-    ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomId)
+    // 입장 제한 로직 - members를 eager fetch로 로드
+    ChatRoom chatRoom = chatRoomMemberRepository.findByUuidWithMembers(chatRoomId)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
     Long memberId = Long.parseLong(userId);
