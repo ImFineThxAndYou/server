@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -297,5 +298,29 @@ public class ChatRoomService {
   /** 내가 받은 요청 리스트 (RECEIVER + PENDING) */
   public List<ChatRequestSummaryResponse> getReceivedRequests(Long myId) {
     return getRequestsByStatus(myId, ChatRoomMemberStatus.RECEIVER);
+  }
+
+
+  /** Test 를 위한 서비스 메서드 추가 (채팅방 수락없이 강제생성)*/
+  public CreateChatRoomResponse forceCreateChatRoom(Long senderId, Long receiverId) {
+    ChatRoom chatRoom = new ChatRoom();
+    chatRoom.setStatus(ChatRoomStatus.ACCEPTED); // 테스트에서는 바로 수락된 상태로
+
+    ChatRoomMember sender = new ChatRoomMember();
+    sender.setMember(memberRepository.getReferenceById(senderId));
+    chatRoom.addMember(sender);
+
+    ChatRoomMember receiver = new ChatRoomMember();
+    receiver.setMember(memberRepository.getReferenceById(receiverId));
+    chatRoom.addMember(receiver);
+
+    chatRoomRepository.save(chatRoom); // 여기서 @PrePersist → uuid 자동 생성
+
+    System.out.println(String.format(
+            "💾 [TEST] 채팅방 강제 생성: roomUuid=%s, senderId=%d, receiverId=%d",
+            chatRoom.getUuid(), senderId, receiverId
+    ));
+
+    return new CreateChatRoomResponse(chatRoom.getUuid());
   }
 }

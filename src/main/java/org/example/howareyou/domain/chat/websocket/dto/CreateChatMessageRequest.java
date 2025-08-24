@@ -11,4 +11,7 @@ public class CreateChatMessageRequest {
   private Long senderId;
   private String content;
 
+  // 테스트용
+  private String membername;
+
 }
