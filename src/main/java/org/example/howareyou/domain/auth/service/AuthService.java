@@ -51,16 +51,9 @@ public class AuthService {
         }
 
         // 3. 토큰 생성 및 사용자 캐싱
-        String accessToken = jwtTokenProvider.createAccessToken(auth.getMember().getMembername());
-        String refreshToken;
-        
-        if (auth.getMember().getMembername() != null && !auth.getMember().getMembername().isEmpty()) {
-            // membername이 있으면 membername 기반 Refresh Token
-            refreshToken = jwtTokenProvider.createRefreshTokenWithMembername(auth.getMember().getMembername());
-        } else {
-            // membername이 없으면 email 기반 Refresh Token
-            refreshToken = jwtTokenProvider.createRefreshTokenWithEmail(auth.getMember().getEmail());
-        }
+        // Access Token은 Auth ID 기반, Refresh Token은 Member ID 기반
+        String accessToken = jwtTokenProvider.createAccessToken(auth.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(auth.getMember().getId());
         
         // 4. 리프레시 토큰 저장
         Instant refreshTokenExpiry = Instant.now()
@@ -83,17 +76,10 @@ public class AuthService {
         Auth auth = authRepository.findByProviderAndProviderUserId(provider, providerUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.AUTH_SOCIAL_ACCOUNT_NOT_FOUND));
         
-        // 2. 토큰 생성 (membername이 있으면 membername 기반, 없으면 email 기반)
-        String accessToken = jwtTokenProvider.createAccessToken(auth.getMember().getMembername());
-        String refreshToken;
-        
-        if (auth.getMember().getMembername() != null && !auth.getMember().getMembername().isEmpty()) {
-            // membername이 있으면 membername 기반 Refresh Token
-            refreshToken = jwtTokenProvider.createRefreshTokenWithMembername(auth.getMember().getMembername());
-        } else {
-            // membername이 없으면 email 기반 Refresh Token
-            refreshToken = jwtTokenProvider.createRefreshTokenWithEmail(auth.getMember().getEmail());
-        }
+        // 2. 토큰 생성
+        // Access Token은 Auth ID 기반, Refresh Token은 Member ID 기반
+        String accessToken = jwtTokenProvider.createAccessToken(auth.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(auth.getMember().getId());
         
         // 3. 리프레시 토큰 갱신
         Instant refreshTokenExpiry = Instant.now()
@@ -125,7 +111,7 @@ public class AuthService {
      * 액세스 토큰 재발급
      */
     @Transactional
-    public TokenBundle refreshToken(String refreshToken) {
+    public TokenBundle refreshToken(String refreshToken, String expiredAccessToken) {
         // 1. 리프레시 토큰으로 인증 정보 조회
         Auth auth = authRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN));
@@ -135,35 +121,24 @@ public class AuthService {
             throw new CustomException(ErrorCode.AUTH_EXPIRED_REFRESH_TOKEN);
         }
         
-        // 3. 토큰에서 사용자 식별자 추출 및 검증
-        String tokenIdentifier = jwtTokenProvider.getIdentifierFromRefreshToken(refreshToken);
-        String tokenIdentifierType = jwtTokenProvider.getIdentifierTypeFromRefreshToken(refreshToken);
-        
-        if (tokenIdentifier == null || tokenIdentifierType == null) {
+        // 3. 만료된 Access Token에서 Auth ID 추출 및 검증
+        try {
+            Long tokenAuthId = jwtTokenProvider.getAuthIdFromAccessToken(expiredAccessToken);
+            if (!tokenAuthId.equals(auth.getId())) {
+                log.warn("Access token auth ID mismatch. Token: {}, DB: {}", 
+                        tokenAuthId, auth.getId());
+                throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract auth ID from expired access token: {}", e.getMessage());
             throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
         }
         
-        // 4. 식별자 타입에 따른 검증
-        Member member = auth.getMember();
-        boolean isValid = false;
+        // 4. 새로운 액세스 토큰 발급 (Auth ID 기반)
+        String newAccessToken = jwtTokenProvider.createAccessToken(auth.getId());
+        log.info("Access token refreshed for auth ID: {}", auth.getId());
         
-        if ("email".equals(tokenIdentifierType)) {
-            isValid = tokenIdentifier.equals(member.getEmail());
-        } else if ("membername".equals(tokenIdentifierType)) {
-            isValid = tokenIdentifier.equals(member.getMembername());
-        }
-        
-        if (!isValid) {
-            log.warn("Refresh token identifier mismatch. Token: {}, DB: {}", 
-                    tokenIdentifier, "email".equals(tokenIdentifierType) ? member.getEmail() : member.getMembername());
-            throw new CustomException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN);
-        }
-        
-        // 5. 새로운 액세스 토큰 발급 (membername 사용)
-        String newAccessToken = jwtTokenProvider.createAccessToken(member.getMembername());
-        
-        log.info("Access token refreshed for user: {}", member.getMembername());
-        return new TokenBundle(newAccessToken, refreshToken, member.isProfileCompleted());
+        return new TokenBundle(newAccessToken, refreshToken, auth.getMember().isProfileCompleted());
     }
     
     /**
@@ -198,7 +173,7 @@ public class AuthService {
         }
 
         // 3. 새 AccessToken 발급
-        String userId = auth.getMember().getId().toString();
+        Long userId = auth.getMember().getId();
         return jwtTokenProvider.createAccessToken(userId);
     }
 

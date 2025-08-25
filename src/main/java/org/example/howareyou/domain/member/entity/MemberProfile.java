@@ -24,6 +24,7 @@ import java.util.*;
 @Entity
 @Table(name = "member_profiles")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder

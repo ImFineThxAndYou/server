@@ -3,7 +3,7 @@ spring:
     import:
       optional:file:.env[.properties]
   profiles:
-    active: dev
+    active: prod
 
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
@@ -26,12 +26,18 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
-  session:
-    store-type: redis
-    redis:
-      namespace: spring:session
-      flush-mode: on_save
-    timeout: 30m
+            # Spring Session Redis 제거 - JWT stateless 인증 사용
+          # session:
+          #   store-type: redis
+          #   redis:
+          #     namespace: spring:session
+          #     flush-mode: on_save
+          #   timeout: 30m
+          
+          # 마이그레이션 설정
+          migration:
+            auto:
+              enabled: false  # true로 설정하면 애플리케이션 시작 시 자동 마이그레이션
 
   security:
     oauth2:
@@ -40,7 +46,7 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: "https://{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}"
             scope:
               - email
               - profile
@@ -102,5 +108,6 @@ nlp:
 tagging-nlp:
   base-url: http://localhost:8001         # 새 태깅 서비스(FastAPI analysisTag.py)
 
-server:
-  forward-headers-strategy: framework
+migration:
+  auto:
+    enabled: true

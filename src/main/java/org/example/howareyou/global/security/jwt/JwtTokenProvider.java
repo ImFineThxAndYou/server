@@ -75,7 +75,54 @@ public class JwtTokenProvider {
      */
     public String getIdentifierFromAccessToken(String token) {
         Claims claims = parse(token);
-        return claims.get("identifier", String.class);
+        String identifier = claims.get("identifier", String.class);
+        
+        if (identifier == null || identifier.trim().isEmpty()) {
+            // identifier가 없으면 subject를 사용 (하위 호환성)
+            String subject = claims.getSubject();
+            if ("access_token".equals(subject)) {
+                throw new IllegalArgumentException("Access token does not contain valid identifier");
+            }
+            return subject;
+        }
+        
+        return identifier;
+    }
+
+    /**
+     * Access Token에서 Auth ID를 추출합니다.
+     * @param token Access Token
+     * @return Auth 테이블 ID
+     */
+    public Long getAuthIdFromAccessToken(String token) {
+        Claims claims = parse(token);
+        String authId = claims.get("identifier", String.class);
+        
+        if (authId == null || authId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Access token does not contain valid auth ID");
+        }
+        
+        try {
+            return Long.valueOf(authId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid auth ID format in access token");
+        }
+    }
+
+    /**
+     * Refresh Token에서 membername을 추출합니다.
+     * @param token Refresh Token
+     * @return 사용자 membername
+     */
+    public String getMembernameFromRefreshToken(String token) {
+        Claims claims = parse(token);
+        String membername = claims.get("identifier", String.class);
+        
+        if (membername == null || membername.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token does not contain valid membername");
+        }
+        
+        return membername;
     }
 
     /**
@@ -85,29 +132,26 @@ public class JwtTokenProvider {
      */
     /**
      * Access Token을 생성합니다.
-     * @param membername 사용자 membername
+     * @param authId Auth 테이블 ID
      * @return 생성된 Access Token
      */
-    public String createAccessToken(String membername) {
-        return buildWithIdentifier(membername, "membername", ACCESS_EXP_MS, true);
+    public String createAccessToken(Long authId) {
+        if (authId == null) {
+            throw new IllegalArgumentException("Auth ID cannot be null for access token creation");
+        }
+        return buildWithIdentifier(authId.toString(), "auth_id", ACCESS_EXP_MS, true);
     }
 
     /**
-     * Refresh Token을 생성합니다 (email 기반).
-     * @param email 사용자 email
+     * Refresh Token을 생성합니다.
+     * @param userId 사용자 ID (UUID)
      * @return 생성된 Refresh Token
      */
-    public String createRefreshTokenWithEmail(String email) {
-        return buildWithIdentifier(email, "email", REFRESH_EXP_MS, false);
-    }
-
-    /**
-     * Refresh Token을 생성합니다 (membername 기반).
-     * @param membername 사용자 membername
-     * @return 생성된 Refresh Token
-     */
-    public String createRefreshTokenWithMembername(String membername) {
-        return buildWithIdentifier(membername, "membername", REFRESH_EXP_MS, false);
+    public String createRefreshToken(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null for refresh token creation");
+        }
+        return buildWithIdentifier(userId.toString(), "user_id", REFRESH_EXP_MS, false);
     }
 
     /**
@@ -151,22 +195,22 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Refresh Token에서 사용자 식별자를 추출합니다.
+     * Refresh Token에서 사용자 ID를 추출합니다.
      * @param token Refresh Token
-     * @return 사용자 식별자 (email 또는 membername)
+     * @return 사용자 ID
      */
-    public String getIdentifierFromRefreshToken(String token) {
+    public Long getUserIdFromRefreshToken(String token) {
         Claims claims = parse(token);
-        return claims.get("identifier", String.class);
-    }
-
-    /**
-     * Refresh Token에서 식별자 타입을 추출합니다.
-     * @param token Refresh Token
-     * @return 식별자 타입 ("email" 또는 "membername")
-     */
-    public String getIdentifierTypeFromRefreshToken(String token) {
-        Claims claims = parse(token);
-        return claims.get("identifierType", String.class);
+        String userId = claims.get("identifier", String.class);
+        
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token does not contain valid user ID");
+        }
+        
+        try {
+            return Long.valueOf(userId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid user ID format in refresh token");
+        }
     }
 }

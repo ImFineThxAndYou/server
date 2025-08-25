@@ -55,28 +55,5 @@ public class HealthCheckController {
         }
     }
 
-    @GetMapping("/session")
-    public ResponseEntity<Map<String, Object>> checkSessionHealth() {
-        Map<String, Object> result = new HashMap<>();
-        
-        try {
-            // Session 관련 Redis 키 패턴 확인
-            String sessionKey = "spring:session:sessions:test:" + System.currentTimeMillis();
-            redisTemplate.opsForValue().set(sessionKey, "test-session-data");
-            redisTemplate.delete(sessionKey);
-            
-            result.put("status", "healthy");
-            result.put("message", "Session storage is working properly");
-            result.put("timestamp", System.currentTimeMillis());
-            log.info("Session health check passed");
-            return ResponseEntity.ok(result);
-            
-        } catch (Exception e) {
-            result.put("status", "unhealthy");
-            result.put("message", "Session storage failed: " + e.getMessage());
-            result.put("timestamp", System.currentTimeMillis());
-            log.error("Session health check failed", e);
-            return ResponseEntity.status(503).body(result);
-        }
-    }
+
 } 
