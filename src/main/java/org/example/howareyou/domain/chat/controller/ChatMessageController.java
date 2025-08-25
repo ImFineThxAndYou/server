@@ -1,17 +1,21 @@
 package org.example.howareyou.domain.chat.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
+import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
+import org.example.howareyou.domain.chat.websocket.dto.CreateChatMessageRequest;
 import org.example.howareyou.domain.chat.websocket.service.ChatMessageService;
 import org.example.howareyou.global.security.CustomMemberDetails;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -81,5 +85,6 @@ public class ChatMessageController {
     String userId = memberDetails.getId().toString();
     chatMessageService.markMessagesAsRead(chatRoomId, userId);
   }
+
 
 }

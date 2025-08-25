@@ -1,9 +1,7 @@
 package org.example.howareyou.domain.chat.repository;
 
-import java.util.List;
 import java.util.Optional;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
-import org.example.howareyou.domain.chat.entity.ChatRoomMember;
 import org.example.howareyou.domain.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,5 +21,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
   """)
   ChatRoom findByMembers(@Param("member1Id") Long member1Id, @Param("member2Id") Long member2Id);
 
-
+  @Query("select m.member from ChatRoomMember m " +
+      "where m.chatRoom.uuid = :uuid and m.member.id <> :senderId")
+  Member findReceiverByRoomUuidAndSenderId(@Param("uuid") String uuid,
+      @Param("senderId") Long senderId);
 }

@@ -1,5 +1,6 @@
 package org.example.howareyou.domain.chat.websocket.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,7 +56,7 @@ public class ChatController {
   public void sendMessage(
       @Valid @Payload CreateChatMessageRequest req,
       SimpMessageHeaderAccessor headerAccessor
-  ) {
+  ) throws JsonProcessingException {
     log.info("🚀 ChatController.sendMessage 호출됨!");
     log.info("📋 Request 정보: {}", req);
     

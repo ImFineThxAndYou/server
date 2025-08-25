@@ -91,7 +91,9 @@ public class SecurityConfig {
                         // k6 테스트
                     .requestMatchers(
                         "/api/chat-message/**",
-                        "/analyze/**"
+                        "/analyze/**",
+                        "/ws-chatroom"
+
 
                     ).permitAll()
 

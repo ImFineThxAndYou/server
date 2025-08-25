@@ -7,6 +7,7 @@ import org.example.howareyou.domain.notification.redis.RedisEmitter;
 import org.example.howareyou.domain.notification.repository.NotificationRepository;
 import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -23,6 +24,7 @@ public class NotificationPushService {
     private final RedisEmitter emitters;
 
     /** 채팅 알림 발송 */
+    @Async("notificationExecutor")
     @Transactional
     public void sendChatNotify(Long roomId,
                                Long senderId, String messageId, String message,
