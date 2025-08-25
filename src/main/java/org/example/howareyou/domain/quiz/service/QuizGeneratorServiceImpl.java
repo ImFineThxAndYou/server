@@ -44,6 +44,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private final QuizWordRepository quizWordRepository;
     private final QuizVocaRepository quizVocaRepository;
     private final MemberVocabularyRepository memberVocabularyRepository;
+    private final DistractorService distractorService;
 
     /* ====================== 공개 API ====================== */
 
@@ -92,7 +93,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // 문항 생성
-        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, null, allPool, QuizType.RANDOM);
+        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, null, allPool, QuizType.RANDOM,membername);
 
         QuizResult result = createAndPersistResult(memberId, QuizType.RANDOM, null, generated);
         return toClientStartResponse(result, generated);
@@ -146,7 +147,7 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 .filter(this::nonBlank)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         // 문항 생성
-        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, dailyPool, allPool, QuizType.DAILY);
+        List<GeneratedItem> generated = buildQuestionsFromTargets(targets, dailyPool, allPool, QuizType.DAILY,membername);
 
         Instant dailyKeyUtc = date.atStartOfDay(ZoneOffset.UTC).toInstant();
         QuizResult result = createAndPersistResult(memberId, QuizType.DAILY, dailyKeyUtc, generated);
@@ -165,14 +166,24 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
     private List<GeneratedItem> buildQuestionsFromTargets(List<Target> targets,
                                                           Set<String> dailyPoolOrNull,
                                                           Set<String> allPool,
-                                                          QuizType mode) {
+                                                          QuizType mode,
+                                                          String membername
+    ) {
         List<GeneratedItem> out = new ArrayList<>(targets.size());
 
         for (Target t : targets) {
             String answer = t.meaning();
             List<String> choices = new ArrayList<>(4);
             choices.add(answer);
-            // 보기후보 집합
+
+            List<String> distractors = distractorService.pickDistractors(
+                    answer,
+                    allPool,
+                    targets.size(),
+                    membername
+            );
+
+            /*// 보기후보 집합
             List<String> candidates = new ArrayList<>();
             if (dailyPoolOrNull != null) candidates.addAll(dailyPoolOrNull);
             candidates.addAll(allPool);
@@ -182,9 +193,9 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                     .filter(this::nonBlank)
                     .filter(m -> !used.contains(m))
                     .distinct()
-                    .collect(Collectors.toCollection(ArrayList::new));
+                    .collect(Collectors.toCollection(ArrayList::new));*/
             // 오답 3개이상
-            if (filtered.size() < 3) {
+            if (distractors.size() < 3) {
                 throw new CustomException(
                         mode == QuizType.DAILY
                                 ? ErrorCode.INSUFFICIENT_DISTRACTORS_DAILY
@@ -192,10 +203,10 @@ public class QuizGeneratorServiceImpl implements QuizGeneratorService {
                 );
             }
             // 보기 랜덤선택
-            Collections.shuffle(filtered, RND);
-            choices.add(filtered.get(0));
-            choices.add(filtered.get(1));
-            choices.add(filtered.get(2));
+            Collections.shuffle(distractors, RND);
+            choices.add(distractors.get(0));
+            choices.add(distractors.get(1));
+            choices.add(distractors.get(2));
             Collections.shuffle(choices, RND);
 
             QuizQuestion qq = QuizQuestion.builder()
