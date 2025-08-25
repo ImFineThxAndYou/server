@@ -93,7 +93,16 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-                        // 인증/회원 공개 API
+                        // k6 테스트
+                    .requestMatchers(
+                        "/api/chat-message/**",
+                        "/analyze/**",
+                        "/ws-chatroom"
+
+
+                    ).permitAll()
+
+                        // 인증/회원 관련 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // WebSocket 핸드셰이크 경로 (SockJS info 포함) 공개

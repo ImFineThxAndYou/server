@@ -1,12 +1,16 @@
 package org.example.howareyou.domain.chat.websocket.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.howareyou.domain.chat.entity.ChatRoom;
+import org.example.howareyou.domain.chat.kafka.dto.ChatMessageCreatedEvent;
 import org.example.howareyou.domain.chat.repository.ChatRoomRepository;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageDocumentResponse;
 import org.example.howareyou.domain.chat.websocket.dto.ChatMessageResponse;
@@ -21,6 +25,7 @@ import org.example.howareyou.global.exception.CustomException;
 import org.example.howareyou.global.exception.ErrorCode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +38,8 @@ public class ChatMessageService {
   private final ChatRoomRepository chatRoomRepository;
   private final NotificationPushService notificationPushService;
   private final MemberRepository memberRepository;
+  private final KafkaTemplate<String, Object> kafkaTemplate;
+  private final ObjectMapper objectMapper;
 
   /**
    * 채팅 메시지를 Redis 캐시에 저장하고, MongoDB에 영구 저장하는 메서드. - 채팅방 및 상대방 정보 확인 - Redis: 최근 메시지 추가, 안읽은 메시지 수
@@ -40,71 +47,52 @@ public class ChatMessageService {
    *
    * @return
    */
-
   @Transactional
-  public ChatMessageResponse saveChatMessage(CreateChatMessageRequest request) {
+  public ChatMessageResponse saveChatMessage(CreateChatMessageRequest request) throws JsonProcessingException {
 
     final String chatRoomUuid = request.getChatRoomUuid();
 
-    // 채팅방 조회
+    // --- DB: 채팅방 조회
     ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomUuid)
         .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
 
-    // 발신자 조회/검증
+    // --- DB: 발신자 조회
     Long senderId = request.getSenderId();
     Member sender = memberRepository.findById(senderId)
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-    // 수신자 산출 (1:1 기준)
-    Member receiver = chatRoom.getOtherParticipant(senderId);
-    Long receiverId = receiver.getId();
+    // --- DB: 수신자 조회
+    Member receiver = chatRoomRepository.findReceiverByRoomUuidAndSenderId(chatRoomUuid, senderId);
 
-    // 표시용 이름 스냅샷 (프로필 닉네임 우선 → membername → email)
-    String senderName   = sender.getMembername();
-    String receiverName = receiver.getMembername();
+    // --- 임시 메시지 ID 생성 (UUID)
+    String tempMessageId = UUID.randomUUID().toString();
 
-    // Mongo 저장용 도큐먼트 구성
-    ChatMessageDocument messageForMongo = ChatMessageDocument.builder()
-        .chatRoomUuid(chatRoomUuid)
-        .senderId(String.valueOf(senderId))
-        .senderName(senderName)
-        .receiverId(String.valueOf(receiverId))
-        .receiverName(receiverName)
-        .content(request.getContent())
-        .messageTime(Instant.now())
-        .chatMessageStatus(ChatMessageStatus.UNREAD)
-        .build();
+    // --- Kafka 이벤트 발행 (Mongo 저장은 Consumer에서)
+    ChatMessageCreatedEvent event = new ChatMessageCreatedEvent(
+        chatRoom.getId(),
+        chatRoomUuid,
+        senderId,
+        receiver.getId(),
+        tempMessageId,
+        request.getContent()
+    );
 
-    // MongoDB 저장
-    messageForMongo = mongoRepository.save(messageForMongo);
+    kafkaTemplate.send("chat.message.created", tempMessageId, objectMapper.writeValueAsString(event));
 
-    // Redis 최근 메시지 캐시 (id가 채워진 객체로)
-    chatRedisService.addRecentMessage(chatRoomUuid, messageForMongo);
-    chatRedisService.trimRecentMessages(chatRoomUuid, 30);
-
-    // 수신자 현재 방 체크
-    String receiverCurrentRoom = chatRedisService.getCurrentChatRoom(String.valueOf(receiverId));
-    boolean isReceiverInRoom = chatRoomUuid.equals(receiverCurrentRoom);
-
-    if (!isReceiverInRoom) {
-      // 안읽은 메시지 증가
-      chatRedisService.incrementUnread(chatRoomUuid, String.valueOf(receiverId));
-
-      // 알림 발송
-      //  - messageId는 Mongo 저장 후 사용
-      notificationPushService.sendChatNotify(
-          chatRoom.getId(),
-          senderId,
-          messageForMongo.getId(),
-          messageForMongo.getContent(),
-          receiverId
-      );
-    }
-
-    log.debug("채팅 메시지 저장 완료 - roomUuid={}, roomId={}, senderId={}, receiverOnline={}, redis+mongo 저장",
-        chatRoomUuid, chatRoom.getId(), senderId, isReceiverInRoom);
-    return ChatMessageResponse.from(messageForMongo);
+    // --- ACK 응답 (Mongo 저장 전이라도 클라에서 UI 반영 가능)
+    return new ChatMessageResponse(
+        tempMessageId,
+        chatRoomUuid,
+        String.valueOf(senderId),
+        sender.getMembername(),
+        String.valueOf(receiver.getId()),
+        receiver.getMembername(),
+        request.getContent(),
+        Instant.now(),
+        ChatMessageStatus.UNREAD
+    );
   }
+
 
 
   /**
@@ -197,6 +185,67 @@ public class ChatMessageService {
     return mongoMessages.stream()
         .map(ChatMessageDocumentResponse::from)
         .toList();
+  }
+
+  /** 테스트용 mongo db 저장로직 */
+  @Transactional
+  public ChatMessageResponse saveTestMongo(CreateChatMessageRequest request) {
+    long totalStart = System.currentTimeMillis();
+
+    final String chatRoomUuid = request.getChatRoomUuid();
+    ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomUuid)
+        .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+    Long senderId = request.getSenderId();
+    Member sender = memberRepository.findById(senderId)
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+    Member receiver = chatRoom.getOtherParticipant(senderId);
+    Long receiverId = receiver.getId();
+
+    ChatMessageDocument messageForMongo = ChatMessageDocument.builder()
+        .chatRoomUuid(chatRoomUuid)
+        .senderId(String.valueOf(senderId))
+        .senderName(sender.getMembername())
+        .receiverId(String.valueOf(receiverId))
+        .receiverName(receiver.getMembername())
+        .content(request.getContent())
+        .messageTime(Instant.now())
+        .chatMessageStatus(ChatMessageStatus.UNREAD)
+        .build();
+
+    // 1. Mongo 저장
+    long mongoStart = System.currentTimeMillis();
+    messageForMongo = mongoRepository.save(messageForMongo);
+    long mongoEnd = System.currentTimeMillis();
+
+    // 2. Redis 저장
+    long redisStart = System.currentTimeMillis();
+    chatRedisService.addRecentMessage(chatRoomUuid, messageForMongo);
+    chatRedisService.trimRecentMessages(chatRoomUuid, 30);
+    long redisEnd = System.currentTimeMillis();
+
+    // 3. 알림 (RDB insert/update 포함)
+    long notifyStart = System.currentTimeMillis();
+    notificationPushService.sendChatNotify(
+        chatRoom.getId(),
+        senderId,
+        messageForMongo.getId(),
+        messageForMongo.getContent(),
+        receiverId
+    );
+    long notifyEnd = System.currentTimeMillis();
+
+    long totalEnd = System.currentTimeMillis();
+
+    log.info("⏱️ [PERF] SaveChatMessage Latency: Mongo={}ms, Redis={}ms, Notify(RDB)={}ms, Total={}ms",
+        (mongoEnd - mongoStart),
+        (redisEnd - redisStart),
+        (notifyEnd - notifyStart),
+        (totalEnd - totalStart)
+    );
+
+    return ChatMessageResponse.from(messageForMongo);
   }
 
 }
