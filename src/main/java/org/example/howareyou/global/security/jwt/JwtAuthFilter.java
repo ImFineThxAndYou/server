@@ -41,7 +41,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // WebSocket 관련 경로는 JWT 필터 스킵
         String requestURI = req.getRequestURI();
-        if (requestURI.startsWith("/ws-chatroom/")) {
+        log.info(">>> JwtAuthFilter requestURI = {}", requestURI);
+
+        if (requestURI.startsWith("/signup") || requestURI.startsWith("/api/auth") || requestURI.startsWith("/ws-chatroom/")) {
             chain.doFilter(req, res);
             return;
         }

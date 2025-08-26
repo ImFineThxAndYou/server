@@ -44,6 +44,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         .addEndpoint("/ws-chatroom") // 클라이언트 연결 엔드포인트
         .setAllowedOriginPatterns("*")
         .withSockJS(); // SockJS fallback 지원
+    registry.addEndpoint("/ws-chatroom").setAllowedOriginPatterns("*"); // 기존 유지
     log.info("✅ WebSocket 엔드포인트 등록 완료");
   }
 

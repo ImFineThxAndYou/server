@@ -101,7 +101,6 @@ function getCountFromDetailOnce(uuid, token) {
 }
 
 // ---------- 시나리오 본문 ----------
-// ---------- 시나리오 본문 ----------
 export default function () {
     const token = pick(TOKENS);
 

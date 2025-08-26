@@ -2,6 +2,62 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
   main:
     banner-mode: off
+  activemq:
+    security:
+      oauth2:
+        client:
+          registration:
+            google:
+              # 개발 환경에서는 localhost 사용
+              redirect-uri: "https://api.howareu.click/login/oauth2/code/google"
+
+  kafka:
+    bootstrap-servers: ${AWS_MSK_BROKERS}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:howru-prod}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    admin:
+      auto-create: false  # 프로덕션에서는 수동으로 토픽 관리
+    properties:
+      # AWS MSK 보안 설정
+      security.protocol: SASL_SSL
+      sasl.mechanism: AWS_MSK_IAM
+      sasl.jaas.config: com.amazon.msk.auth.iam.IAMLoginModule required;
+      sasl.client.callback.handler.class: com.amazon.msk.auth.iam.IAMClientCallbackHandler
+      # 성능 최적화
+      request.timeout.ms: 30000
+      retry.backoff.ms: 1000
+      max.in.flight.requests.per.connection: 5
+      # SSL 설정
+      ssl.endpoint.identification.algorithm: https
+
+# 보안 헤더 설정
+server:
+  # ALB 뒤에서 실행되므로 실제 클라이언트 IP를 얻기 위한 설정
+  forward-headers-strategy: framework
+  # HTTPS 리다이렉트 설정 (ALB에서 처리하므로 비활성화)
+  ssl:
+    enabled: false
+
+# Actuator 설정 (프로덕션)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      cloudwatch:
+        enabled: true
+        namespace: HowAreYou/Backend

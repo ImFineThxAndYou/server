@@ -65,6 +65,7 @@ public class QuizTestController {
             @RequestParam("membername") String membername,
             @RequestParam("date") String dateStr
     ) {
+        log.info("▶️ startDaily called membername={}, dateStr={}", membername, dateStr);
         if (membername == null || membername.isBlank()) throw new CustomException(ErrorCode.MEMBER_NOT_FOUND);
         LocalDate date;
         try {

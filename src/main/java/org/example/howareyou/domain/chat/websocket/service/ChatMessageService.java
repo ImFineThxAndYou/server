@@ -198,5 +198,64 @@ public class ChatMessageService {
         .map(ChatMessageDocumentResponse::from)
         .toList();
   }
+/** 테스트용 mongo db 저장로직 */
+@Transactional
+public ChatMessageResponse saveTestMongo(CreateChatMessageRequest request) {
+  long totalStart = System.currentTimeMillis();
 
+  final String chatRoomUuid = request.getChatRoomUuid();
+  ChatRoom chatRoom = chatRoomRepository.findByUuid(chatRoomUuid)
+          .orElseThrow(() -> new CustomException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+  Long senderId = request.getSenderId();
+  Member sender = memberRepository.findById(senderId)
+          .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+  Member receiver = chatRoom.getOtherParticipant(senderId);
+  Long receiverId = receiver.getId();
+
+  ChatMessageDocument messageForMongo = ChatMessageDocument.builder()
+          .chatRoomUuid(chatRoomUuid)
+          .senderId(String.valueOf(senderId))
+          .senderName(sender.getMembername())
+          .receiverId(String.valueOf(receiverId))
+          .receiverName(receiver.getMembername())
+          .content(request.getContent())
+          .messageTime(Instant.now())
+          .chatMessageStatus(ChatMessageStatus.UNREAD)
+          .build();
+
+  // 1. Mongo 저장
+  long mongoStart = System.currentTimeMillis();
+  messageForMongo = mongoRepository.save(messageForMongo);
+  long mongoEnd = System.currentTimeMillis();
+
+  // 2. Redis 저장
+  long redisStart = System.currentTimeMillis();
+  chatRedisService.addRecentMessage(chatRoomUuid, messageForMongo);
+  chatRedisService.trimRecentMessages(chatRoomUuid, 30);
+  long redisEnd = System.currentTimeMillis();
+
+  // 3. 알림 (RDB insert/update 포함)
+  long notifyStart = System.currentTimeMillis();
+  notificationPushService.sendChatNotify(
+          chatRoom.getId(),
+          senderId,
+          messageForMongo.getId(),
+          messageForMongo.getContent(),
+          receiverId
+  );
+  long notifyEnd = System.currentTimeMillis();
+
+  long totalEnd = System.currentTimeMillis();
+
+  log.info("⏱️ [PERF] SaveChatMessage Latency: Mongo={}ms, Redis={}ms, Notify(RDB)={}ms, Total={}ms",
+          (mongoEnd - mongoStart),
+          (redisEnd - redisStart),
+          (notifyEnd - notifyStart),
+          (totalEnd - totalStart)
+  );
+
+  return ChatMessageResponse.from(messageForMongo);
+}
 }

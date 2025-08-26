@@ -1,0 +1,38 @@
+{
+  "family": "howru-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["EC2"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::257976284139:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "spring-app",
+      "image": "257976284139.dkr.ecr.ap-northeast-2.amazonaws.com/howru-spring:latest",
+      "essential": true,
+      "portMappings": [
+        { "containerPort": 8080, "hostPort": 8080, "protocol": "tcp" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/howru-backend",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "command": [
+        "java",
+        "-jar",
+        "/app/app.jar"
+      ]
+    }
+  ]
+}
