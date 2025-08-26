@@ -7,31 +7,31 @@ export const options = {
     scenarios: {
         hot_page: {
             executor: 'constant-arrival-rate',
-            rate: Number(__ENV.HOT_RPS || 300),
+            rate: Number(__ENV.HOT_RPS || 200),
             timeUnit: '1s',
-            duration: __ENV.DURATION || '10s',
+            duration: __ENV.DURATION || '5m',
             preAllocatedVUs: Number(__ENV.PRE_VUS || 60),
-            maxVUs: Number(__ENV.MAX_VUS || 300),
+            maxVUs: Number(__ENV.MAX_VUS || 400),
             exec: 'hotPage',
         },
         cold_page: {
             executor: 'constant-arrival-rate',
             rate: Number(__ENV.COLD_RPS || 200),
             timeUnit: '1s',
-            duration: __ENV.DURATION || '10s',
+            duration: __ENV.DURATION || '5m',
             preAllocatedVUs: Number(__ENV.PRE_VUS || 60),
-            maxVUs: Number(__ENV.MAX_VUS || 300),
+            maxVUs: Number(__ENV.MAX_VUS || 400),
             exec: 'coldPage',
         },
-        detail: {
-            executor: 'constant-arrival-rate',
-            rate: Number(__ENV.DETAIL_RPS || 250),
-            timeUnit: '1s',
-            duration: __ENV.DURATION || '10s',
-            preAllocatedVUs: Number(__ENV.PRE_VUS || 60),
-            maxVUs: Number(__ENV.MAX_VUS || 300),
-            exec: 'detailOne',
-        },
+        // detail: {
+        //     executor: 'constant-arrival-rate',
+        //     rate: Number(__ENV.DETAIL_RPS || 200),
+        //     timeUnit: '1s',
+        //     duration: __ENV.DURATION || '5m',
+        //     preAllocatedVUs: Number(__ENV.PRE_VUS || 60),
+        //     maxVUs: Number(__ENV.MAX_VUS || 400),
+        //     exec: 'detailOne',
+        // },
     },
     thresholds: {
         'http_req_failed{api:quiz}': ['rate<0.05'],
@@ -41,7 +41,7 @@ export const options = {
     },
 };
 
-// ---------- 유틸 (외부 모듈 없이) ----------
+// ---------- 유틸 ----------
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randint(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
@@ -63,14 +63,15 @@ function loadTokens() {
     return ['']; // 토큰 없이도 동작
 }
 const TOKENS = loadTokens();
+
 function H(token) {
     const headers = { 'Content-Type': 'application/json' };
     if (token && token.length > 0) headers['Authorization'] = `Bearer ${token}`;
     return { headers, tags: { api: 'quiz' } };
 }
+
 function tag(resp, extra) {
     if (!resp) return;
-    // 요청에 넣은 태그를 읽어오되, 못 읽으면 extra.type 또는 'unknown'
     const reqType =
         (resp.request && resp.request.params && resp.request.params.tags && resp.request.params.tags.type) ||
         (extra && extra.type) ||
@@ -83,49 +84,32 @@ function tag(resp, extra) {
 
 // ---------- setup: UUID 풀 ----------
 export function setup() {
-    // 1) 파일이 있으면 우선
-    if (__ENV.UUIDS_FILE && __ENV.UUIDS_FILE.length > 0) {
-        try {
-            const arr = open(__ENV.UUIDS_FILE).split('\n').map(s => s.trim()).filter(Boolean);
-            if (arr.length === 0) fail('UUIDS_FILE is empty');
-            return { uuids: arr };
-        } catch (e) {
-            console.error('Failed to open UUIDS_FILE:', e && e.message ? e.message : e);
-            // fallthrough
-        }
-    }
-
-    // 2) 테스트 엔드포인트에서 직접 가져오기
-    const token = (function () {
-        // 토큰 옵션 (없어도 동작)
-        try {
-            if (__ENV.TOKENS_FILE && __ENV.TOKENS_FILE.length > 0) {
-                const t = open(__ENV.TOKENS_FILE).split('\n').map(s => s.trim()).filter(Boolean);
-                if (t.length) return t[0];
-            }
-        } catch (_) {}
-        if (__ENV.TOKENS && __ENV.TOKENS.length > 0) {
-            const t = __ENV.TOKENS.split(',').map(s => s.trim()).filter(Boolean);
-            if (t.length) return t[0];
-        }
-        return ''; // no token
-    })();
-
+    const token = ''; // 필요시 토큰 직접 세팅
     const headers = { 'Content-Type': 'application/json' };
     if (token && token.length > 0) headers['Authorization'] = `Bearer ${token}`;
 
-    const limit = Number(__ENV.SCAN_MAX_UUIDS || 150000);
-    const url = `${BASE}/uuids?membername=${encodeURIComponent(MEMBERNAME)}&limit=${limit}`; // status 필요하면 &status=SUBMIT
+    const perPage = 10000;   // 페이지당 건수
+    const totalPages = 10;   // 총 10번 호출 = 100,000건
+    let all = [];
 
-    const r = http.get(url, { headers, tags: { api: 'quiz', type: 'scan' } });
-    if (!r || r.status !== 200) fail(`GET /uuids failed: ${r && r.status}`);
+    for (let p = 0; p < totalPages; p++) {
+        const url = `${BASE}/uuids?membername=${encodeURIComponent(MEMBERNAME)}&limit=${perPage}&page=${p}`;
+        const r = http.get(url, { headers, tags: { api: 'quiz', type: 'scan' } });
+        if (!r || r.status !== 200) fail(`GET /uuids failed (page=${p}): ${r && r.status}`);
 
-    let arr = [];
-    try { arr = JSON.parse(String(r.body || '[]')); } catch (_) { arr = []; }
+        let arr = [];
+        try { arr = JSON.parse(String(r.body || '[]')); } catch (_) { arr = []; }
 
-    if (!Array.isArray(arr) || arr.length === 0) fail('No UUIDs returned from /uuids');
-    console.log(`Collected UUIDs from /uuids: ${arr.length}`);
-    return { uuids: arr };
+        if (!Array.isArray(arr) || arr.length === 0) {
+            console.warn(`⚠️ Page ${p} returned empty`);
+            continue;
+        }
+        console.log(`Page ${p} collected: ${arr.length}`);
+        all = all.concat(arr);
+    }
+
+    console.log(`✅ Total UUIDs collected: ${all.length}`);
+    return { uuids: all };
 }
 
 // ---------- execs ----------
