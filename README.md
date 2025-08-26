@@ -94,26 +94,19 @@ $ docker compose up -d
 <img width="50" height="30" alt="Image" src="https://github.com/user-attachments/assets/9f43f57e-9bca-4615-a1d4-79873d7a3f3c"/>java17 / Gradle
 
 ## 5.2 Frontend
-<img width="80"  alt="React" src="https://shields.io/badge/React-3080CA?logo=React&logoColor=FFF&style=flat-square"/> 
-<img width="100"  alt="TypeScript" src="https://shields.io/badge/TypeScript-3178C6?logo=TypeScript&logoColor=FFF&style=flat-square"/>
+<img width="80"  alt="React" src="https://shields.io/badge/React-3080CA?logo=React&logoColor=FFF&style=flat-square"/> <img width="120"  alt="TypeScript" src="https://shields.io/badge/TypeScript-3178C6?logo=TypeScript&logoColor=FFF&style=flat-square"/>
 
 ## 5.3 Backend
 
-<img width="100" src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=Spring&logoColor=white"/>
-<img src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/>
-  <img src="https://img.shields.io/badge/mongoDB-47A248?style=for-the-badge&logo=MongoDB&logoColor=white">
-<img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white">
+<img width="100" src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=Spring&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/mongoDB-47A248?style=for-the-badge&logo=MongoDB&logoColor=white"> <img width="80" src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white">
 
 ## 5.4 Cooperation
 
-<img width="100" alt="Github" src="https://shields.io/badge/github-000000?logo=github&logoColor=FFF&style=flat-square"/>     
-<img width="100" alt="Discord" src="https://shields.io/badge/discord-3178C6?logo=discord&logoColor=FFF&style=flat-square"/>   
-<img width="100"  src="https://shields.io/badge/notion-ffffff?logo=notion&logoColor=000000&style=flat-square"/>    
+<img width="100" alt="Github" src="https://shields.io/badge/github-000000?logo=github&logoColor=FFF&style=flat-square"/>     <img width="100" alt="Discord" src="https://shields.io/badge/discord-3178C6?logo=discord&logoColor=FFF&style=flat-square"/>   <img width="100"  src="https://shields.io/badge/notion-ffffff?logo=notion&logoColor=000000&style=flat-square"/>    
 
 ## 5.5 API Test
 
-<img width="100" src="https://img.shields.io/badge/-Swagger-85EA2D?style=flat&logo=swagger&logoColor=white"/> 
-<img width="100" src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=Postman&logoColor=white"/>
+<img width="100" src="https://img.shields.io/badge/-Swagger-85EA2D?style=flat&logo=swagger&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=Postman&logoColor=white"/>
 
 ## 5.6 Deployment
 <img width="3100" height="3900" alt="Image" src="https://github.com/user-attachments/assets/4fdb6d35-9c08-4ff8-b211-e15fa300a57c" />
