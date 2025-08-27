@@ -73,16 +73,15 @@ $ docker compose up -d
 | 학습 피드백 | 퀴즈 결과 기반 **개인화 분석/추천**                         | 단순 정오답 확인   |
 
 ---
-
 # 4. Tasks & Responsibilities (작업 및 역할 분담)
 
 | 이름  | 역할 | 주요 작업                                                                                                                                |
 | --- | -- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 엄아영 | BE | <ul><li>채팅 → 단어장 생성 파이프라인 구축</li><li>날짜별/전체 단어장 조회 기능</li><li>마이페이지 대시보드</li><li>단어장 부하테스트 진행 및 성능개선</li></ul> 
-| 고형준 | BE | <ul><li>로그인 및 jwt spring security 구현</li> <li> 마이페이지 대시보드 구현 </li> <li> 추천알고리즘 구현 </li> <li> 알림기능 구현</li></ul>
-| 문성원 | BE | <ul><li>LiberTranslate + Gemini API 번역 서버 구축</li><li>CICD 구축 및 배포</li><li>FastAPI/Spacy ECS 연동</li><li>LiberTranslate 부하테스트 진행</li></ul> 
-| 박상화 | BE | <ul><li>채팅 구축</li><li>WebSocket + Redis 기반 실시간 메시징</li><li>추천 알고리즘 구현</li></ul> 
-| 이은서 | BE | <ul><li>퀴즈 생성/제출/채점 로직 구현</li><li>MongoDB + PostgreSQL 데이터 파이프라인</li><li>K6 부하테스트 및 성능 최적화</li><li>퀴즈 부하테스트 진행 및 채팅 저장 부하테스트 진행 및 성능개선</li></ul> |
+| 고형준 | BE | <ul><li>로그인 및 jwt spring security 구현</li> <li> 마이페이지 대시보드 구현 </li> <li> 추천알고리즘 구현 </li> <li> 알림기능 구현</li><li>frontend 연동 및 제작</li></ul>
+| 문성원 | BE | <ul><li>LiberTranslate + Gemini API 번역 서버 구축</li><li>CICD 구축 및 배포</li><li>FastAPI/Spacy ECS 연동</li><li>k6 부하테스트 진행 및 성능개선</li></ul> 
+| 박상화 | BE | <ul><li>WebSocket + Redis 기반 실시간 메시징</li><li>nlp 사용자 태그 벡터 추천 알고리즘 구현</li><li>메시지 저장 비동기처리 (kafka), 사용자 태그 점수 계산 리팩토링</li><li>mongodb 파이프라인 구축</li></ul> 
+| 이은서 | BE | <ul><li>퀴즈 생성/제출/채점 로직 구현</li><li>MongoDB + PostgreSQL 데이터 파이프라인</li><li>K6 부하테스트 및 성능 최적화</li></ul> |
 
 
 ---
