@@ -118,7 +118,7 @@ $ docker compose up -d
 ```plaintext
 server-dev/
 ├── docs/                     # 문서 가이드
-├── fastapi-api/              # NLP 태깅 서버 (FastAPI)
+├── fastapi-api/              # NLP 태깅 서버
 ├── infra/                    # 인프라 설정
 ├── k6-test/                  # K6 부하테스트
 ├── spacy-api/                # Spacy 형태소 분석 서버
@@ -149,8 +149,7 @@ server-dev/
 ---
 
 # 6.1 ERD
-<img width="1212" height="763" alt="Image" src="https://github.com/user-attachments/assets/4cb5353c-0392-4231-98a0-011324224a94" />
-
+<img width="1045" height="833" alt="Image" src="https://github.com/user-attachments/assets/9717a943-792e-40fe-a07d-f56d307b5634" />
 ---
 
 # 7. Development Workflow (개발 워크플로우)
@@ -163,11 +162,6 @@ server-dev/
 
 # 8. Commit Convention (커밋컨벤션)
 
-* `feat`: 새로운 기능 추가
-* `fix`: 버그 수정
-* `refactor`: 코드 리팩토링
-* `test`: 테스트 코드 작성/수정
-* `docs`: 문서 수정
 
 [커밋컨밴션 참고문서](https://www.notion.so/211e51228f4b81cc8f3deced0a87af6d)
 
