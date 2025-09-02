@@ -98,6 +98,7 @@ $ docker compose up -d
 ## 5.3 Backend
 
 <img width="100" src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=Spring&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/mongoDB-47A248?style=for-the-badge&logo=MongoDB&logoColor=white"> <img width="80" src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white">
+fastAPI, flask, spaCy, LibreTranslate, kafka,zookeeper,prometheus,grafana
 
 ## 5.4 Cooperation
 
