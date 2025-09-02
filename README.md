@@ -98,7 +98,7 @@ $ docker compose up -d
 ## 5.3 Backend
 
 <img width="100" src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=Spring&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/mongoDB-47A248?style=for-the-badge&logo=MongoDB&logoColor=white"> <img width="80" src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white">
-fastAPI, flask, spaCy, LibreTranslate, kafka,zookeeper,prometheus,grafana
+<img width="100" height="30" src ="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi"/>, <img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=Flask&logoColor=white"/> <img src="https://img.shields.io/badge/spaCy-green"/> <img width="100"  height="30" src="https://img.shields.io/badge/LibreTranslate-blue"/> <img src="https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white"/> <img src="https://img.shields.io/badge/Zookeeper-231F20?style=for-the-badge"/> <img width="100" height="30" src="https://img.shields.io/badge/Prometheus-white?logo=prometheus"/> <img width="100"  height="30" src="https://img.shields.io/badge/-Grafana-000?&logo=Grafana"/> 
 
 ## 5.4 Cooperation
 
