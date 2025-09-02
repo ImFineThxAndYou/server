@@ -73,16 +73,15 @@ $ docker compose up -d
 | 학습 피드백 | 퀴즈 결과 기반 **개인화 분석/추천**                         | 단순 정오답 확인   |
 
 ---
-
 # 4. Tasks & Responsibilities (작업 및 역할 분담)
 
 | 이름  | 역할 | 주요 작업                                                                                                                                |
 | --- | -- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 엄아영 | BE | <ul><li>채팅 → 단어장 생성 파이프라인 구축</li><li>날짜별/전체 단어장 조회 기능</li><li>마이페이지 대시보드</li><li>단어장 부하테스트 진행 및 성능개선</li></ul> 
-| 고형준 | BE | <ul><li>로그인 및 jwt spring security 구현</li> <li> 마이페이지 대시보드 구현 </li> <li> 추천알고리즘 구현 </li> <li> 알림기능 구현</li></ul>
-| 문성원 | BE | <ul><li>LiberTranslate + Gemini API 번역 서버 구축</li><li>CICD 구축 및 배포</li><li>FastAPI/Spacy ECS 연동</li><li>LiberTranslate 부하테스트 진행</li></ul> 
-| 박상화 | BE | <ul><li>채팅 구축</li><li>WebSocket + Redis 기반 실시간 메시징</li><li>추천 알고리즘 구현</li></ul> 
-| 이은서 | BE | <ul><li>퀴즈 생성/제출/채점 로직 구현</li><li>MongoDB + PostgreSQL 데이터 파이프라인</li><li>K6 부하테스트 및 성능 최적화</li><li>퀴즈 부하테스트 진행 및 채팅 저장 부하테스트 진행 및 성능개선</li></ul> |
+| 고형준 | BE | <ul><li>로그인 및 jwt spring security 구현</li> <li> 마이페이지 대시보드 구현 </li> <li> 추천알고리즘 구현 </li> <li> 알림기능 구현</li><li>frontend 연동 및 제작</li></ul>
+| 문성원 | BE | <ul><li>LiberTranslate + Gemini API 번역 서버 구축</li><li>CICD 구축 및 배포</li><li>FastAPI/Spacy ECS 연동</li><li>k6 부하테스트 진행 및 성능개선</li></ul> 
+| 박상화 | BE | <ul><li>WebSocket + Redis 기반 실시간 메시징</li><li>nlp 사용자 태그 벡터 추천 알고리즘 구현</li><li>메시지 저장 비동기처리 (kafka), 사용자 태그 점수 계산 리팩토링</li><li>mongodb 파이프라인 구축</li></ul> 
+| 이은서 | BE | <ul><li>퀴즈 생성/제출/채점 로직 구현</li><li>MongoDB + PostgreSQL 데이터 파이프라인</li><li>K6 부하테스트 및 성능 최적화</li></ul> |
 
 
 ---
@@ -99,6 +98,7 @@ $ docker compose up -d
 ## 5.3 Backend
 
 <img width="100" src="https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=Spring&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/postgresql-4169E1?style=flat-square&logo=postgresql&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/mongoDB-47A248?style=for-the-badge&logo=MongoDB&logoColor=white"> <img width="80" src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white">
+<img width="100" height="30" src ="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi"/>, <img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=Flask&logoColor=white"/> <img src="https://img.shields.io/badge/spaCy-green"/> <img width="100"  height="30" src="https://img.shields.io/badge/LibreTranslate-blue"/> <img src="https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white"/> <img src="https://img.shields.io/badge/Zookeeper-231F20?style=for-the-badge"/> <img width="100" height="30" src="https://img.shields.io/badge/Prometheus-white?logo=prometheus"/> <img width="100"  height="30" src="https://img.shields.io/badge/-Grafana-000?&logo=Grafana"/> 
 
 ## 5.4 Cooperation
 
@@ -119,7 +119,7 @@ $ docker compose up -d
 ```plaintext
 server-dev/
 ├── docs/                     # 문서 가이드
-├── fastapi-api/              # NLP 태깅 서버 (FastAPI)
+├── fastapi-api/              # NLP 태깅 서버
 ├── infra/                    # 인프라 설정
 ├── k6-test/                  # K6 부하테스트
 ├── spacy-api/                # Spacy 형태소 분석 서버
@@ -150,8 +150,7 @@ server-dev/
 ---
 
 # 6.1 ERD
-<img width="1212" height="763" alt="Image" src="https://github.com/user-attachments/assets/4cb5353c-0392-4231-98a0-011324224a94" />
-
+<img width="1045" height="833" alt="Image" src="https://github.com/user-attachments/assets/9717a943-792e-40fe-a07d-f56d307b5634" />
 ---
 
 # 7. Development Workflow (개발 워크플로우)
@@ -164,11 +163,6 @@ server-dev/
 
 # 8. Commit Convention (커밋컨벤션)
 
-* `feat`: 새로운 기능 추가
-* `fix`: 버그 수정
-* `refactor`: 코드 리팩토링
-* `test`: 테스트 코드 작성/수정
-* `docs`: 문서 수정
 
 [커밋컨밴션 참고문서](https://www.notion.so/211e51228f4b81cc8f3deced0a87af6d)
 
