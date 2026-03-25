@@ -109,7 +109,7 @@ $ docker compose up -d
 <img width="100" src="https://img.shields.io/badge/-Swagger-85EA2D?style=flat&logo=swagger&logoColor=white"/> <img width="100" src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=Postman&logoColor=white"/>
 
 ## 5.6 Deployment
-<img width="3100" height="3900" alt="Image" src="https://github.com/user-attachments/assets/9400d398-dcc1-4cf5-8f8e-8f86d0d43ae2" />
+<img width="3100" height="3900" alt="Image" src="https://github.com/user-attachments/assets/31304caf-f674-4448-87c4-481ad8908f89" />
 
 ---
 
